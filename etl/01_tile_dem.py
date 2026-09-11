@@ -38,6 +38,8 @@ import logging
 import time
 from pathlib import Path
 
+import numpy as np
+
 import config  # sets env vars, adds OSGeo4W to PATH
 
 try:
@@ -54,6 +56,62 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+def _fill_nodata(tile_path: Path) -> None:
+    """
+    Fill any NoData cells in this tile via interpolation from surrounding
+    valid pixels, then clear the NoData flag (no missing data remains).
+
+    gdal.ViewshedGenerate() does not special-case NoData in its input DEM —
+    per GDAL's own documentation, "no special processing of input cells at
+    a nodata value is done (which may result in erroneous results)": a
+    NoData sentinel (e.g. -9999) gets treated as literal terrain elevation,
+    which can silently create a phantom cliff or (for a large positive
+    sentinel) a phantom mountain wherever a tree's viewshed radius happens
+    to touch a gap — most commonly water. Filling before any viewshed call
+    ever sees the tile removes this risk at the source instead of relying
+    on no tree ever landing unlucky.
+    """
+    ds = gdal.Open(str(tile_path), gdal.GA_Update)
+    band = ds.GetRasterBand(1)
+    nodata = band.GetNoDataValue()
+    if nodata is None:
+        ds = None
+        return
+
+    arr = band.ReadAsArray()
+    if not np.any(arr == nodata):
+        band.DeleteNoDataValue()
+        ds = None
+        return
+
+    # maxSearchDist comfortably exceeds a buffered tile's own dimensions
+    # (TILE_PIXELS + 2*TILE_BUFFER_PX, ~1140 px at the default settings), so
+    # a fill always reaches valid data if any exists anywhere in the tile.
+    # A smaller distance (originally 300px) silently leaves large gaps
+    # unfilled — confirmed on real data: a ~265x140px void near a tile edge
+    # was untouched at 300px but fully resolved at this distance.
+    gdal.FillNodata(targetBand=band, maskBand=None, maxSearchDist=2000, smoothingIterations=1)
+
+    # Only clear the flag once nothing is left at the sentinel value. A tile
+    # with zero valid pixels anywhere (wholly outside real coverage) can't
+    # be filled by interpolation at all — silently deleting the NoData flag
+    # in that case would leave the raw sentinel masquerading as real
+    # elevation with no way to detect it, which is the exact failure mode
+    # this function exists to prevent.
+    arr_after = band.ReadAsArray()
+    remaining = int(np.sum(arr_after == nodata))
+    if remaining > 0:
+        log.warning(
+            f"  {tile_path.name}: {remaining} px could not be filled "
+            "(no valid data anywhere in this tile) — NoData flag kept."
+        )
+    else:
+        band.DeleteNoDataValue()
+    ds.FlushCache()
+    ds = None
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +199,7 @@ def tile_dem(dem_path: Path, tiles_dir: Path, tile_index_path: Path, province_vr
                     height=win_h,
                     creationOptions=config.TILE_CREATION_OPTIONS,
                 )
+                _fill_nodata(tile_path)
 
             inner_geo_x0 = gt[0] + inner_x0 * gt[1]
             inner_geo_y0 = gt[3] + inner_y0 * gt[5]

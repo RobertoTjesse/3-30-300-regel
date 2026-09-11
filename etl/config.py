@@ -185,7 +185,11 @@ if os.path.isdir(_osgeo_pydir) and _osgeo_pydir not in sys.path:
 # ---------------------------------------------------------------------------
 MAX_DISTANCE      = 30.0   # metres — radius of each individual viewshed
 OBSERVER_HEIGHT   = 1.7    # metres above DEM surface (default when no height column)
-TARGET_HEIGHT     = 0.0    # metres above DEM surface for target pixels
+# Every evaluated ground cell is raised by this much before the line-of-sight
+# test — simulates eye/window height rather than testing visibility strictly
+# at ground level. Matches the reference ArcGIS Pro methodology's
+# surface_offset=1.8.
+TARGET_HEIGHT     = 1.8    # metres above DEM surface for target pixels
 CURVATURE_COEFF   = 0.0    # 0 = flat-earth; 0.85 = standard atmospheric refraction
 
 # ---------------------------------------------------------------------------

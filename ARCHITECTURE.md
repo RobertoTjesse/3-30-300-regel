@@ -121,7 +121,7 @@ for each tree within the tile's BUFFERED extent (from PROVINCE_TREES_GPKG):
         srcBand       = this tile's DEM band,
         observerX/Y   = tree coordinates,
         observerHeight= h,
-        targetHeight  = 0.0,
+        targetHeight  = 1.8,     # eye/window height — see §12
         maxDistance   = 30.0,
         dfCurvCoeff   = 0.0,      # flat-earth — irrelevant at 30m radius
         mode          = GVM_Edge,
@@ -174,6 +174,23 @@ information doesn't survive into the derived raster product this pipeline
 consumes. The height-plausibility clamp is a pragmatic stopgap; a more
 correct fix would derive tree heights from the classified point cloud
 directly, filtering out non-vegetation classes before rasterizing.
+
+**Known open issue — `observerHeight` is additive, not absolute.**
+`gdal.ViewshedGenerate()`'s `observerHeight` (and `targetHeight`) parameters
+are documented as offsets *added to the DEM's own value at that pixel*, not
+an absolute Z override. Step 3 above feeds the raw sampled max-DSM value
+(an absolute elevation, e.g. ~13m for a canopy top) straight in as that
+offset. Since the tree's own pixel comes from the same raw surface, if the
+tree's exact digitized point happens to sit under its own canopy already
+(a common case), the effective observer elevation becomes
+`DEM_value_at_tree_pixel + sampled_height` — double-counting part of the
+tree's height. Checked empirically against 300 real Delft trees: the DEM
+pixel directly under a tree is, on median, about 52% of that tree's sampled
+buffer-max height — so observers are placed roughly 1.4-2x too high on
+average, not at the intended absolute canopy elevation. This has not yet
+been corrected (as of this writing, every processed municipality is
+affected); the fix would be to feed `sampled_height - DEM_value_at_tree_pixel`
+(true height above local ground) instead of the raw sampled value.
 
 ## 7. Why GeoPackage instead of the original shapefiles
 
@@ -334,7 +351,7 @@ normal rotation.
 | `OBSERVER_HEIGHT` | 1.7 m | Fallback height when DEM sampling is out of bounds/implausible |
 | `TREE_HEIGHT_BUFFER_RADIUS` | 1.5 m | Radius sampled around each tree for its height |
 | `TREE_HEIGHT_MAX_PLAUSIBLE` | 35.0 m | Sanity clamp (power line/pylon/building guard) |
-| `TARGET_HEIGHT` | 0.0 m | Ground-level target pixels |
+| `TARGET_HEIGHT` | 1.8 m | Eye/window height for target pixels (matches the reference ArcGIS Pro methodology's `surface_offset`) |
 | `CURVATURE_COEFF` | 0.0 | Flat-earth (curvature is sub-millimetre at 30m, irrelevant either way) |
 | `TILE_PIXELS` | 1000 px (500 m) | Inner tile size |
 | `TILE_BUFFER_PX` | 70 px (35 m) | Halo width; must be `>= MAX_DISTANCE / pixel_size` |
@@ -345,3 +362,38 @@ normal rotation.
 
 See `etl/config.py` for the authoritative, always-current values, and
 `BENCHMARKS.md` for measured per-municipality timing.
+
+## 13. Resolved data-quality issue: input DEM NoData not honored by `ViewshedGenerate`
+
+**Status: fixed 2026-09-08.** `gdal.ViewshedGenerate()` does "no special
+processing of input cells at a nodata value" (per GDAL's own
+documentation) — a NoData sentinel in the input DEM (e.g. `-9999`) gets
+treated as literal terrain elevation. Wherever a tree's 30m viewshed radius
+happened to touch a gap in the source raster (most commonly water, bridges,
+or a municipality's own padding around its real coverage — see §11), this
+silently created a phantom cliff (or, for a large positive sentinel like
+AHN5's `9999`, a phantom mountain), producing wrong visibility results with
+no error or warning from the pipeline itself.
+
+**Fix**: `01_tile_dem.py`'s `_fill_nodata()` runs on every tile immediately
+after it's cut from the province VRT, before any viewshed call ever sees
+it. It interpolates NoData cells from surrounding valid pixels
+(`gdal.FillNodata()`, `maxSearchDist=2000` — comfortably larger than a
+buffered tile's own ~1140px dimensions, so a fill always reaches valid data
+if any exists anywhere in the tile) and only then clears the NoData flag.
+
+**A smaller `maxSearchDist` (originally 300px/150m) is not safe** — found
+by direct inspection of real output, not by reasoning about the algorithm
+in the abstract: 2 of Delft's 208 tiles had gaps up to ~265x140px that went
+completely unfilled at 300px, silently leaving `-9999` disguised as real
+elevation once the NoData flag was stripped anyway. `_fill_nodata()` now
+also checks its own work afterward — if any sentinel values remain (e.g. a
+tile with no valid data anywhere at all, which no amount of interpolation
+can fix), it leaves the NoData flag in place and logs a warning instead of
+silently clearing it, so the failure stays visible rather than
+masquerading as terrain.
+
+This fix has been verified on Delft (both AHN4 and, separately, an AHN5
+comparison run — see `delft_benchmark/`) but has **not yet been applied
+pipeline-wide**: every other municipality's tiles predate this fix and
+would need re-tiling to benefit from it.

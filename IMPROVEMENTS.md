@@ -149,6 +149,47 @@ hitting a hard clamp. See `ARCHITECTURE.md` §8 for the mechanics.
   way to distinguish a power line or pylon from a tree canopy in raw
   elevation values alone).
 
+## Correctness fix: input DEM NoData not honored by the viewshed algorithm
+
+**Status: fixed 2026-09-08.** `gdal.ViewshedGenerate()` treats a NoData
+sentinel in the *input* DEM as literal terrain elevation — GDAL's own docs
+say it does "no special processing of input cells at a nodata value." A
+gap in the source raster (water, bridges, or a municipality's own padding
+around its real coverage — see the 12-corrupted-DEM item below) that a
+tree's 30m radius happened to touch could silently produce a phantom cliff
+or mountain, with no error from the pipeline. Fixed in `01_tile_dem.py`:
+every tile now runs through `gdal.FillNodata()` immediately after being
+cut, before any viewshed call ever sees it.
+
+Getting this right took two passes: the first fill used
+`maxSearchDist=300px` (150m), which *looked* safe against `MAX_DISTANCE`
+(30m) but wasn't actually the right thing to compare against — found by
+directly inspecting real tiles afterward, not by re-reasoning about the
+algorithm: 2 of Delft's 208 tiles had gaps up to ~265x140px that went
+completely unfilled, and the code unconditionally cleared the NoData flag
+regardless, leaving `-9999` disguised as real elevation with no way to
+detect it. Fixed by raising `maxSearchDist` to 2000px (safely larger than
+a tile's own ~1140px dimensions) and adding a post-fill check that keeps
+the NoData flag (and logs a warning) if anything is still unfillable,
+instead of clearing it unconditionally.
+
+Verified on Delft only so far — every other municipality's cached tiles
+predate this fix and need re-tiling to benefit from it.
+
+## Methodology change: target (eye/window) height
+
+`TARGET_HEIGHT` changed from `0.0` (ground level) to `1.8` (eye/window
+height), matching a reference ArcGIS Pro methodology for the same analysis
+that raises every evaluated surface cell before the line-of-sight test
+rather than testing strictly at ground level. On Delft this raised the
+mean visible-tree count from 3.25 to 4.68 — a large, expected shift in the
+direction of "eye-height clears more small ground obstructions," not a
+bug. See `ARCHITECTURE.md` §12 and §6 for the still-open, separate issue
+this does *not* address: `observerHeight` (tree height) is fed as an
+absolute elevation but `ViewshedGenerate` treats it as an offset added to
+the DEM's own value at the observer's pixel, which empirically over-places
+trees roughly 1.4-2x too high.
+
 ## Not a code change, but the highest-stakes catch of the project
 
 **12 of 52 municipality source DEMs were found to be 0-3.4% real elevation
