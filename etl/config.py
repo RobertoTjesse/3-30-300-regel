@@ -148,6 +148,15 @@ BAG_BUILDING_ID = "identificatie"          # on the building footprints
 BAG_ADDRESS_USE = "gebruiksdoel"           # on the addresses, comma-separated uses
 BAG_ADDRESS_STATUS = "status"              # e.g. "Verblijfsobject in gebruik"
 BAG_ADDRESS_BUILDING_ID = "pandidentificatie"  # building id(s) of the address
+# Address statuses that count as "lived in". Excluded on purpose:
+# "Verblijfsobject gevormd" (registered, not yet built/occupied — new builds,
+# often not in the AHN surface model either) and "Verblijfsobject buiten
+# gebruik"; also never-realised / withdrawn / wrongly registered objects.
+BAG_STATUSES_IN_USE = (
+    "verblijfsobject in gebruik",
+    "verblijfsobject in gebruik (niet ingemeten)",
+    "verbouwing verblijfsobject",   # under renovation: the homes still exist
+)
 
 # BAG building footprints (pand), province-wide: used by 04_score_buildings.py
 # and, when OWN_CROWN_RADIUS > 0, by 02_compute_viewsheds.py.

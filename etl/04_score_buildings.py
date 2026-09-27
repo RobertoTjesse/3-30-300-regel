@@ -4,8 +4,10 @@ trees visible from just outside its facade.
 
 For each municipality with a merged viewshed (data/processed/<name>_viewshed.tif):
   1. Residential buildings: BAG footprints (config.PROVINCE_BUILDINGS_GPKG)
-     with at least one address (config.PROVINCE_ADDRESSES_GPKG) in use whose
-     uses include "woonfunctie" — mixed buildings (shop + homes) count too.
+     with at least one address (config.PROVINCE_ADDRESSES_GPKG) whose status
+     is in config.BAG_STATUSES_IN_USE (so not yet-to-be-built "gevormd") and
+     whose uses include "woonfunctie" — mixed buildings (shop + homes) count
+     too; buildings without addresses (sheds, garages) don't.
   2. Facade ring: the area within FACADE_RING_M outside the footprint,
      minus every footprint (its own and its neighbours' — shared walls in
      terraced housing give roof pixels, not street-level ones).
@@ -68,7 +70,7 @@ def residential_building_ids(xmin, ymin, xmax, ymax):
     for f in layer:
         uses = (f.GetField(config.BAG_ADDRESS_USE) or "").lower()
         status = (f.GetField(config.BAG_ADDRESS_STATUS) or "").lower()
-        if "woonfunctie" not in uses or "niet" in status or "ingetrokken" in status:
+        if "woonfunctie" not in uses or status not in config.BAG_STATUSES_IN_USE:
             continue
         for bid in (f.GetField(config.BAG_ADDRESS_BUILDING_ID) or "").split(","):
             if bid.strip():
