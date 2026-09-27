@@ -4,7 +4,8 @@ out as a NEW GeoPackage (does not modify the source tree layer).
 
 Reuses the exact same sampling logic as 02_compute_viewsheds.py
 (_sample_tree_height: max DEM value within TREE_HEIGHT_BUFFER_RADIUS,
-rejected above TREE_HEIGHT_MAX_PLAUSIBLE; _observer_offset: that canopy top
+rejected unless 0 < height above local ground <= TREE_HEIGHT_MAX_PLAUSIBLE;
+_observer_offset: that canopy top
 minus the DEM at the tree's own pixel, falling back to OBSERVER_HEIGHT) so
 the values shown here match what the live viewshed computation actually
 used for that tree.
@@ -15,14 +16,16 @@ Usage:
 Output:
     data/processed/<municipality_name>_tree_heights.gpkg
     Point layer, same geometry as the source trees, with columns:
-      sampled_height_m  — canopy top (absolute elevation) from
-                            _sample_tree_height(); NULL if no plausible
-                            sample was found
+      sampled_height_m  — canopy top (absolute elevation, NAP) from
+                            _sample_tree_height(); NULL if rejected
+      ground_m          — local ground estimate (min within
+                            TREE_GROUND_SEARCH_RADIUS), NAP
+      tree_height_m     — canopy top minus ground_m (unfiltered)
       observer_offset_m — the observerHeight actually passed to
                             ViewshedGenerate (from _observer_offset())
-      was_clamped        — True if the raw sample exceeded
-                            TREE_HEIGHT_MAX_PLAUSIBLE and the offset fell
-                            back to OBSERVER_HEIGHT
+      was_clamped        — True if the tree was rejected by the
+                            plausibility check and the offset fell back
+                            to OBSERVER_HEIGHT
 """
 
 import sys
@@ -42,6 +45,7 @@ ogr.UseExceptions()
 # Reuse the real sampling function from 02_compute_viewsheds.py rather than
 # re-implementing it, so this always matches what the pipeline actually did.
 _viewsheds_mod = importlib.import_module("02_compute_viewsheds")
+_sample_canopy = _viewsheds_mod._sample_canopy
 _sample_tree_height = _viewsheds_mod._sample_tree_height
 _observer_offset = _viewsheds_mod._observer_offset
 
@@ -73,6 +77,8 @@ def add_heights_for_municipality(name: str) -> None:
     out_ds = driver.CreateDataSource(str(out_path))
     out_layer = out_ds.CreateLayer(f"{name}_tree_heights", srs, ogr.wkbPoint)
     out_layer.CreateField(ogr.FieldDefn("sampled_height_m", ogr.OFTReal))
+    out_layer.CreateField(ogr.FieldDefn("ground_m", ogr.OFTReal))
+    out_layer.CreateField(ogr.FieldDefn("tree_height_m", ogr.OFTReal))
     out_layer.CreateField(ogr.FieldDefn("observer_offset_m", ogr.OFTReal))
     was_clamped_field = ogr.FieldDefn("was_clamped", ogr.OFTInteger)
     was_clamped_field.SetSubType(ogr.OFSTBoolean)
@@ -92,17 +98,19 @@ def add_heights_for_municipality(name: str) -> None:
         h = _sample_tree_height(dem_band, gt, nx, ny, x, y)
         offset = _observer_offset(dem_band, gt, nx, ny, x, y)
 
-        # Recompute the raw (unclamped) sample once more, cheaply, just to
-        # know whether THIS tree got clamped — _sample_tree_height only
-        # returns the final value, not whether a clamp fired.
-        raw = _raw_max_sample(dem_band, gt, nx, ny, x, y)
-        clamped = raw is not None and raw > config.TREE_HEIGHT_MAX_PLAUSIBLE
+        # The raw (unfiltered) sample, to report ground/height and whether
+        # the plausibility check rejected THIS tree.
+        raw = _sample_canopy(dem_band, gt, nx, ny, x, y)
+        clamped = raw is not None and h is None
         if clamped:
             n_clamped += 1
 
         out_feat = ogr.Feature(out_defn)
         if h is not None:
             out_feat.SetField("sampled_height_m", h)
+        if raw is not None:
+            out_feat.SetField("ground_m", raw[1])
+            out_feat.SetField("tree_height_m", raw[0] - raw[1])
         out_feat.SetField("observer_offset_m", offset)
         out_feat.SetField("was_clamped", 1 if clamped else 0)
         out_feat.SetGeometry(ogr.Geometry(ogr.wkbPoint))
@@ -120,34 +128,6 @@ def add_heights_for_municipality(name: str) -> None:
 
     print(f"[{name}] Done. {n_trees} trees, {n_clamped} clamped ({100*n_clamped/n_trees:.1f}%)")
     print(f"[{name}] Written to {out_path}")
-
-
-def _raw_max_sample(dem_band, gt, nx, ny, x, y):
-    """Same window/mask logic as _sample_tree_height but returns the raw
-    max (pre-clamp, pre-fallback), or None if no valid sample exists."""
-    import numpy as np
-    px = abs(gt[1])
-    py = abs(gt[5])
-    col = (x - gt[0]) / gt[1]
-    row = (y - gt[3]) / gt[5]
-    rad_px_x = max(1, int(round(config.TREE_HEIGHT_BUFFER_RADIUS / px)))
-    rad_px_y = max(1, int(round(config.TREE_HEIGHT_BUFFER_RADIUS / py)))
-    c0 = max(0, int(round(col)) - rad_px_x)
-    r0 = max(0, int(round(row)) - rad_px_y)
-    c1 = min(nx, int(round(col)) + rad_px_x + 1)
-    r1 = min(ny, int(round(row)) + rad_px_y + 1)
-    if c1 <= c0 or r1 <= r0:
-        return None
-    window = dem_band.ReadAsArray(c0, r0, c1 - c0, r1 - r0)
-    if window is None or window.size == 0:
-        return None
-    rows_idx, cols_idx = np.indices(window.shape)
-    dist = np.sqrt(((rows_idx + r0 - row) * py) ** 2 + ((cols_idx + c0 - col) * px) ** 2)
-    mask = dist <= config.TREE_HEIGHT_BUFFER_RADIUS
-    if not np.any(mask):
-        return None
-    max_val = float(np.max(window[mask]))
-    return max_val if np.isfinite(max_val) else None
 
 
 if __name__ == "__main__":

@@ -126,12 +126,18 @@ PROVINCE_TREES_GPKG = INTERIM_DIR / "province_trees.gpkg"
 # that pixel, so this places the observer at the canopy top.
 TREE_HEIGHT_BUFFER_RADIUS = 1.5   # metres
 
-# Sanity clamp. AHN's surface raster carries no point classification (see
-# README) — there is no way to tell a power line, pylon, or building corner
-# apart from a tree canopy in the raw elevation values. Dutch trees
-# essentially never exceed this height; a sampled value above it almost
-# certainly means the buffer caught something else, so fall back to
-# OBSERVER_HEIGHT instead of trusting it.
+# Local ground estimate for the plausibility check below: the lowest surface
+# value within this radius of the tree. Only used to judge whether a sampled
+# canopy top is a plausible tree height, never as the observer height.
+TREE_GROUND_SEARCH_RADIUS = 5.0   # metres
+
+# Sanity clamp, on height above local ground (not absolute NAP — South
+# Holland ranges from ~-6 m in polders to ~+40 m in dunes). AHN's surface
+# raster carries no point classification (see README) — there is no way to
+# tell a power line, pylon, or building corner apart from a tree canopy in
+# the raw elevation values. Dutch trees essentially never exceed this
+# height; a sample above it almost certainly means the buffer caught
+# something else, so fall back to OBSERVER_HEIGHT instead of trusting it.
 TREE_HEIGHT_MAX_PLAUSIBLE = 35.0  # metres
 
 

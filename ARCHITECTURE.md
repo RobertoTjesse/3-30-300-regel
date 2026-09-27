@@ -162,9 +162,21 @@ single constant for all trees:
 4. Subtract the DEM value at the tree's own pixel and pass the difference
    as `observerHeight` (`_observer_offset()`), so the observer ends up at
    the canopy top — see "observerHeight is additive" below.
-5. **Clamp**: if the sampled value is non-finite, non-positive, or exceeds
+5. **Clamp**: estimate local ground as the min DEM value within
+   `TREE_GROUND_SEARCH_RADIUS` (5m). If the tree's height above that ground
+   (canopy top minus ground) is not above 0 or exceeds
    `TREE_HEIGHT_MAX_PLAUSIBLE` (35m), fall back to the flat constant
-   `OBSERVER_HEIGHT` (1.7m above the tree's pixel) instead.
+   `OBSERVER_HEIGHT` (1.7m above the tree's pixel) instead. The ground
+   estimate is only used for this check, never for the observer height.
+
+   Until 2026-09-27 this check was applied to the *absolute* canopy value
+   (NAP) instead — `<= 0` or `> 35m` NAP. South Holland spans roughly -6m
+   NAP (polders) to +40m NAP (dunes), so that wrongly rejected ordinary
+   trees at both ends: in Delft, 3.0% of all trees (~2,600, crowns below
+   NAP) got the 1.7m fallback instead of their real height; under the
+   height-above-ground check only 1 of 87,837 is rejected (median tree
+   height 8.4m, p90 18.2m). Deep polders (e.g. Zuidplas) and dune
+   municipalities were affected more.
 
 The clamp exists because the source raster carries **no point
 classification** — it's a plain elevation grid, so there is no way to tell
