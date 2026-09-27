@@ -3,6 +3,13 @@ run_benchmark.py — Delft viewshed run using attribute-based tree heights
 (bomen_delft.shp's RASTERVALU field) instead of this pipeline's normal
 DEM-sampled height, for comparison against the main pipeline's output.
 
+RASTERVALU is an absolute elevation (ExtractValuesToPoints on the AHN5
+raw DSM, m NAP — see bomen_delft.shp.xml), while ViewshedGenerate adds
+observerHeight on top of the DEM at the observer's pixel. So, as in the
+main pipeline's _observer_offset(), the value passed is RASTERVALU minus
+the DEM at that pixel, placing the observer at the RASTERVALU elevation.
+(Before 2026-09-27 RASTERVALU was passed directly, double-counting.)
+
 Reuses the same tiling and viewshed-accumulation logic as the main
 pipeline (etl/01_tile_dem.py, etl/02_compute_viewsheds.py) so the only
 methodological difference from the "real" Delft run is the height source.
@@ -46,6 +53,27 @@ TILE_INDEX_PATH = TILES_DEM_DIR / "tile_index.json"
 OUTPUT_PATH = BENCH_DIR / "Delft_benchmark_viewshed.tif"
 
 HEIGHT_FIELD = "RASTERVALU"
+
+
+def _attribute_offset(dem_band, gt, nx, ny, x, y, raw_h):
+    """observerHeight that puts the observer at the absolute elevation
+    raw_h (RASTERVALU): raw_h minus the DEM at the observer's pixel, found
+    with floor() as GDAL does. Falls back to OBSERVER_HEIGHT if raw_h or
+    that pixel is missing."""
+    try:
+        target = float(raw_h)
+    except (TypeError, ValueError):
+        return config.OBSERVER_HEIGHT
+    col = int(np.floor((x - gt[0]) / gt[1]))
+    row = int(np.floor((y - gt[3]) / gt[5]))
+    if not np.isfinite(target) or not (0 <= col < nx and 0 <= row < ny):
+        return config.OBSERVER_HEIGHT
+    base = float(dem_band.ReadAsArray(col, row, 1, 1)[0, 0])
+    if not np.isfinite(base) or base == dem_band.GetNoDataValue():
+        return config.OBSERVER_HEIGHT
+    # RASTERVALU is bilinearly interpolated, so it can sit slightly below
+    # the pixel's own value; never go below the surface.
+    return max(0.0, target - base)
 
 
 def process_tile_with_attribute_height(args):
@@ -104,13 +132,7 @@ def process_tile_with_attribute_height(args):
             pt = geom.Centroid() if geom_type not in (ogr.wkbPoint, ogr.wkbPoint25D) else geom
             x, y = pt.GetX(), pt.GetY()
 
-            raw_h = feat.GetField(HEIGHT_FIELD)
-            try:
-                h = float(raw_h) if raw_h is not None else config.OBSERVER_HEIGHT
-                if not np.isfinite(h) or h <= 0:
-                    h = config.OBSERVER_HEIGHT
-            except (TypeError, ValueError):
-                h = config.OBSERVER_HEIGHT
+            h = _attribute_offset(dem_band, gt, nx, ny, x, y, feat.GetField(HEIGHT_FIELD))
 
             if _use_python_api:
                 arr, arr_gt = viewsheds_mod._viewshed_python_api(dem_band, x, y, h)
