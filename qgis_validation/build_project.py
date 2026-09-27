@@ -17,9 +17,11 @@ First run creates the project with:
                     viewshed styling, vectors (e.g. BAG footprints) a plain
                     outline; all switched off by default
 
-Later runs open the existing project and only ADD layers for new output
-files, so manual changes made in QGIS (styling, visibility, extra layers)
-are kept. Delete the .qgz to rebuild it from scratch.
+Later runs open the existing project, ADD layers for new output files and
+REMOVE file-based layers whose file no longer exists (e.g. deleted old
+outputs); everything else — manual changes made in QGIS (styling,
+visibility, extra layers) — is kept. Delete the .qgz to rebuild it from
+scratch.
 
 Layer paths are stored relative to the project, so the folder can be moved
 together with the repo. etl/run_all_municipalities.sh calls this after
@@ -86,6 +88,15 @@ def _group(root, name, index=None):
         group = QgsLayerTreeGroup(name)
         root.insertChildNode(-1 if index is None else index, group)
     return group
+
+
+def _prune_missing(project):
+    """Remove local-file layers whose file is gone; return their names."""
+    gone = [l for l in project.mapLayers().values()
+            if l.providerType() in ("gdal", "ogr") and not Path(l.source().split("|")[0]).exists()]
+    names = [l.name() for l in gone]
+    project.removeMapLayers([l.id() for l in gone])
+    return names
 
 
 def _existing_sources(project):
@@ -163,6 +174,7 @@ def main():
             _create_static_layers(project, root)
         viewshed_group = _group(root, GROUP_VIEWSHED, 0)
         trees_group = _group(root, GROUP_TREES, 1)
+        removed = [] if is_new else _prune_missing(project)
         have = _existing_sources(project)
 
         added = 0
@@ -204,7 +216,7 @@ def main():
         if not project.write(str(PROJECT_PATH)):
             sys.exit(f"ERROR: could not write {PROJECT_PATH}")
         print(f"{'Created' if is_new else 'Updated'} {PROJECT_PATH} — {added} new layer(s), "
-              f"{len(project.mapLayers())} in total")
+              f"{len(removed)} removed (file gone), {len(project.mapLayers())} in total")
     finally:
         qgs.exitQgis()
 
