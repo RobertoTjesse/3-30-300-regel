@@ -150,6 +150,8 @@ produced, for visual checking:
 - **3D BAG** — LoD2.2 buildings as WMS (2D) and as 3D Tiles (for QGIS's 3D
   map view).
 - **Achtergrond** — PDOK BRT grijs (WMTS) and PDOK luchtfoto (WMS).
+- **Experimenten** — anything placed in `data/processed/experiments/`
+  (rasters get the viewshed styling, vectors an outline; off by default).
 
 `run_all_municipalities.sh` runs it after every municipality. Re-runs only
 *add* new layers, so styling or other changes made in QGIS are kept;

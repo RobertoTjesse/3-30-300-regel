@@ -13,6 +13,9 @@ First run creates the project with:
                     data/processed/<name>_tree_heights.gpkg
   - 3D BAG          LoD2.2 buildings: WMS (2D map) + 3D Tiles (3D map view)
   - Achtergrond     PDOK BRT grijs (WMTS) and PDOK luchtfoto (WMS)
+  - Experimenten    anything in data/processed/experiments/: rasters get the
+                    viewshed styling, vectors (e.g. BAG footprints) a plain
+                    outline; all switched off by default
 
 Later runs open the existing project and only ADD layers for new output
 files, so manual changes made in QGIS (styling, visibility, extra layers)
@@ -33,6 +36,7 @@ from qgis.core import (
     QgsApplication,
     QgsColorRampShader,
     QgsCoordinateReferenceSystem,
+    QgsFillSymbol,
     QgsLayerTreeGroup,
     QgsMarkerSymbol,
     QgsProject,
@@ -48,11 +52,13 @@ REPO = Path(__file__).resolve().parent.parent
 PROJECT_PATH = REPO / "qgis_validation" / "3-regel_validation.qgz"
 PROCESSED_DIR = REPO / "data" / "processed"
 PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
+EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
 
 GROUP_VIEWSHED = "Viewshed (aantal zichtbare bomen)"
 GROUP_TREES = "Bomen"
 GROUP_3DBAG = "3D BAG"
 GROUP_BACKGROUND = "Achtergrond"
+GROUP_EXPERIMENTS = "Experimenten"
 
 # (upper bound inclusive, colour, label) — discrete classes on integer counts
 VIEWSHED_CLASSES = [
@@ -175,6 +181,24 @@ def main():
             layer = QgsVectorLayer(str(gpkg), f"Boomhoogtes {name}", "ogr")
             if _add(project, trees_group, layer, visible=False):
                 added += 1
+
+        experiments = sorted(EXPERIMENTS_DIR.glob("*")) if EXPERIMENTS_DIR.exists() else []
+        if experiments:
+            exp_group = _group(root, GROUP_EXPERIMENTS, 1)
+        for f in experiments:
+            if f.resolve() in have:
+                continue
+            if f.suffix.lower() == ".tif":
+                layer = QgsRasterLayer(str(f), f.stem, "gdal")
+                if _add(project, exp_group, layer, visible=False):
+                    _style_viewshed(layer)
+                    added += 1
+            elif f.suffix.lower() in (".fgb", ".gpkg", ".shp"):
+                layer = QgsVectorLayer(str(f), f.stem, "ogr")
+                if _add(project, exp_group, layer, visible=False):
+                    layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
+                        {"color": "0,0,0,0", "outline_color": "#3f007d", "outline_width": "0.4"})))
+                    added += 1
 
         PROJECT_PATH.parent.mkdir(parents=True, exist_ok=True)
         if not project.write(str(PROJECT_PATH)):
