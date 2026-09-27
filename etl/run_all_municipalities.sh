@@ -32,12 +32,33 @@ fi
 echo "Processing ${#names[@]} municipalities" >> "$LOGFILE"
 
 for name in "${names[@]}"; do
+  start_line=$(( $(wc -l < "$LOGFILE") + 1 ))
+  start_marker="$(mktemp)"
   {
     echo "=== $(date '+%Y-%m-%d %H:%M:%S') START $name ==="
-    MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/01_tile_dem.py
-    MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/02_compute_viewsheds.py --workers 4 --resume
-    MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/03_merge_tiles.py
+    MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/01_tile_dem.py \
+      && MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/02_compute_viewsheds.py --workers 4 --resume \
+      && MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/03_merge_tiles.py
   } >> "$LOGFILE" 2>&1
+  status=$?
+
+  # Delete this municipality's intermediate tiles once its final output is
+  # safely written — province-wide they'd need ~250GB, and 01_tile_dem.py
+  # reuses any tile it finds, so leftovers from an older run could silently
+  # end up in a newer one. Tiles are kept (for inspection / --resume) if any
+  # stage failed, the output wasn't freshly written, or stage 2 logged tile
+  # errors (it exits 0 even then). KEEP_TILES=1 keeps them regardless.
+  output="data/processed/${name}_viewshed.tif"
+  if [ "${KEEP_TILES:-0}" != "1" ] && [ "$status" -eq 0 ] \
+     && [ "$output" -nt "$start_marker" ] \
+     && tail -n +"$start_line" "$LOGFILE" | grep -q "\[$name\] Finished\. .* 0 errors"; then
+    rm -rf "data/interim/dem_tiles/$name" "data/interim/viewshed_tiles/$name" \
+           "data/processed/${name}_mosaic.vrt"
+    echo "[$name] intermediate tiles removed" >> "$LOGFILE"
+  else
+    echo "[$name] intermediate tiles KEPT (status=$status) — check $LOGFILE" | tee -a "$LOGFILE"
+  fi
+  rm -f "$start_marker"
 
   "$PYEXE" etl/generate_benchmark_report.py >> "$LOGFILE" 2>&1
   "$PYEXE" etl/print_municipality_summary.py "$name"

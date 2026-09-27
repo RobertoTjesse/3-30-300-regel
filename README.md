@@ -77,6 +77,13 @@ per-municipality progress signal on a long multi-municipality run, since the
 three scripts above each process *every* municipality for that one stage
 before moving to the next stage.
 
+The runner also deletes each municipality's intermediate tiles
+(`dem_tiles/<name>`, `viewshed_tiles/<name>`) once its final output is
+written — province-wide they'd need ~250 GB, and `01_tile_dem.py` reuses
+any tile it finds, so leftovers from an older run could leak into a newer
+one. Tiles are kept if any stage fails or stage 2 logs tile errors; set
+`KEEP_TILES=1` to keep them regardless.
+
 ### Why the halo-then-crop step matters
 
 A tree (or terrain feature) just inside one tile's boundary can still be
