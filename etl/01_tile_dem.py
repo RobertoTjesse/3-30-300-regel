@@ -59,6 +59,9 @@ log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+FILL_SEARCH_PX = 50   # 25 m at 0.5 m: interpolation reach for small gaps
+
+
 def _fill_nodata(tile_path: Path) -> None:
     """
     Fill any NoData cells in this tile via interpolation from surrounding
@@ -82,34 +85,35 @@ def _fill_nodata(tile_path: Path) -> None:
         return
 
     arr = band.ReadAsArray()
-    if not np.any(arr == nodata):
+    missing = arr == nodata
+    if not missing.any():
         band.DeleteNoDataValue()
         ds = None
         return
+    if missing.all():
+        # Wholly outside real coverage (open sea, beyond the province): no
+        # valid pixel to fill from. Keep the flag — never let the raw
+        # sentinel masquerade as elevation. Common on coastal municipalities,
+        # so no warning per tile.
+        ds = None
+        return
 
-    # maxSearchDist comfortably exceeds a buffered tile's own dimensions
-    # (TILE_PIXELS + 2*TILE_BUFFER_PX, ~1140 px at the default settings), so
-    # a fill always reaches valid data if any exists anywhere in the tile.
-    # A smaller distance (originally 300px) silently leaves large gaps
-    # unfilled — confirmed on real data: a ~265x140px void near a tile edge
-    # was untouched at 300px but fully resolved at this distance.
-    gdal.FillNodata(targetBand=band, maskBand=None, maxSearchDist=2000, smoothingIterations=1)
-
-    # Only clear the flag once nothing is left at the sentinel value. A tile
-    # with zero valid pixels anywhere (wholly outside real coverage) can't
-    # be filled by interpolation at all — silently deleting the NoData flag
-    # in that case would leave the raw sentinel masquerading as real
-    # elevation with no way to detect it, which is the exact failure mode
-    # this function exists to prevent.
-    arr_after = band.ReadAsArray()
-    remaining = int(np.sum(arr_after == nodata))
-    if remaining > 0:
-        log.warning(
-            f"  {tile_path.name}: {remaining} px could not be filled "
-            "(no valid data anywhere in this tile) — NoData flag kept."
-        )
-    else:
-        band.DeleteNoDataValue()
+    # 1. Small gaps (under bridges, narrow water, data holes): interpolate
+    #    from the surrounding surface — only up to FILL_SEARCH_PX away.
+    # 2. Whatever is left is a large gap — open water, wide rivers: set it
+    #    to the lowest valid surface value in the tile, a flat low "water
+    #    level" that can never block a line of sight.
+    # (Until 2026-09-27 step 1 used maxSearchDist=2000 for everything, so a
+    # tile that was mostly water spent ~30 s interpolating across it —
+    # hours in total for coastal municipalities.)
+    gdal.FillNodata(targetBand=band, maskBand=None, maxSearchDist=FILL_SEARCH_PX,
+                    smoothingIterations=1)
+    arr = band.ReadAsArray()
+    rest = arr == nodata
+    if rest.any():
+        arr[rest] = arr[~rest].min()
+        band.WriteArray(arr)
+    band.DeleteNoDataValue()
     ds.FlushCache()
     ds = None
 
