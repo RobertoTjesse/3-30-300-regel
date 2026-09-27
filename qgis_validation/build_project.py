@@ -4,6 +4,10 @@ build_project.py — Create / update the QGIS validation project
 produced.
 
 First run creates the project with:
+  - Woningen        one layer per data/processed/<name>_woningen.gpkg
+                    (04_score_buildings.py): residential buildings coloured
+                    by trees visible from just outside the facade, same
+                    classes as below; grey = no facade ring (enclosed)
   - Viewshed        one layer per data/processed/<name>_viewshed.tif,
                     classed on "number of trees visible":
                       0 red | 1-2 orange | 3-5 green | 6-7 darker green |
@@ -37,7 +41,9 @@ from pathlib import Path
 from qgis.core import (
     QgsApplication,
     QgsColorRampShader,
+    QgsCategorizedSymbolRenderer,
     QgsCoordinateReferenceSystem,
+    QgsRendererCategory,
     QgsFillSymbol,
     QgsLayerTreeGroup,
     QgsMarkerSymbol,
@@ -56,6 +62,7 @@ PROCESSED_DIR = REPO / "data" / "processed"
 PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
 EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
 
+GROUP_HOMES = "Woningen (aantal zichtbare bomen)"
 GROUP_VIEWSHED = "Viewshed (aantal zichtbare bomen)"
 GROUP_TREES = "Bomen"
 GROUP_3DBAG = "3D BAG"
@@ -116,6 +123,17 @@ def _style_viewshed(layer):
     renderer.setClassificationMax(8)
     layer.setRenderer(renderer)
     layer.setOpacity(0.8)
+
+
+def _style_homes(layer):
+    labels = ["0", "1-2", "3-5", "6-7", "8+"]
+    cats = [QgsRendererCategory(lbl, QgsFillSymbol.createSimple(
+                {"color": colour, "outline_color": "#404040", "outline_width": "0.1"}),
+                f"{lbl} bomen")
+            for lbl, (_, colour, _) in zip(labels, VIEWSHED_CLASSES)]
+    cats.append(QgsRendererCategory(None, QgsFillSymbol.createSimple(
+        {"color": "#bdbdbd", "outline_color": "#404040", "outline_width": "0.1"}), "geen gevelring"))
+    layer.setRenderer(QgsCategorizedSymbolRenderer("klasse", cats))
 
 
 def _add(project, group, layer, visible=True):
@@ -192,6 +210,17 @@ def main():
             name = gpkg.stem.removesuffix("_tree_heights")
             layer = QgsVectorLayer(str(gpkg), f"Boomhoogtes {name}", "ogr")
             if _add(project, trees_group, layer, visible=False):
+                added += 1
+
+        homes = sorted(PROCESSED_DIR.glob("*_woningen.gpkg"))
+        if homes:
+            homes_group = _group(root, GROUP_HOMES, 0)
+        for gpkg in homes:
+            if gpkg.resolve() in have:
+                continue
+            layer = QgsVectorLayer(str(gpkg), gpkg.stem.removesuffix("_woningen"), "ogr")
+            if _add(project, homes_group, layer):
+                _style_homes(layer)
                 added += 1
 
         experiments = sorted(EXPERIMENTS_DIR.glob("*")) if EXPERIMENTS_DIR.exists() else []

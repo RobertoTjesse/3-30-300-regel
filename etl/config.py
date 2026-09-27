@@ -133,6 +133,24 @@ TREE_HEIGHT_BUFFER_RADIUS = 1.5   # metres
 # ~14% extra runtime — see ARCHITECTURE.md §6. The canopy-top observer
 # already avoids nearly all self-occlusion.
 OWN_CROWN_RADIUS = 0.0            # metres
+# Residential building scores (04_score_buildings.py). A building counts as
+# residential if at least one of its addresses (BAG verblijfsobjecten) in use
+# has "woonfunctie" among its uses — so homes above shops are included.
+# Its score is the max viewshed value in a ring of FACADE_RING_M around its
+# facade (outside all footprints): there the 1.8 m target height is eye
+# height above street/garden level, whereas inside a footprint the surface
+# model is the roof, i.e. 1.8 m above the roof.
+PROVINCE_ADDRESSES_GPKG = Path(os.environ.get(
+    "ADDRESSES_GPKG_OVERRIDE", INTERIM_DIR / "province_addresses.gpkg"))  # env var: tests only
+FACADE_RING_M = 1.5               # metres
+# BAG field names (PDOK WFS / BAG GeoPackage naming; adjust for an SDE export)
+BAG_BUILDING_ID = "identificatie"          # on the building footprints
+BAG_ADDRESS_USE = "gebruiksdoel"           # on the addresses, comma-separated uses
+BAG_ADDRESS_STATUS = "status"              # e.g. "Verblijfsobject in gebruik"
+BAG_ADDRESS_BUILDING_ID = "pandidentificatie"  # building id(s) of the address
+
+# BAG building footprints (pand), province-wide: used by 04_score_buildings.py
+# and, when OWN_CROWN_RADIUS > 0, by 02_compute_viewsheds.py.
 PROVINCE_BUILDINGS_GPKG = Path(os.environ.get(
     "BUILDINGS_GPKG_OVERRIDE", INTERIM_DIR / "province_buildings.gpkg"))  # env var: tests only
 
