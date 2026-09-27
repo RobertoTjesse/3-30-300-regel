@@ -136,6 +136,32 @@ elevation values; the clamp catches the height-plausibility half of that
 (revisit once AHN's classified point cloud, which does distinguish wires
 from vegetation, is incorporated instead of the derived raster).
 
+## QGIS validation project
+
+`qgis_validation/build_project.py` creates (or updates)
+`qgis_validation/3-regel_validation.qgz` with everything the pipeline has
+produced, for visual checking:
+
+- **Viewshed (aantal zichtbare bomen)** — every
+  `data/processed/<name>_viewshed.tif`: 0 red, 1-2 orange, 3-5 green,
+  6-7 darker green, 8+ dark green.
+- **Bomen** — all trees (`province_trees.gpkg`, only drawn when zoomed in
+  past 1:10,000) and each `<name>_tree_heights.gpkg`.
+- **3D BAG** — LoD2.2 buildings as WMS (2D) and as 3D Tiles (for QGIS's 3D
+  map view).
+- **Achtergrond** — PDOK BRT grijs (WMTS) and PDOK luchtfoto (WMS).
+
+`run_all_municipalities.sh` runs it after every municipality. Re-runs only
+*add* new layers, so styling or other changes made in QGIS are kept;
+delete the `.qgz` to rebuild from scratch. It needs QGIS's own Python:
+
+```
+C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py
+```
+
+The `.qgz` is gitignored (generated, machine-specific data behind it); the
+script is tracked.
+
 ## Data layout
 
 ```

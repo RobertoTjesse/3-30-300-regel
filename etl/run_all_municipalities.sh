@@ -14,6 +14,7 @@
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
+QGIS_PY="${QGIS_PY:-/c/Users/bethrt/AppData/Local/Programs/OSGeo4W/bin/python-qgis-ltr.bat}"
 PYEXE="${PYEXE:-/c/Users/bethrt/AppData/Local/Programs/OSGeo4W/apps/Python312/python.exe}"
 LOGFILE="logs/full_run.log"
 mkdir -p logs
@@ -62,6 +63,9 @@ for name in "${names[@]}"; do
 
   "$PYEXE" etl/generate_benchmark_report.py >> "$LOGFILE" 2>&1
   "$PYEXE" etl/print_municipality_summary.py "$name"
+  # Add any new output layers to the QGIS validation project (never fatal).
+  cmd.exe //c "$(cygpath -w "$QGIS_PY")" qgis_validation/build_project.py >> "$LOGFILE" 2>&1 \
+    || echo "[$name] WARNING: QGIS project update failed — see $LOGFILE"
 done
 
 echo "ALL_MUNICIPALITIES_DONE"
