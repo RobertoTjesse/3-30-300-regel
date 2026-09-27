@@ -10,7 +10,7 @@
 #
 # With no arguments, runs every municipality found (respecting
 # config.MUNICIPALITIES / config_local.py). Pass explicit names to run (or
-# resume) only those.
+# resume) only those. WORKERS=N sets stage 2's parallel processes (default 4).
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
@@ -38,7 +38,7 @@ for name in "${names[@]}"; do
   {
     echo "=== $(date '+%Y-%m-%d %H:%M:%S') START $name ==="
     MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/01_tile_dem.py \
-      && MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/02_compute_viewsheds.py --workers 4 --resume \
+      && MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/02_compute_viewsheds.py --workers "${WORKERS:-4}" --resume \
       && MUNICIPALITY_OVERRIDE="$name" "$PYEXE" etl/03_merge_tiles.py
   } >> "$LOGFILE" 2>&1
   status=$?

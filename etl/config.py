@@ -258,7 +258,9 @@ TILE_PIXELS    = 1000
 TILE_BUFFER_PX = 70
 
 # GeoTIFF creation options for tiled output
-TILE_CREATION_OPTIONS = ["COMPRESS=LZW", "TILED=YES", "BIGTIFF=IF_SAFER"]
+# DEFLATE + floating-point predictor: lossless, 2.3x smaller than LZW on a
+# Delft tile (LZW without a predictor made Float32 tiles *bigger* than raw)
+TILE_CREATION_OPTIONS = ["COMPRESS=DEFLATE", "PREDICTOR=3", "TILED=YES", "BIGTIFF=IF_SAFER"]
 
 # ---------------------------------------------------------------------------
 # Processing

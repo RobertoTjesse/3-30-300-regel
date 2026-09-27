@@ -104,9 +104,9 @@ def score_municipality(name):
     all_layer = all_ds.CopyLayer(bld_layer, "footprints")
 
     out_path = config.PROCESSED_DIR / f"{name}_woningen.gpkg"
-    if out_path.exists():
-        out_path.unlink()
-    out_ds = ogr.GetDriverByName("GPKG").CreateDataSource(str(out_path))
+    tmp_path = out_path.with_suffix(".partial.gpkg")
+    tmp_path.unlink(missing_ok=True)
+    out_ds = ogr.GetDriverByName("GPKG").CreateDataSource(str(tmp_path))
     out_layer = out_ds.CreateLayer(f"{name}_woningen", srs, ogr.wkbMultiPolygon)
     for fname, ftype in (("pand_id", ogr.OFTString), ("n_woningen", ogr.OFTInteger),
                          ("bomen_zichtbaar", ogr.OFTInteger), ("klasse", ogr.OFTString)):
@@ -169,6 +169,13 @@ def score_municipality(name):
         out_layer.CreateFeature(out)
     out_layer.CommitTransaction()
     out_ds = None
+    try:
+        tmp_path.replace(out_path)
+    except PermissionError:   # e.g. open in QGIS: keep the new result next to it
+        out_path = out_path.with_name(f"{name}_woningen_nieuw.gpkg")
+        out_path.unlink(missing_ok=True)
+        tmp_path.replace(out_path)
+        log.warning(f"[{name}] {name}_woningen.gpkg is in use (QGIS?) — wrote {out_path.name} instead")
     log.info(f"[{name}] {n_scored:,} buildings scored, {n_enclosed:,} without facade ring -> {out_path.name}")
     return n_scored
 
@@ -179,7 +186,11 @@ def main():
             sys.exit(f"ERROR: not found: {path} (BAG footprints / addresses, see README)")
     for name, _dem, _trees in config.municipality_pairs():
         t0 = time.perf_counter()
-        n = score_municipality(name)
+        try:
+            n = score_municipality(name)
+        except Exception as exc:   # one municipality must not stop the rest
+            log.error(f"[{name}] scoring failed: {exc}")
+            continue
         if n is not None:
             config.log_benchmark(name, "score_buildings", time.perf_counter() - t0, trees="")
 
