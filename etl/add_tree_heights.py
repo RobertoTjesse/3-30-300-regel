@@ -3,10 +3,10 @@ add_tree_heights.py — Sample each tree's height from the DEM and write it
 out as a NEW GeoPackage (does not modify the source tree layer).
 
 Reuses the exact same sampling logic as 02_compute_viewsheds.py
-(_sample_tree_height: max DEM value within TREE_HEIGHT_BUFFER_RADIUS,
-rejected unless 0 < height above local ground <= TREE_HEIGHT_MAX_PLAUSIBLE;
-_observer_offset: that canopy top
-minus the DEM at the tree's own pixel, falling back to OBSERVER_HEIGHT) so
+(_sample_tree_height: DSM value at the tree point, rejected unless
+0 < height above local ground <= TREE_HEIGHT_MAX_PLAUSIBLE;
+_observer_offset: 0 for a plausible tree, i.e. the observer on that surface
+at the tree point, falling back to OBSERVER_HEIGHT) so
 the values shown here match what the live viewshed computation actually
 used for that tree.
 
@@ -16,11 +16,11 @@ Usage:
 Output:
     data/processed/<municipality_name>_tree_heights.gpkg
     Point layer, same geometry as the source trees, with columns:
-      sampled_height_m  — canopy top (absolute elevation, NAP) from
+      sampled_height_m  — DSM surface at the tree point (NAP) from
                             _sample_tree_height(); NULL if rejected
       ground_m          — local ground estimate (min within
                             TREE_GROUND_SEARCH_RADIUS), NAP
-      tree_height_m     — canopy top minus ground_m (unfiltered)
+      tree_height_m     — sampled surface minus ground_m (unfiltered)
       observer_offset_m — the observerHeight actually passed to
                             ViewshedGenerate (from _observer_offset())
       was_clamped        — True if the tree was rejected by the
@@ -45,7 +45,7 @@ ogr.UseExceptions()
 # Reuse the real sampling function from 02_compute_viewsheds.py rather than
 # re-implementing it, so this always matches what the pipeline actually did.
 _viewsheds_mod = importlib.import_module("02_compute_viewsheds")
-_sample_canopy = _viewsheds_mod._sample_canopy
+_sample_tree_point = _viewsheds_mod._sample_tree_point
 _sample_tree_height = _viewsheds_mod._sample_tree_height
 _observer_offset = _viewsheds_mod._observer_offset
 
@@ -100,7 +100,7 @@ def add_heights_for_municipality(name: str) -> None:
 
         # The raw (unfiltered) sample, to report ground/height and whether
         # the plausibility check rejected THIS tree.
-        raw = _sample_canopy(dem_band, gt, nx, ny, x, y)
+        raw = _sample_tree_point(dem_band, gt, nx, ny, x, y)
         clamped = raw is not None and h is None
         if clamped:
             n_clamped += 1

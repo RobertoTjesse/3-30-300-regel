@@ -153,18 +153,15 @@ statistics computed on the raster.
 Every tree's height is sampled from the DEM itself rather than using a
 single constant for all trees:
 
-1. Take a circular window of radius `TREE_HEIGHT_BUFFER_RADIUS` (1.5m)
-   around the tree's point.
-2. Read the max DEM value in that window.
-3. Treat that value as the **canopy top** — an absolute elevation, since
-   the source is a surface model and the max value in a small window
-   around a tree approximates the top of its crown.
-4. Subtract the DEM value at the tree's own pixel and pass the difference
-   as `observerHeight` (`_observer_offset()`), so the observer ends up at
-   the canopy top — see "observerHeight is additive" below.
-5. **Clamp**: estimate local ground as the min DEM value within
+1. Read the DSM value of the pixel containing the tree point
+   (`_sample_tree_point()`) — the same height the reference ArcGIS method
+   uses (`RASTERVALU`, ExtractValuesToPoints on the DSM).
+2. Place the observer **on the DSM surface at that point**: since
+   `observerHeight` is added to exactly that pixel (see "observerHeight is
+   additive" below), `_observer_offset()` passes 0.
+3. **Clamp**: estimate local ground as the min DEM value within
    `TREE_GROUND_SEARCH_RADIUS` (5m). If the tree's height above that ground
-   (canopy top minus ground) is not above 0 or exceeds
+   (surface at the point minus ground) is not above 0 or exceeds
    `TREE_HEIGHT_MAX_PLAUSIBLE` (35m), fall back to the flat constant
    `OBSERVER_HEIGHT` (1.7m above the tree's pixel) instead. The ground
    estimate is only used for this check, never for the observer height.
@@ -201,10 +198,25 @@ a tree was, on median, about 52% of its sampled canopy top, so observers
 sat roughly 1.4-2x too high. `_observer_offset()` now passes
 `canopy_top - DEM_value_at_tree_pixel` (the pixel found with `floor()`, as
 GDAL's viewshed code does), putting the observer exactly at the canopy top.
+(Verified 2026-09-27 against the GDAL 3.12 docs and a synthetic DEM test:
+both `observerHeight` and `targetHeight` switch from blocked to visible
+exactly where the additive interpretation predicts.)
 Re-checked on ~1,000 Delft trees after the fix: median `observerHeight`
 fell from 4.45m to 1.69m (median overshoot removed: 2.3m). **Every
 processed municipality's output predates this fix** and needs re-running
 stage 2 (and 3) to benefit from it.
+
+**Canopy top (1.5m buffer max) replaced by the exact tree point
+(2026-09-27)**, to match the reference ArcGIS method's `RASTERVALU`. Known
+side effect — **self-occlusion**: the tree point usually lies under the
+crown, below its top (Delft median 4.0m above ground at the point vs 8.4m
+for the 1.5m-buffer max), so the surrounding, higher crown pixels in the
+DSM block the observer's own lines of sight. Measured on 488 random Delft
+trees: 35.5% see <1% of cells beyond 3m (0% with the canopy top); median
+visible cells 642 vs 5,395. Delft output: pixels with >=3 trees 20.6%
+(canopy top: 50.9%), mean 1.36 (3.87). Raising the observer +1m / +2m
+above the point brings the blocked share to 18.4% / 12.5%. Revisit before
+the province-wide rerun.
 
 ## 7. Why GeoPackage instead of the original shapefiles
 
@@ -363,7 +375,7 @@ normal rotation.
 |---|---|---|
 | `MAX_DISTANCE` | 30.0 m | Viewshed radius per tree |
 | `OBSERVER_HEIGHT` | 1.7 m | Fallback height when DEM sampling is out of bounds/implausible |
-| `TREE_HEIGHT_BUFFER_RADIUS` | 1.5 m | Radius sampled around each tree for its height |
+| `TREE_GROUND_SEARCH_RADIUS` | 5.0 m | Radius for the local ground estimate (plausibility check only) |
 | `TREE_HEIGHT_MAX_PLAUSIBLE` | 35.0 m | Sanity clamp (power line/pylon/building guard) |
 | `TARGET_HEIGHT` | 1.8 m | Eye/window height for target pixels (matches the reference ArcGIS Pro methodology's `surface_offset`) |
 | `CURVATURE_COEFF` | 0.0 | Flat-earth (curvature is sub-millimetre at 30m, irrelevant either way) |

@@ -64,7 +64,7 @@ def main():
     lines.append("| Parameter | Value |")
     lines.append("|---|---|")
     lines.append(f"| Max viewshed distance | {config.MAX_DISTANCE} m |")
-    lines.append(f"| Tree height | max DEM value within {config.TREE_HEIGHT_BUFFER_RADIUS} m of the tree (canopy top), minus the DEM at the tree pixel, as observer height offset (tree must be 0-{config.TREE_HEIGHT_MAX_PLAUSIBLE} m above the lowest surface within {config.TREE_GROUND_SEARCH_RADIUS} m, else falls back to {config.OBSERVER_HEIGHT} m if out of bounds or implausible) |")
+    lines.append(f"| Tree height | observer on the DSM surface at the tree point (offset 0; tree must be 0-{config.TREE_HEIGHT_MAX_PLAUSIBLE} m above the lowest surface within {config.TREE_GROUND_SEARCH_RADIUS} m, else falls back to {config.OBSERVER_HEIGHT} m above the surface) |")
     lines.append(f"| Target height | {config.TARGET_HEIGHT} m |")
     lines.append(f"| Curvature coefficient | {config.CURVATURE_COEFF} (0 = flat-earth) |")
     lines.append(f"| DEM CRS | RD New / EPSG:28992, 0.5 m resolution |")

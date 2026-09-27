@@ -119,14 +119,14 @@ buffer constant is needed for the municipality-boundary case.
 
 ### Per-tree height
 
-Each tree's observer height is sampled from the DEM rather than a fixed
-constant: `_sample_tree_height()` in `02_compute_viewsheds.py` takes the max
-DEM value within `TREE_HEIGHT_BUFFER_RADIUS` (1.5 m) of the tree as its
-canopy top, and `_observer_offset()` subtracts the DEM value at the tree's
-own pixel before passing it to `ViewshedGenerate` — whose observer height is
-an offset on top of that pixel, not an absolute elevation — so the observer
-sits exactly at the canopy top. Falls back to `OBSERVER_HEIGHT` if the sample is out of
-bounds, or if the tree's height above local ground (canopy top minus the
+Each tree's observer is placed on the DSM surface at the tree point itself
+(the pixel containing it — like the reference ArcGIS method's `RASTERVALU`):
+`ViewshedGenerate`'s observer height is an offset on top of that pixel, not
+an absolute elevation, so `_observer_offset()` passes 0. Known side effect:
+the point usually lies under the crown, so the crown itself can block the
+view (self-occlusion) — see `ARCHITECTURE.md` §6. Falls back to
+`OBSERVER_HEIGHT` if the sample is out of
+bounds, or if the tree's height above local ground (surface at the point minus the
 lowest surface value within `TREE_GROUND_SEARCH_RADIUS`, 5 m — judged on
 height above ground, not absolute NAP, since the province spans ~-6 m to
 ~+40 m NAP) is not above 0 or exceeds `TREE_HEIGHT_MAX_PLAUSIBLE` (35 m) — the

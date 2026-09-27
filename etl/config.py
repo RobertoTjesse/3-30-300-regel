@@ -119,16 +119,14 @@ PROVINCE_TREES_GPKG = INTERIM_DIR / "province_trees.gpkg"
 # ---------------------------------------------------------------------------
 # Per-tree height
 # ---------------------------------------------------------------------------
-# Each tree's height is sampled from the DEM surface rather than a fixed
-# constant: take the max DEM value within this radius around the tree point
-# (approximates canopy top on a surface model), minus the DEM value at the
-# tree's own pixel — ViewshedGenerate adds its observer height on top of
-# that pixel, so this places the observer at the canopy top.
-TREE_HEIGHT_BUFFER_RADIUS = 1.5   # metres
+# Each tree's observer is placed on the DSM surface at the tree point itself
+# (the pixel containing it — like the reference ArcGIS method's RASTERVALU),
+# not at the max within a buffer around it. ViewshedGenerate adds its
+# observer height on top of that pixel, so the offset passed is 0.
 
 # Local ground estimate for the plausibility check below: the lowest surface
 # value within this radius of the tree. Only used to judge whether a sampled
-# canopy top is a plausible tree height, never as the observer height.
+# point is a plausible tree, never as the observer height.
 TREE_GROUND_SEARCH_RADIUS = 5.0   # metres
 
 # Sanity clamp, on height above local ground (not absolute NAP — South

@@ -11,8 +11,8 @@ For each municipality (config.municipality_pairs()):
        tree just across a tile OR municipality boundary can still be within
        MAX_DISTANCE of an inner pixel on this side. (The same tree gets
        queried again by the neighbouring tile too; that's fine, see step 4.)
-    2. For each tree, sample its canopy top from the DEM, convert it to an
-       offset above the observer pixel (see _observer_offset()), and call
+    2. For each tree, place the observer on the DSM surface at the tree
+       point (see _observer_offset()), and call
        gdal.ViewshedGenerate() against the
        buffered tile DEM with MAX_DISTANCE = 30 m, pasting the (small,
        observer-centred) result into a tile-sized accumulator at the right
@@ -118,110 +118,100 @@ def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
     ds = None  # closes file
 
 
-def _sample_canopy(dem_band, gt, nx, ny, x, y):
+def _sample_tree_point(dem_band, gt, nx, ny, x, y):
     """
-    Sample the DEM surface around a tree at (x, y) and return
-    (canopy_top, local_ground), both absolute elevations on the DEM's own
-    vertical datum (NAP), or None if nothing valid could be read.
+    Sample the DEM surface at a tree at (x, y) and return
+    (surface_at_point, local_ground), both absolute elevations on the DEM's
+    own vertical datum (NAP), or None if nothing valid could be read.
 
-    canopy_top:   max value within TREE_HEIGHT_BUFFER_RADIUS (1.5 m) — on a
-                  surface model, approximately the top of the crown.
-    local_ground: min value within TREE_GROUND_SEARCH_RADIUS (5 m) — a rough
-                  ground estimate, only used for the plausibility check in
-                  _sample_tree_height(), never for the observer height.
+    surface_at_point: the value of the pixel containing the tree point —
+                      the pixel GDAL's viewshed places the observer on
+                      (found with floor(), as GDAL does). Equivalent to the
+                      reference ArcGIS method's RASTERVALU
+                      (ExtractValuesToPoints on the DSM).
+    local_ground:     min value within TREE_GROUND_SEARCH_RADIUS (5 m) — a
+                      rough ground estimate, only used for the plausibility
+                      check in _sample_tree_height(), never for the
+                      observer height.
     NoData cells (if the band still has any) are ignored.
     """
     px = abs(gt[1])
     py = abs(gt[5])
     col = (x - gt[0]) / gt[1]
     row = (y - gt[3]) / gt[5]
-
-    radius = max(config.TREE_HEIGHT_BUFFER_RADIUS, config.TREE_GROUND_SEARCH_RADIUS)
-    rad_px_x = max(1, int(round(radius / px)))
-    rad_px_y = max(1, int(round(radius / py)))
-
-    c0 = max(0, int(round(col)) - rad_px_x)
-    r0 = max(0, int(round(row)) - rad_px_y)
-    c1 = min(nx, int(round(col)) + rad_px_x + 1)
-    r1 = min(ny, int(round(row)) + rad_px_y + 1)
-    if c1 <= c0 or r1 <= r0:
+    pc, pr = int(np.floor(col)), int(np.floor(row))
+    if not (0 <= pc < nx and 0 <= pr < ny):
         return None
 
+    rad_px_x = max(1, int(round(config.TREE_GROUND_SEARCH_RADIUS / px)))
+    rad_px_y = max(1, int(round(config.TREE_GROUND_SEARCH_RADIUS / py)))
+    c0 = max(0, pc - rad_px_x)
+    r0 = max(0, pr - rad_px_y)
+    c1 = min(nx, pc + rad_px_x + 1)
+    r1 = min(ny, pr + rad_px_y + 1)
     window = dem_band.ReadAsArray(c0, r0, c1 - c0, r1 - r0)
     if window is None or window.size == 0:
         return None
 
-    # Circular masks so these approximate a radius, not a square window
-    rows_idx, cols_idx = np.indices(window.shape)
-    dist = np.sqrt(((rows_idx + r0 - row) * py) ** 2 + ((cols_idx + c0 - col) * px) ** 2)
     valid = np.isfinite(window)
     nodata = dem_band.GetNoDataValue()
     if nodata is not None:
         valid &= window != nodata
-    crown = valid & (dist <= config.TREE_HEIGHT_BUFFER_RADIUS)
-    around = valid & (dist <= config.TREE_GROUND_SEARCH_RADIUS)
-    if not np.any(crown) or not np.any(around):
+    if not valid[pr - r0, pc - c0]:
         return None
-    return float(np.max(window[crown])), float(np.min(window[around]))
+
+    # Circular mask so the ground search approximates a radius, not a square
+    rows_idx, cols_idx = np.indices(window.shape)
+    dist = np.sqrt(((rows_idx + r0 - row) * py) ** 2 + ((cols_idx + c0 - col) * px) ** 2)
+    around = valid & (dist <= config.TREE_GROUND_SEARCH_RADIUS)
+    return float(window[pr - r0, pc - c0]), float(np.min(window[around]))
 
 
 def _sample_tree_height(dem_band, gt, nx, ny, x, y):
     """
-    Return the tree's canopy top (absolute elevation, see _sample_canopy()),
-    or None if it isn't a plausible tree.
+    Return the DSM surface elevation at the tree point (absolute, see
+    _sample_tree_point()), or None if it isn't a plausible tree.
 
-    Plausibility is judged on height *above local ground* (canopy top minus
-    the 5 m ground estimate), not on the absolute value: South Holland spans
-    roughly -6 m NAP (polders) to +40 m NAP (dunes), so an absolute check
-    rejected ordinary trees at both ends (e.g. 3% of Delft's trees have a
-    crown top below NAP). Rejected when the height is not above 0 (no crown
-    in the surface model, e.g. a newly planted tree) or exceeds
-    TREE_HEIGHT_MAX_PLAUSIBLE — the source raster carries no point
-    classification, so a power line, pylon, or building next to a tree could
-    otherwise be sampled as "tree height".
+    Plausibility is judged on height *above local ground* (surface at the
+    point minus the 5 m ground estimate), not on the absolute value: South
+    Holland spans roughly -6 m NAP (polders) to +40 m NAP (dunes), so an
+    absolute check rejected ordinary trees at both ends (e.g. 3% of Delft's
+    trees have a crown below NAP). Rejected when the height is not above 0
+    (no crown in the surface model at that point, e.g. a newly planted tree)
+    or exceeds TREE_HEIGHT_MAX_PLAUSIBLE — the source raster carries no
+    point classification, so a power line, pylon, or building could
+    otherwise be taken for a tree.
     See _observer_offset() for how this becomes a ViewshedGenerate input.
     """
-    sample = _sample_canopy(dem_band, gt, nx, ny, x, y)
+    sample = _sample_tree_point(dem_band, gt, nx, ny, x, y)
     if sample is None:
         return None
-    canopy_top, ground = sample
-    height = canopy_top - ground
-    if not 0 < height <= config.TREE_HEIGHT_MAX_PLAUSIBLE:
+    surface, ground = sample
+    if not 0 < surface - ground <= config.TREE_HEIGHT_MAX_PLAUSIBLE:
         return None
-    return canopy_top
+    return surface
 
 
 def _observer_offset(dem_band, gt, nx, ny, x, y):
     """
     Return the observerHeight to pass to ViewshedGenerate for a tree at
-    (x, y), so that the observer ends up at the sampled canopy top.
+    (x, y).
 
-    ViewshedGenerate treats observerHeight as an offset *added to the DEM
-    value at the observer's own pixel*, not as an absolute Z. Passing the
-    canopy top directly (as earlier versions did) double-counts whatever
-    the DEM already has at that pixel — usually part of the same canopy —
-    placing observers ~1.4-2x too high. So subtract it: offset = canopy top
-    - DEM at the observer pixel. The pixel lookup uses floor(), matching
-    how GDAL's viewshed code converts the observer coordinate to a pixel.
+    The observer is placed on the DSM surface at the tree point — the same
+    height the reference ArcGIS method uses (RASTERVALU). ViewshedGenerate
+    treats observerHeight as an offset *added to the DEM value at the
+    observer's own pixel* (verified: GDAL docs + synthetic test, see
+    ARCHITECTURE.md §6), and that pixel is exactly the one
+    _sample_tree_point() reads — so the offset for a plausible tree is 0.
+    (Passing the absolute elevation instead, as early versions did,
+    double-counts it.)
 
-    Falls back to OBSERVER_HEIGHT (an offset above that pixel) when no
-    plausible canopy top could be sampled.
+    Falls back to OBSERVER_HEIGHT (an offset above that pixel) when the tree
+    isn't plausible, e.g. no crown visible in the DSM at that point.
     """
-    canopy_top = _sample_tree_height(dem_band, gt, nx, ny, x, y)
-    if canopy_top is None:
+    if _sample_tree_height(dem_band, gt, nx, ny, x, y) is None:
         return config.OBSERVER_HEIGHT
-
-    col = int(np.floor((x - gt[0]) / gt[1]))
-    row = int(np.floor((y - gt[3]) / gt[5]))
-    if not (0 <= col < nx and 0 <= row < ny):
-        return config.OBSERVER_HEIGHT
-    base = float(dem_band.ReadAsArray(col, row, 1, 1)[0, 0])
-    if not np.isfinite(base) or base == dem_band.GetNoDataValue():
-        return config.OBSERVER_HEIGHT
-
-    # The observer pixel is inside the sampling radius, so canopy_top >=
-    # base in practice; max() only guards against edge rounding.
-    return max(0.0, canopy_top - base)
+    return 0.0
 
 
 # ---------------------------------------------------------------------------
