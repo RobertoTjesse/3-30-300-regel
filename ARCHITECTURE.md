@@ -156,13 +156,15 @@ single constant for all trees:
 1. Take a circular window of radius `TREE_HEIGHT_BUFFER_RADIUS` (1.5m)
    around the tree's point.
 2. Read the max DEM value in that window.
-3. Use that value **directly** as `observerHeight` passed to
-   `ViewshedGenerate()` — not adjusted for local ground elevation. (This
-   only makes sense because the source is a surface model — the max value
-   in a small window around a tree is approximately the canopy top.)
-4. **Clamp**: if the sampled value is non-finite, non-positive, or exceeds
+3. Treat that value as the **canopy top** — an absolute elevation, since
+   the source is a surface model and the max value in a small window
+   around a tree approximates the top of its crown.
+4. Subtract the DEM value at the tree's own pixel and pass the difference
+   as `observerHeight` (`_observer_offset()`), so the observer ends up at
+   the canopy top — see "observerHeight is additive" below.
+5. **Clamp**: if the sampled value is non-finite, non-positive, or exceeds
    `TREE_HEIGHT_MAX_PLAUSIBLE` (35m), fall back to the flat constant
-   `OBSERVER_HEIGHT` (1.7m) instead.
+   `OBSERVER_HEIGHT` (1.7m above the tree's pixel) instead.
 
 The clamp exists because the source raster carries **no point
 classification** — it's a plain elevation grid, so there is no way to tell
@@ -175,22 +177,22 @@ consumes. The height-plausibility clamp is a pragmatic stopgap; a more
 correct fix would derive tree heights from the classified point cloud
 directly, filtering out non-vegetation classes before rasterizing.
 
-**Known open issue — `observerHeight` is additive, not absolute.**
+**`observerHeight` is additive, not absolute (fixed 2026-09-27).**
 `gdal.ViewshedGenerate()`'s `observerHeight` (and `targetHeight`) parameters
-are documented as offsets *added to the DEM's own value at that pixel*, not
-an absolute Z override. Step 3 above feeds the raw sampled max-DSM value
-(an absolute elevation, e.g. ~13m for a canopy top) straight in as that
-offset. Since the tree's own pixel comes from the same raw surface, if the
-tree's exact digitized point happens to sit under its own canopy already
-(a common case), the effective observer elevation becomes
-`DEM_value_at_tree_pixel + sampled_height` — double-counting part of the
-tree's height. Checked empirically against 300 real Delft trees: the DEM
-pixel directly under a tree is, on median, about 52% of that tree's sampled
-buffer-max height — so observers are placed roughly 1.4-2x too high on
-average, not at the intended absolute canopy elevation. This has not yet
-been corrected (as of this writing, every processed municipality is
-affected); the fix would be to feed `sampled_height - DEM_value_at_tree_pixel`
-(true height above local ground) instead of the raw sampled value.
+are offsets *added to the DEM's own value at that pixel*, not an absolute Z
+override. Earlier versions fed the raw sampled canopy top straight in as
+that offset. Since the tree's own pixel comes from the same surface model —
+and usually already lies under its own canopy — the effective observer
+elevation became `DEM_value_at_tree_pixel + canopy_top`, double-counting
+part of the tree. Checked on 300 real Delft trees: the pixel directly under
+a tree was, on median, about 52% of its sampled canopy top, so observers
+sat roughly 1.4-2x too high. `_observer_offset()` now passes
+`canopy_top - DEM_value_at_tree_pixel` (the pixel found with `floor()`, as
+GDAL's viewshed code does), putting the observer exactly at the canopy top.
+Re-checked on ~1,000 Delft trees after the fix: median `observerHeight`
+fell from 4.45m to 1.69m (median overshoot removed: 2.3m). **Every
+processed municipality's output predates this fix** and needs re-running
+stage 2 (and 3) to benefit from it.
 
 ## 7. Why GeoPackage instead of the original shapefiles
 

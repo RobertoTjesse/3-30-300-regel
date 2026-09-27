@@ -114,9 +114,11 @@ buffer constant is needed for the municipality-boundary case.
 
 Each tree's observer height is sampled from the DEM rather than a fixed
 constant: `_sample_tree_height()` in `02_compute_viewsheds.py` takes the max
-DEM value within `TREE_HEIGHT_BUFFER_RADIUS` (1.5 m) of the tree and uses it
-directly as the `ViewshedGenerate` observer height (not adjusted for local
-ground elevation). Falls back to `OBSERVER_HEIGHT` if the sample is out of
+DEM value within `TREE_HEIGHT_BUFFER_RADIUS` (1.5 m) of the tree as its
+canopy top, and `_observer_offset()` subtracts the DEM value at the tree's
+own pixel before passing it to `ViewshedGenerate` — whose observer height is
+an offset on top of that pixel, not an absolute elevation — so the observer
+sits exactly at the canopy top. Falls back to `OBSERVER_HEIGHT` if the sample is out of
 bounds, non-positive, or exceeds `TREE_HEIGHT_MAX_PLAUSIBLE` (35 m) — the
 source raster carries no point classification, so there's no way to tell a
 power line, pylon, or building corner apart from a tree canopy in the raw

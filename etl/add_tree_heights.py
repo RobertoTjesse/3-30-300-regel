@@ -4,8 +4,9 @@ out as a NEW GeoPackage (does not modify the source tree layer).
 
 Reuses the exact same sampling logic as 02_compute_viewsheds.py
 (_sample_tree_height: max DEM value within TREE_HEIGHT_BUFFER_RADIUS,
-clamped to TREE_HEIGHT_MAX_PLAUSIBLE, falling back to OBSERVER_HEIGHT) so
-the heights shown here match what the live viewshed computation actually
+rejected above TREE_HEIGHT_MAX_PLAUSIBLE; _observer_offset: that canopy top
+minus the DEM at the tree's own pixel, falling back to OBSERVER_HEIGHT) so
+the values shown here match what the live viewshed computation actually
 used for that tree.
 
 Usage:
@@ -14,10 +15,14 @@ Usage:
 Output:
     data/processed/<municipality_name>_tree_heights.gpkg
     Point layer, same geometry as the source trees, with columns:
-      sampled_height_m  — the value _sample_tree_height() returned
+      sampled_height_m  — canopy top (absolute elevation) from
+                            _sample_tree_height(); NULL if no plausible
+                            sample was found
+      observer_offset_m — the observerHeight actually passed to
+                            ViewshedGenerate (from _observer_offset())
       was_clamped        — True if the raw sample exceeded
-                            TREE_HEIGHT_MAX_PLAUSIBLE and got replaced
-                            with OBSERVER_HEIGHT
+                            TREE_HEIGHT_MAX_PLAUSIBLE and the offset fell
+                            back to OBSERVER_HEIGHT
 """
 
 import sys
@@ -38,6 +43,7 @@ ogr.UseExceptions()
 # re-implementing it, so this always matches what the pipeline actually did.
 _viewsheds_mod = importlib.import_module("02_compute_viewsheds")
 _sample_tree_height = _viewsheds_mod._sample_tree_height
+_observer_offset = _viewsheds_mod._observer_offset
 
 
 def add_heights_for_municipality(name: str) -> None:
@@ -67,6 +73,7 @@ def add_heights_for_municipality(name: str) -> None:
     out_ds = driver.CreateDataSource(str(out_path))
     out_layer = out_ds.CreateLayer(f"{name}_tree_heights", srs, ogr.wkbPoint)
     out_layer.CreateField(ogr.FieldDefn("sampled_height_m", ogr.OFTReal))
+    out_layer.CreateField(ogr.FieldDefn("observer_offset_m", ogr.OFTReal))
     was_clamped_field = ogr.FieldDefn("was_clamped", ogr.OFTInteger)
     was_clamped_field.SetSubType(ogr.OFSTBoolean)
     out_layer.CreateField(was_clamped_field)
@@ -83,6 +90,7 @@ def add_heights_for_municipality(name: str) -> None:
         x, y = pt.GetX(), pt.GetY()
 
         h = _sample_tree_height(dem_band, gt, nx, ny, x, y)
+        offset = _observer_offset(dem_band, gt, nx, ny, x, y)
 
         # Recompute the raw (unclamped) sample once more, cheaply, just to
         # know whether THIS tree got clamped — _sample_tree_height only
@@ -93,7 +101,9 @@ def add_heights_for_municipality(name: str) -> None:
             n_clamped += 1
 
         out_feat = ogr.Feature(out_defn)
-        out_feat.SetField("sampled_height_m", h)
+        if h is not None:
+            out_feat.SetField("sampled_height_m", h)
+        out_feat.SetField("observer_offset_m", offset)
         out_feat.SetField("was_clamped", 1 if clamped else 0)
         out_feat.SetGeometry(ogr.Geometry(ogr.wkbPoint))
         out_feat.GetGeometryRef().AddPoint(x, y)

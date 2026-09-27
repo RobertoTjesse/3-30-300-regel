@@ -11,8 +11,9 @@ For each municipality (config.municipality_pairs()):
        tree just across a tile OR municipality boundary can still be within
        MAX_DISTANCE of an inner pixel on this side. (The same tree gets
        queried again by the neighbouring tile too; that's fine, see step 4.)
-    2. For each tree, sample its height from the DEM (see
-       _sample_tree_height()) and call gdal.ViewshedGenerate() against the
+    2. For each tree, sample its canopy top from the DEM, convert it to an
+       offset above the observer pixel (see _observer_offset()), and call
+       gdal.ViewshedGenerate() against the
        buffered tile DEM with MAX_DISTANCE = 30 m, pasting the (small,
        observer-centred) result into a tile-sized accumulator at the right
        pixel offset.
@@ -120,13 +121,14 @@ def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
 def _sample_tree_height(dem_band, gt, nx, ny, x, y):
     """
     Sample the DEM surface within TREE_HEIGHT_BUFFER_RADIUS of (x, y) and
-    return the max value found (used directly as observer height, not
-    adjusted for ground elevation — see README for why).
+    return the max value found — the canopy top, as an absolute elevation
+    on the DEM's own vertical datum (not a height above ground).
 
-    Falls back to OBSERVER_HEIGHT if the point is out of bounds, the sample
-    is non-finite/non-positive, or exceeds TREE_HEIGHT_MAX_PLAUSIBLE — the
+    Returns None if the point is out of bounds, the sample is
+    non-finite/non-positive, or exceeds TREE_HEIGHT_MAX_PLAUSIBLE — the
     source raster carries no point classification, so a power line, pylon,
     or building near a tree could otherwise be sampled as "tree height".
+    See _observer_offset() for how this becomes a ViewshedGenerate input.
     """
     px = abs(gt[1])
     py = abs(gt[5])
@@ -141,23 +143,56 @@ def _sample_tree_height(dem_band, gt, nx, ny, x, y):
     c1 = min(nx, int(round(col)) + rad_px_x + 1)
     r1 = min(ny, int(round(row)) + rad_px_y + 1)
     if c1 <= c0 or r1 <= r0:
-        return config.OBSERVER_HEIGHT
+        return None
 
     window = dem_band.ReadAsArray(c0, r0, c1 - c0, r1 - r0)
     if window is None or window.size == 0:
-        return config.OBSERVER_HEIGHT
+        return None
 
     # Circular mask so this approximates a radius, not a square window
     rows_idx, cols_idx = np.indices(window.shape)
     dist = np.sqrt(((rows_idx + r0 - row) * py) ** 2 + ((cols_idx + c0 - col) * px) ** 2)
     mask = dist <= config.TREE_HEIGHT_BUFFER_RADIUS
     if not np.any(mask):
-        return config.OBSERVER_HEIGHT
+        return None
 
     max_val = float(np.max(window[mask]))
     if not np.isfinite(max_val) or max_val <= 0 or max_val > config.TREE_HEIGHT_MAX_PLAUSIBLE:
-        return config.OBSERVER_HEIGHT
+        return None
     return max_val
+
+
+def _observer_offset(dem_band, gt, nx, ny, x, y):
+    """
+    Return the observerHeight to pass to ViewshedGenerate for a tree at
+    (x, y), so that the observer ends up at the sampled canopy top.
+
+    ViewshedGenerate treats observerHeight as an offset *added to the DEM
+    value at the observer's own pixel*, not as an absolute Z. Passing the
+    canopy top directly (as earlier versions did) double-counts whatever
+    the DEM already has at that pixel — usually part of the same canopy —
+    placing observers ~1.4-2x too high. So subtract it: offset = canopy top
+    - DEM at the observer pixel. The pixel lookup uses floor(), matching
+    how GDAL's viewshed code converts the observer coordinate to a pixel.
+
+    Falls back to OBSERVER_HEIGHT (an offset above that pixel) when no
+    plausible canopy top could be sampled.
+    """
+    canopy_top = _sample_tree_height(dem_band, gt, nx, ny, x, y)
+    if canopy_top is None:
+        return config.OBSERVER_HEIGHT
+
+    col = int(np.floor((x - gt[0]) / gt[1]))
+    row = int(np.floor((y - gt[3]) / gt[5]))
+    if not (0 <= col < nx and 0 <= row < ny):
+        return config.OBSERVER_HEIGHT
+    ground = float(dem_band.ReadAsArray(col, row, 1, 1)[0, 0])
+    if not np.isfinite(ground):
+        return config.OBSERVER_HEIGHT
+
+    # The observer pixel is inside the sampling radius, so canopy_top >=
+    # ground in practice; max() only guards against edge rounding.
+    return max(0.0, canopy_top - ground)
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +366,7 @@ def process_tile(args):
             db_path, xmin, ymin, xmax, ymax,
             layer_name=config.TREES_LAYER,
         ):
-            h = _sample_tree_height(dem_band, gt, nx, ny, x, y)
+            h = _observer_offset(dem_band, gt, nx, ny, x, y)
             if _use_python_api:
                 arr, arr_gt = _viewshed_python_api(dem_band, x, y, h)
             else:

@@ -121,8 +121,9 @@ PROVINCE_TREES_GPKG = INTERIM_DIR / "province_trees.gpkg"
 # ---------------------------------------------------------------------------
 # Each tree's height is sampled from the DEM surface rather than a fixed
 # constant: take the max DEM value within this radius around the tree point
-# (approximates canopy top on a surface model) and use it directly as the
-# ViewshedGenerate observer height.
+# (approximates canopy top on a surface model), minus the DEM value at the
+# tree's own pixel — ViewshedGenerate adds its observer height on top of
+# that pixel, so this places the observer at the canopy top.
 TREE_HEIGHT_BUFFER_RADIUS = 1.5   # metres
 
 # Sanity clamp. AHN's surface raster carries no point classification (see
