@@ -119,10 +119,22 @@ PROVINCE_TREES_GPKG = INTERIM_DIR / "province_trees.gpkg"
 # ---------------------------------------------------------------------------
 # Per-tree height
 # ---------------------------------------------------------------------------
-# Each tree's observer is placed on the DSM surface at the tree point itself
-# (the pixel containing it — like the reference ArcGIS method's RASTERVALU),
-# not at the max within a buffer around it. ViewshedGenerate adds its
-# observer height on top of that pixel, so the offset passed is 0.
+# Each tree's observer is placed at its canopy top: the max surface value
+# within this radius of the tree point, ignoring building pixels (a roof edge
+# next to a tree is not its crown).
+TREE_HEIGHT_BUFFER_RADIUS = 1.5   # metres
+
+# Own-crown removal (optional, 0 = off): before a tree's viewshed, every
+# non-building DEM pixel within this radius of the tree is lowered to the
+# local ground estimate, so its own crown can't block its own lines of sight.
+# Building pixels (PROVINCE_BUILDINGS_GPKG, required when > 0) are never
+# flattened. Off by default: on Delft, r=3 m changes the pass/fail (>=3
+# trees) of only 0.1% of residential buildings vs the plain canopy top, at
+# ~14% extra runtime — see ARCHITECTURE.md §6. The canopy-top observer
+# already avoids nearly all self-occlusion.
+OWN_CROWN_RADIUS = 0.0            # metres
+PROVINCE_BUILDINGS_GPKG = Path(os.environ.get(
+    "BUILDINGS_GPKG_OVERRIDE", INTERIM_DIR / "province_buildings.gpkg"))  # env var: tests only
 
 # Local ground estimate for the plausibility check below: the lowest surface
 # value within this radius of the tree. Only used to judge whether a sampled

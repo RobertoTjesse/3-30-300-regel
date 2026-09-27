@@ -119,14 +119,18 @@ buffer constant is needed for the municipality-boundary case.
 
 ### Per-tree height
 
-Each tree's observer is placed on the DSM surface at the tree point itself
-(the pixel containing it — like the reference ArcGIS method's `RASTERVALU`):
-`ViewshedGenerate`'s observer height is an offset on top of that pixel, not
-an absolute elevation, so `_observer_offset()` passes 0. Known side effect:
-the point usually lies under the crown, so the crown itself can block the
-view (self-occlusion) — see `ARCHITECTURE.md` §6. Falls back to
-`OBSERVER_HEIGHT` if the sample is out of
-bounds, or if the tree's height above local ground (surface at the point minus the
+Each tree's observer is placed at its canopy top: `_prepare_tree()` in
+`02_compute_viewsheds.py` takes the max DEM value within
+`TREE_HEIGHT_BUFFER_RADIUS` (1.5 m) of the tree and passes it minus the DEM
+value at the tree's own pixel, since `ViewshedGenerate`'s observer height is
+an offset on top of that pixel, not an absolute elevation. (The exact tree
+point, as in the reference ArcGIS method, puts the observer inside its own
+crown, which then blocks its view — see `ARCHITECTURE.md` §6.) Optional
+own-crown removal (`OWN_CROWN_RADIUS`, off by default) flattens the tree's
+own crown before its viewshed; it needs building footprints
+(`data/interim/province_buildings.gpkg`) so buildings are never flattened.
+Falls back to `OBSERVER_HEIGHT` if the sample is out of
+bounds, or if the tree's height above local ground (canopy top minus the
 lowest surface value within `TREE_GROUND_SEARCH_RADIUS`, 5 m — judged on
 height above ground, not absolute NAP, since the province spans ~-6 m to
 ~+40 m NAP) is not above 0 or exceeds `TREE_HEIGHT_MAX_PLAUSIBLE` (35 m) — the

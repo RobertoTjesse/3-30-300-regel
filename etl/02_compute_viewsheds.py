@@ -11,9 +11,10 @@ For each municipality (config.municipality_pairs()):
        tree just across a tile OR municipality boundary can still be within
        MAX_DISTANCE of an inner pixel on this side. (The same tree gets
        queried again by the neighbouring tile too; that's fine, see step 4.)
-    2. For each tree, place the observer on the DSM surface at the tree
-       point (see _observer_offset()), and call
-       gdal.ViewshedGenerate() against the
+    2. For each tree, cut the DEM within MAX_DISTANCE into a small in-memory
+       raster with the tree's own crown flattened (building pixels kept),
+       place the observer at the canopy top (see _prepare_tree()), and call
+       gdal.ViewshedGenerate() against that window
        buffered tile DEM with MAX_DISTANCE = 30 m, pasting the (small,
        observer-centred) result into a tile-sized accumulator at the right
        pixel offset.
@@ -87,7 +88,7 @@ def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
 
     Uses OGR SetSpatialFilter for server-side (or index-assisted) filtering,
     so it is safe even for multi-million-row databases. Height is not
-    determined here — see _sample_tree_height(), which reads it from the DEM
+    determined here — see _prepare_tree(), which reads it from the DEM
     once the tile raster is available.
     """
     ds, layer = _open_tree_layer(db_path, layer_name)
@@ -118,100 +119,90 @@ def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
     ds = None  # closes file
 
 
-def _sample_tree_point(dem_band, gt, nx, ny, x, y):
+def _building_mask(gt, nx, ny, srs_wkt):
     """
-    Sample the DEM surface at a tree at (x, y) and return
-    (surface_at_point, local_ground), both absolute elevations on the DEM's
-    own vertical datum (NAP), or None if nothing valid could be read.
+    Rasterize the building footprints (config.PROVINCE_BUILDINGS_GPKG) onto a
+    raster grid (gt, nx, ny); returns a bool array, True = building pixel.
+    Only footprints intersecting the grid are read (spatial index). Without
+    a footprint file (allowed when OWN_CROWN_RADIUS is 0) the mask is empty.
+    """
+    if not config.PROVINCE_BUILDINGS_GPKG.exists():
+        return np.zeros((ny, nx), dtype=bool)
+    mem = gdal.GetDriverByName("MEM").Create("", nx, ny, 1, gdal.GDT_Byte)
+    mem.SetGeoTransform(gt)
+    mem.SetProjection(srs_wkt)
+    ds = ogr.Open(str(config.PROVINCE_BUILDINGS_GPKG), 0)
+    layer = ds.GetLayer(0)
+    layer.SetSpatialFilterRect(gt[0], gt[3] + ny * gt[5], gt[0] + nx * gt[1], gt[3])
+    gdal.RasterizeLayer(mem, [1], layer, burn_values=[1])
+    return mem.GetRasterBand(1).ReadAsArray().astype(bool)
 
-    surface_at_point: the value of the pixel containing the tree point —
-                      the pixel GDAL's viewshed places the observer on
-                      (found with floor(), as GDAL does). Equivalent to the
-                      reference ArcGIS method's RASTERVALU
-                      (ExtractValuesToPoints on the DSM).
-    local_ground:     min value within TREE_GROUND_SEARCH_RADIUS (5 m) — a
-                      rough ground estimate, only used for the plausibility
-                      check in _sample_tree_height(), never for the
-                      observer height.
-    NoData cells (if the band still has any) are ignored.
+
+def _prepare_tree(dem, buildings, gt, x, y, nodata=None):
     """
-    px = abs(gt[1])
-    py = abs(gt[5])
-    col = (x - gt[0]) / gt[1]
-    row = (y - gt[3]) / gt[5]
-    pc, pr = int(np.floor(col)), int(np.floor(row))
+    Prepare one tree's viewshed input from a DEM array and its building mask
+    (same grid). Returns None if (x, y) is outside the array, else
+    (window, window_gt, observer_offset, info):
+
+    window           the DEM within MAX_DISTANCE of the tree (a copy), with
+                     the tree's OWN crown flattened to local ground: every
+                     non-building pixel within OWN_CROWN_RADIUS is lowered
+                     to the ground estimate. Without this, the observer sits
+                     on top of / inside its own crown in the surface model
+                     and that crown blocks most of its own lines of sight
+                     (self-occlusion). Building pixels are never flattened —
+                     a tree next to a facade must not open a hole in it.
+    observer_offset  observerHeight for ViewshedGenerate, which adds it to
+                     the DEM value at the observer's own pixel (verified:
+                     GDAL docs + synthetic test, ARCHITECTURE.md §6) — so
+                     canopy top minus that (usually flattened) pixel.
+    info             dict(canopy_top, ground, plausible) for reporting.
+
+    canopy_top = max over non-building pixels within TREE_HEIGHT_BUFFER_RADIUS
+    (a roof edge next to a tree is not its crown); ground = min within
+    TREE_GROUND_SEARCH_RADIUS. A tree is plausible if 0 < canopy_top - ground
+    <= TREE_HEIGHT_MAX_PLAUSIBLE (height above ground, not NAP: the province
+    spans ~-6 to ~+40 m NAP). Implausible trees keep the unmodified window
+    and get OBSERVER_HEIGHT.
+    """
+    ny, nx = dem.shape
+    pc = int(np.floor((x - gt[0]) / gt[1]))   # observer pixel, as GDAL picks it
+    pr = int(np.floor((y - gt[3]) / gt[5]))
     if not (0 <= pc < nx and 0 <= pr < ny):
         return None
 
-    rad_px_x = max(1, int(round(config.TREE_GROUND_SEARCH_RADIUS / px)))
-    rad_px_y = max(1, int(round(config.TREE_GROUND_SEARCH_RADIUS / py)))
-    c0 = max(0, pc - rad_px_x)
-    r0 = max(0, pr - rad_px_y)
-    c1 = min(nx, pc + rad_px_x + 1)
-    r1 = min(ny, pr + rad_px_y + 1)
-    window = dem_band.ReadAsArray(c0, r0, c1 - c0, r1 - r0)
-    if window is None or window.size == 0:
-        return None
+    half = int(np.ceil(config.MAX_DISTANCE / abs(gt[1]))) + 2
+    c0, r0 = max(0, pc - half), max(0, pr - half)
+    c1, r1 = min(nx, pc + half + 1), min(ny, pr + half + 1)
+    window = dem[r0:r1, c0:c1].copy()
+    bld = buildings[r0:r1, c0:c1]
+    window_gt = (gt[0] + c0 * gt[1], gt[1], 0.0, gt[3] + r0 * gt[5], 0.0, gt[5])
 
+    rows_idx, cols_idx = np.indices(window.shape)
+    dist = np.hypot((cols_idx + c0 + 0.5) * gt[1] + gt[0] - x,
+                    (rows_idx + r0 + 0.5) * gt[5] + gt[3] - y)
     valid = np.isfinite(window)
-    nodata = dem_band.GetNoDataValue()
     if nodata is not None:
         valid &= window != nodata
-    if not valid[pr - r0, pc - c0]:
-        return None
 
-    # Circular mask so the ground search approximates a radius, not a square
-    rows_idx, cols_idx = np.indices(window.shape)
-    dist = np.sqrt(((rows_idx + r0 - row) * py) ** 2 + ((cols_idx + c0 - col) * px) ** 2)
+    info = {"canopy_top": None, "ground": None, "plausible": False}
+    crown = valid & ~bld & (dist <= config.TREE_HEIGHT_BUFFER_RADIUS)
     around = valid & (dist <= config.TREE_GROUND_SEARCH_RADIUS)
-    return float(window[pr - r0, pc - c0]), float(np.min(window[around]))
+    if crown.any() and around.any():
+        canopy_top = float(window[crown].max())
+        ground = float(window[around].min())
+        info.update(canopy_top=canopy_top, ground=ground)
+        if 0 < canopy_top - ground <= config.TREE_HEIGHT_MAX_PLAUSIBLE:
+            info["plausible"] = True
+            if config.OWN_CROWN_RADIUS > 0:   # (dist <= 0 would still hit a tree on a pixel centre)
+                own = valid & ~bld & (dist <= config.OWN_CROWN_RADIUS)
+                window[own] = np.minimum(window[own], ground)
+            base = float(window[pr - r0, pc - c0])
+            # base can exceed canopy_top only if the tree point itself lies
+            # on a (never flattened) roof; then the observer stays on it.
+            return window, window_gt, max(0.0, canopy_top - base), info
 
-
-def _sample_tree_height(dem_band, gt, nx, ny, x, y):
-    """
-    Return the DSM surface elevation at the tree point (absolute, see
-    _sample_tree_point()), or None if it isn't a plausible tree.
-
-    Plausibility is judged on height *above local ground* (surface at the
-    point minus the 5 m ground estimate), not on the absolute value: South
-    Holland spans roughly -6 m NAP (polders) to +40 m NAP (dunes), so an
-    absolute check rejected ordinary trees at both ends (e.g. 3% of Delft's
-    trees have a crown below NAP). Rejected when the height is not above 0
-    (no crown in the surface model at that point, e.g. a newly planted tree)
-    or exceeds TREE_HEIGHT_MAX_PLAUSIBLE — the source raster carries no
-    point classification, so a power line, pylon, or building could
-    otherwise be taken for a tree.
-    See _observer_offset() for how this becomes a ViewshedGenerate input.
-    """
-    sample = _sample_tree_point(dem_band, gt, nx, ny, x, y)
-    if sample is None:
-        return None
-    surface, ground = sample
-    if not 0 < surface - ground <= config.TREE_HEIGHT_MAX_PLAUSIBLE:
-        return None
-    return surface
-
-
-def _observer_offset(dem_band, gt, nx, ny, x, y):
-    """
-    Return the observerHeight to pass to ViewshedGenerate for a tree at
-    (x, y).
-
-    The observer is placed on the DSM surface at the tree point — the same
-    height the reference ArcGIS method uses (RASTERVALU). ViewshedGenerate
-    treats observerHeight as an offset *added to the DEM value at the
-    observer's own pixel* (verified: GDAL docs + synthetic test, see
-    ARCHITECTURE.md §6), and that pixel is exactly the one
-    _sample_tree_point() reads — so the offset for a plausible tree is 0.
-    (Passing the absolute elevation instead, as early versions did,
-    double-counts it.)
-
-    Falls back to OBSERVER_HEIGHT (an offset above that pixel) when the tree
-    isn't plausible, e.g. no crown visible in the DSM at that point.
-    """
-    if _sample_tree_height(dem_band, gt, nx, ny, x, y) is None:
-        return config.OBSERVER_HEIGHT
-    return 0.0
+    return window, window_gt, config.OBSERVER_HEIGHT, info
 
 
 # ---------------------------------------------------------------------------
@@ -373,8 +364,10 @@ def process_tile(args):
     nx       = dem_ds.RasterXSize
     ny       = dem_ds.RasterYSize
 
-    # Detect which API to use (do once per process)
-    _use_python_api = hasattr(gdal, "ViewshedGenerate")
+    dem = dem_band.ReadAsArray()
+    nodata = dem_band.GetNoDataValue()
+    buildings = _building_mask(gt, nx, ny, proj)
+    mem = gdal.GetDriverByName("MEM")
 
     accumulator = np.zeros((ny, nx), dtype=np.uint32)
     n_trees = 0
@@ -385,15 +378,22 @@ def process_tile(args):
             db_path, xmin, ymin, xmax, ymax,
             layer_name=config.TREES_LAYER,
         ):
-            h = _observer_offset(dem_band, gt, nx, ny, x, y)
-            if _use_python_api:
-                arr, arr_gt = _viewshed_python_api(dem_band, x, y, h)
-            else:
-                arr, arr_gt = _viewshed_subprocess(tile_path, x, y, h)
+            n_trees += 1
+            prepared = _prepare_tree(dem, buildings, gt, x, y, nodata)
+            if prepared is None:          # bbox query can return a point on the edge
+                continue
+            window, window_gt, h, _info = prepared
+            # Each tree gets its own small in-memory DEM (its own crown removed)
+            win_ds = mem.Create("", window.shape[1], window.shape[0], 1, gdal.GDT_Float32)
+            win_ds.SetGeoTransform(window_gt)
+            win_ds.GetRasterBand(1).WriteArray(window)
+            if nodata is not None:
+                win_ds.GetRasterBand(1).SetNoDataValue(nodata)
+            arr, arr_gt = _viewshed_python_api(win_ds.GetRasterBand(1), x, y, h)
+            win_ds = None
 
             if arr is not None:
                 _paste_into_accumulator(accumulator, arr, arr_gt, gt)
-            n_trees += 1
 
             if n_trees % config.LOG_EVERY == 0:
                 log.info(f"    [{tile_id}] {n_trees} trees processed so far…")
@@ -567,10 +567,12 @@ def main():
     args = parser.parse_args()
 
     if not hasattr(gdal, "ViewshedGenerate"):
-        log.warning(
-            "gdal.ViewshedGenerate not found in this GDAL build "
-            "(requires GDAL >= 3.1). Falling back to subprocess calls — "
-            "this will be slower."
+        sys.exit("ERROR: gdal.ViewshedGenerate not found — this pipeline needs GDAL >= 3.1.")
+    if config.OWN_CROWN_RADIUS > 0 and not config.PROVINCE_BUILDINGS_GPKG.exists():
+        sys.exit(
+            f"ERROR: building footprints not found: {config.PROVINCE_BUILDINGS_GPKG}\n"
+            "Own-crown removal needs them, or it would flatten buildings next to trees "
+            "(see README, 'Per-tree height')."
         )
 
     pairs = list(config.municipality_pairs())

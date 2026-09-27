@@ -153,15 +153,20 @@ statistics computed on the raster.
 Every tree's height is sampled from the DEM itself rather than using a
 single constant for all trees:
 
-1. Read the DSM value of the pixel containing the tree point
-   (`_sample_tree_point()`) — the same height the reference ArcGIS method
-   uses (`RASTERVALU`, ExtractValuesToPoints on the DSM).
-2. Place the observer **on the DSM surface at that point**: since
-   `observerHeight` is added to exactly that pixel (see "observerHeight is
-   additive" below), `_observer_offset()` passes 0.
+All of this happens in `_prepare_tree()`, which also cuts the DEM within
+`MAX_DISTANCE` of the tree into a small in-memory raster that the tree's
+`ViewshedGenerate()` call runs on:
+
+1. **Canopy top**: the max DEM value within `TREE_HEIGHT_BUFFER_RADIUS`
+   (1.5m) of the tree point, measured to pixel centres, ignoring building
+   pixels when building footprints are available (a roof edge next to a
+   tree is not its crown).
+2. The observer is placed **at the canopy top**: `observerHeight` = canopy
+   top minus the DEM value at the observer's own pixel, since GDAL adds it
+   to exactly that pixel (see "observerHeight is additive" below).
 3. **Clamp**: estimate local ground as the min DEM value within
    `TREE_GROUND_SEARCH_RADIUS` (5m). If the tree's height above that ground
-   (surface at the point minus ground) is not above 0 or exceeds
+   (canopy top minus ground) is not above 0 or exceeds
    `TREE_HEIGHT_MAX_PLAUSIBLE` (35m), fall back to the flat constant
    `OBSERVER_HEIGHT` (1.7m above the tree's pixel) instead. The ground
    estimate is only used for this check, never for the observer height.
@@ -206,17 +211,29 @@ fell from 4.45m to 1.69m (median overshoot removed: 2.3m). **Every
 processed municipality's output predates this fix** and needs re-running
 stage 2 (and 3) to benefit from it.
 
-**Canopy top (1.5m buffer max) replaced by the exact tree point
-(2026-09-27)**, to match the reference ArcGIS method's `RASTERVALU`. Known
-side effect — **self-occlusion**: the tree point usually lies under the
+**Why the canopy top, not the exact tree point (2026-09-27).** Briefly
+the observer was placed on the DSM at the exact tree point, matching the
+reference ArcGIS method's `RASTERVALU`. That point usually lies under the
 crown, below its top (Delft median 4.0m above ground at the point vs 8.4m
-for the 1.5m-buffer max), so the surrounding, higher crown pixels in the
-DSM block the observer's own lines of sight. Measured on 488 random Delft
-trees: 35.5% see <1% of cells beyond 3m (0% with the canopy top); median
-visible cells 642 vs 5,395. Delft output: pixels with >=3 trees 20.6%
-(canopy top: 50.9%), mean 1.36 (3.87). Raising the observer +1m / +2m
-above the point brings the blocked share to 18.4% / 12.5%. Revisit before
-the province-wide rerun.
+for the canopy top), so the tree's own, higher crown pixels in the DSM
+block its lines of sight — **self-occlusion**. Measured on 488 random
+Delft trees: 35.5% see <1% of cells beyond 3m (canopy top: 0%). Delft
+pixels with >=3 trees: 20.6% vs 50.9% with the canopy top.
+
+**Own-crown removal (optional, `OWN_CROWN_RADIUS`, default 0 = off).**
+Before a tree's viewshed, every non-building pixel within the radius is
+lowered to the local ground estimate, removing the tree's own crown from
+its own line-of-sight surface entirely; building pixels (from
+`PROVINCE_BUILDINGS_GPKG`, required when the radius is > 0) are never
+flattened. Without the building mask, 11.7% of Delft trees have a building
+within 3m that would be cut open. Pixel level (Delft, r=3m + mask): pixels
+with >=3 trees 53.2% vs 50.9% for the plain canopy top. But at **building
+level** — the actual objective, where a residential building counts as
+seeing N trees if any of its pixels does — it changes the pass/fail (>=3)
+of only 0.1% of Delft's 30,509 residential buildings (same colour class:
+97-99%), at ~14% extra runtime. So it is off by default; the plain canopy
+top already avoids nearly all self-occlusion. (By contrast the exact tree
+point changed the class of 53-69% of residential buildings.)
 
 ## 7. Why GeoPackage instead of the original shapefiles
 
@@ -375,7 +392,9 @@ normal rotation.
 |---|---|---|
 | `MAX_DISTANCE` | 30.0 m | Viewshed radius per tree |
 | `OBSERVER_HEIGHT` | 1.7 m | Fallback height when DEM sampling is out of bounds/implausible |
+| `TREE_HEIGHT_BUFFER_RADIUS` | 1.5 m | Radius around each tree searched for its canopy top (observer height) |
 | `TREE_GROUND_SEARCH_RADIUS` | 5.0 m | Radius for the local ground estimate (plausibility check only) |
+| `OWN_CROWN_RADIUS` | 0.0 m (off) | Optional own-crown removal radius; needs building footprints when > 0 |
 | `TREE_HEIGHT_MAX_PLAUSIBLE` | 35.0 m | Sanity clamp (power line/pylon/building guard) |
 | `TARGET_HEIGHT` | 1.8 m | Eye/window height for target pixels (matches the reference ArcGIS Pro methodology's `surface_offset`) |
 | `CURVATURE_COEFF` | 0.0 | Flat-earth (curvature is sub-millimetre at 30m, irrelevant either way) |
