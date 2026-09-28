@@ -42,3 +42,7 @@ Thumbs.db
 qgis_validation/*.qgz
 qgis_validation/*.qgz~
 qgis_validation/*.qgd
+
+# ArcGIS test runs (arcgis_tests/visibility_variants.py) — outputs only
+arcgis_tests/*.gdb/
+arcgis_tests/*.csv
