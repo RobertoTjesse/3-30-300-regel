@@ -47,3 +47,27 @@ for spotting integer terraces, NoData holes and seams in the input DEM.
 counts are marked "disappeared, small tree" in the source registry;
 another 3% "not seen once". What these statuses mean, and whether those
 trees should be excluded, is still open.
+
+**6. Gemeente / wijk / buurt**
+- `etl/06_area_summaries.py`: assigns every building to its CBS buurt
+  (Wijk- en Buurtkaart 2025) and summarises per gemeente, wijk and buurt;
+  the gemeente figures match stage 5 exactly. CBS names Rijswijk
+  "Rijswijk (ZH.)" — matched by stripping the suffix.
+- Web map: the area level follows the zoom (gemeente < 10, wijk < 11.5,
+  buurt < 13, then buildings), one colour scale for all levels
+  (< 80 / 80-90 / 90-95 / 95-98 / >= 98% of homes with >= 3 trees),
+  grey for areas with fewer than 10 homes.
+
+**7. Temporal consistency of the inputs** — shown on the map under (i)
+- AHN4 (height model): flown 2020-2022 depending on the area (ahn.nl
+  confirms Hollandse Delta in 2020; the year for the rest of the province
+  is not stated there).
+- Trees: status dates 2020-2022 (mostly 2022); the `date` field is a
+  placeholder (2000 for all). Height model and trees are from the same
+  period.
+- BAG buildings/addresses: downloaded 2026-09-27; CBS areas 2025;
+  municipal boundaries 2026-09-28.
+- Homes built after the height model: 53,166 homes (3.0%) are in
+  buildings with BAG construction year >= 2023, 96,823 (5.4%) >= 2020, of
+  1,797,328. Their surroundings are those of 2020-2022. Decision: not
+  filtered out; stated on the map instead.

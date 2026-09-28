@@ -45,6 +45,8 @@ an SDE export works too — field names are set in `config.py` (`BAG_*`).
 Which address statuses count as lived in: `BAG_STATUSES_IN_USE`. Stage 5
 needs `data/interim/gemeenten.gpkg` and `provincies.gpkg` from PDOK's
 *bestuurlijkegebieden* WFS (command in the `05_merge_province.py` docstring).
+Stage 6 needs `data/interim/wijken.gpkg` and `buurten.gpkg`: CBS Wijk- en
+Buurtkaart 2025 from PDOK (command in the `06_area_summaries.py` docstring).
 
 ## Source data
 
@@ -76,6 +78,7 @@ is always excluded regardless of `MUNICIPALITIES` — see "Known data issues".
 | Load | `etl/03_merge_tiles.py` | Per municipality: mosaics all (non-overlapping) tile results via a VRT and translates to one Cloud-Optimized GeoTIFF (COG) per municipality. |
 | Score | `etl/04_score_buildings.py` | Per municipality: every residential building (BAG address in use with *woonfunctie*) gets the max viewshed value in a 1.5 m ring outside its facade → `<name>_woningen.gpkg`. Inside a footprint the surface model is the roof, so roof pixels mean "1.8 m above the roof" — the ring gives street/garden-level eye height instead. |
 | Province | `etl/05_merge_province.py` | Merges all `<name>_woningen.gpkg` (which overlap: each covers its DEM rectangle) into `ZuidHolland_woningen.gpkg`, each building once, assigned to its *current* municipality, plus `ZuidHolland_samenvatting.csv` per municipality. |
+| Areas | `etl/06_area_summaries.py` | Assigns every building to its CBS buurt (and so wijk) and writes the same summary per gemeente, wijk and buurt: `ZuidHolland_gebieden.gpkg` (polygons with the figures), `ZuidHolland_wijken.csv`, `ZuidHolland_buurten.csv`. Checks its gemeente figures against stage 5. |
 
 Run in order:
 
@@ -85,6 +88,7 @@ python etl/02_compute_viewsheds.py --workers 4 --resume
 python etl/03_merge_tiles.py
 python etl/04_score_buildings.py
 python etl/05_merge_province.py
+python etl/06_area_summaries.py
 ```
 
 Or run one municipality fully (all three stages) at a time with
@@ -187,8 +191,9 @@ script is tracked.
 ## Web map
 
 Public map of the results: https://robertotjesse.github.io/3-regel/ —
-municipalities (share of homes with >= 3 visible trees) when zoomed out,
-every residential building in its class from zoom 13, on the PDOK grey
+the share of homes with >= 3 visible trees per gemeente, wijk or buurt
+(by zoom level, one colour scale), every residential building in its class
+from zoom 13, sources and data dates behind the (i) button, on the PDOK grey
 basemap, with address search.
 
 It is one static page (`web/index.html`, MapLibre) plus one vector-tile
@@ -197,7 +202,7 @@ file (`web/data/zuid-holland.pmtiles`, ~85 MB — GitHub's per-file limit is
 is never committed to `master`. To update after new results:
 
 ```
-python web\build_tiles.py        # after 05_merge_province.py
+python web\build_tiles.py        # after 06_area_summaries.py
 python web\serve.py              # optional: preview at http://localhost:8000
 ```
 
