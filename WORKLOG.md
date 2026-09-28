@@ -92,3 +92,9 @@ trees should be excluded, is still open.
 - Water/NoData: no rerun needed — stage 1 fills NoData in every tile, and
   all 52 municipalities were tiled after that fix; only the ad-hoc test
   clip (cut straight from the ArcGIS DEM) needed filling.
+- Rerun (2026-09-28): Viewshed2 with a 3D radius sees 32.8% (2D: 47.3%).
+  Near the tree it is the same as the 2D run (63.5% at 0-5 m); at 20-30 m
+  it drops to 19.2% because the 3D distance from a 27.85 m observer to the
+  ground reaches 30 m before the horizontal distance does. Pro crashed
+  again on the classic Viewshed tool, so there are still no arc_vs_* or
+  arc_vis_* results.
