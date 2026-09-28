@@ -98,3 +98,8 @@ trees should be excluded, is still open.
   ground reaches 30 m before the horizontal distance does. Pro crashed
   again on the classic Viewshed tool, so there are still no arc_vs_* or
   arc_vis_* results.
+- Run from the Python Command Prompt, one process per tool: classic
+  Viewshed (2D, 3D) and Visibility (2D, 3D) all end with exit code -1
+  without a Python error. Viewshed2 works. Next test: the classic tools in
+  a plain folder (D:\Temp\onetree), because the old GRID engine they share
+  is known to fail on folder names like "3-regel".

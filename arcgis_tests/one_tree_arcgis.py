@@ -38,7 +38,9 @@ takes Pro down):
 Then, in OSGeo4W Python:  python arcgis_tests\one_tree.py compare
 """
 
+import glob
 import os
+import shutil
 import subprocess
 import sys
 
@@ -47,6 +49,12 @@ from arcpy.sa import Viewshed, Viewshed2, Visibility
 
 DIR = r"D:\Repositories\3-regel\arcgis_tests\one_tree"
 RUN = ["arc_v2_2d", "arc_v2_3d", "arc_vs_2d", "arc_vs_3d", "arc_vis_2d", "arc_vis_3d"]  # remove names to skip
+# The classic Viewshed and Visibility tools (old GRID engine) died with exit
+# code -1 on inputs under D:\Repositories\3-regel (a folder name starting
+# with a digit and containing a hyphen). They therefore work in a plain
+# folder: the inputs are copied there, the tools read and write there, and
+# every result is copied back to DIR. None = work in DIR itself.
+WORK = r"D:\Temp\onetree"
 
 DEM = os.path.join(DIR, "dem.tif")
 TREE = os.path.join(DIR, "tree.shp")
@@ -78,13 +86,30 @@ VARIANTS = [
 ]
 
 
+def copy_files(stem, src, dst):
+    """Copy stem.* (a raster or shapefile with its side files) from src to dst."""
+    for f in glob.glob(os.path.join(src, stem + ".*")):
+        shutil.copy2(f, dst)
+
+
 def main(only=None):
     """Run the variants in RUN in this process (or just `only`)."""
-    for f in (DEM, TREE):
+    global DEM, TREE, TREE_3D
+    for f in (DEM, TREE, TREE_3D):
         if not arcpy.Exists(f):
             raise SystemExit(f"Not found: {f} - run `python arcgis_tests/one_tree.py prepare` first")
+    work = WORK or DIR
+    if WORK:
+        os.makedirs(WORK, exist_ok=True)
+        for stem in ("dem", "tree", "tree_3d"):
+            copy_files(stem, DIR, WORK)
+        DEM = os.path.join(WORK, "dem.tif")
+        TREE = os.path.join(WORK, "tree.shp")
+        TREE_3D = os.path.join(WORK, "tree_3d.shp")
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.overwriteOutput = True
+    arcpy.env.workspace = work
+    arcpy.env.scratchWorkspace = work
     arcpy.env.snapRaster = DEM
     arcpy.env.extent = DEM
     arcpy.env.cellSize = DEM
@@ -96,7 +121,9 @@ def main(only=None):
             continue
         print(f"{name} ...", flush=True)
         try:
-            run().save(os.path.join(DIR, f"{name}.tif"))
+            run().save(os.path.join(work, f"{name}.tif"))
+            if WORK:
+                copy_files(name, WORK, DIR)
             print(f"  saved {name}.tif", flush=True)
         except Exception as exc:        # a normal tool error: report and continue
             print(f"  FAILED: {exc}", flush=True)
