@@ -2,22 +2,21 @@
 build_tiles.py — Build the web map's vector tiles (web/data/zuid-holland.pmtiles)
 from the pipeline results.
 
-Two layers:
-  gemeenten   zoom 6-12: current municipalities of the province with the
-              per-municipality summary (05_merge_province.py), for the
-              province-wide overview
+Layers (the map shows one area level at a time, by zoom):
+  gemeenten   zoom 6-9    current municipalities    } share of homes with
+  wijken      zoom 9-11   CBS wijken 2025           } >= 3 visible trees etc.
+  buurten     zoom 11-12  CBS buurten 2025          } (06_area_summaries.py)
   woningen    zoom 13-16 (the map over-zooms beyond): every residential
               building with its class and number of visible trees
 
 Inputs:
-  data/processed/ZuidHolland_woningen.gpkg, ZuidHolland_samenvatting.csv
-  data/interim/gemeenten.gpkg, provincies.gpkg      (see 05_merge_province.py)
+  data/processed/ZuidHolland_woningen.gpkg        (05_merge_province.py)
+  data/processed/ZuidHolland_gebieden.gpkg        (06_area_summaries.py)
 
 Usage:
     python web/build_tiles.py
 """
 
-import csv
 import json
 import sys
 from pathlib import Path
@@ -29,48 +28,32 @@ from osgeo import gdal, ogr  # noqa: E402
 gdal.UseExceptions()
 ogr.UseExceptions()
 
-PROVINCE = "Zuid-Holland"
 OUT = Path(__file__).resolve().parent / "data" / "zuid-holland.pmtiles"
-BUILDING_ZOOMS = (13, 16)
-MUNICIPALITY_ZOOMS = (6, 12)
+ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12), "woningen": (13, 16)}
 
 
-def municipalities(dst):
-    """Copy the province's municipalities into dst, with the summary columns."""
-    with open(config.PROCESSED_DIR / "ZuidHolland_samenvatting.csv", encoding="utf-8") as fh:
-        summary = {r["gemeente"]: r for r in csv.DictReader(fh)}
-
-    prov_ds = ogr.Open(str(config.INTERIM_DIR / "provincies.gpkg"))
-    prov_layer = prov_ds.GetLayer(0)
-    prov_layer.SetAttributeFilter(f"naam = '{PROVINCE}'")
-    prov_feat = next(iter(prov_layer))
-    prov = prov_feat.GetGeometryRef().Clone()
-
-    src_ds = ogr.Open(str(config.INTERIM_DIR / "gemeenten.gpkg"))
-    src = src_ds.GetLayer(0)
-    src.SetSpatialFilter(prov)
-    out = dst.CreateLayer("gemeenten", src.GetSpatialRef(), ogr.wkbMultiPolygon)
-    fields = [("naam", ogr.OFTString), ("woningen", ogr.OFTInteger),
-              ("pct_3_of_meer", ogr.OFTReal), ("pct_0", ogr.OFTReal)]
-    for name, ftype in fields:
-        out.CreateField(ogr.FieldDefn(name, ftype))
-    n = 0
-    for f in src:
-        g = f.GetGeometryRef()
-        if not prov.Contains(g.PointOnSurface()):     # same rule as 05_merge_province.py
-            continue
-        name = f.GetField("naam")
-        s = summary.get(name)
-        nf = ogr.Feature(out.GetLayerDefn())
-        nf.SetField("naam", name)
-        if s:
-            nf.SetField("woningen", int(s["woningen"]))
-            nf.SetField("pct_3_of_meer", float(s["pct_woningen_3_of_meer"]))
-            nf.SetField("pct_0", float(s["pct_woningen_0"]))
-        nf.SetGeometry(ogr.ForceToMultiPolygon(g.Clone()))
-        out.CreateFeature(nf)
-        n += 1
-    print(f"gemeenten: {n} municipalities ({sum(1 for k in summary if k != PROVINCE)} with scores)")
+def areas(dst):
+    """Copy the gemeenten, wijken and buurten with the fields the map shows."""
+    src_ds = ogr.Open(str(config.PROCESSED_DIR / "ZuidHolland_gebieden.gpkg"))
+    for level in ("gemeenten", "wijken", "buurten"):
+        src = src_ds.GetLayerByName(level)
+        out = dst.CreateLayer(level, src.GetSpatialRef(), ogr.wkbMultiPolygon)
+        fields = [("naam", ogr.OFTString, "naam"), ("gemeente", ogr.OFTString, "gemeente"),
+                  ("woningen", ogr.OFTInteger, "woningen"),
+                  ("pct_3_of_meer", ogr.OFTReal, "pct_woningen_3_of_meer"),
+                  ("pct_0", ogr.OFTReal, "pct_woningen_0")]
+        for name, ftype, _ in fields:
+            out.CreateField(ogr.FieldDefn(name, ftype))
+        out.StartTransaction()
+        for f in src:
+            nf = ogr.Feature(out.GetLayerDefn())
+            for name, _, src_name in fields:
+                if f.GetField(src_name) is not None:
+                    nf.SetField(name, f.GetField(src_name))
+            nf.SetGeometry(f.GetGeometryRef())
+            out.CreateFeature(nf)
+        out.CommitTransaction()
+        print(f"{level}: {out.GetFeatureCount():,}")
 
 
 def buildings(dst):
@@ -100,20 +83,19 @@ def main():
     staging = OUT.with_suffix(".staging.gpkg")
     staging.unlink(missing_ok=True)
     dst = ogr.GetDriverByName("GPKG").CreateDataSource(str(staging))
-    municipalities(dst)
+    areas(dst)
     buildings(dst)
     dst = None
 
-    conf = {"gemeenten": {"minzoom": MUNICIPALITY_ZOOMS[0], "maxzoom": MUNICIPALITY_ZOOMS[1]},
-            "woningen": {"minzoom": BUILDING_ZOOMS[0], "maxzoom": BUILDING_ZOOMS[1]}}
+    conf = {layer: {"minzoom": z0, "maxzoom": z1} for layer, (z0, z1) in ZOOMS.items()}
     tmp = OUT.with_suffix(".partial.pmtiles")
     tmp.unlink(missing_ok=True)
     print("Writing vector tiles …")
     gdal.VectorTranslate(str(tmp), str(staging), format="PMTiles", dstSRS="EPSG:3857",
-                         datasetCreationOptions=[f"MINZOOM={MUNICIPALITY_ZOOMS[0]}",
-                                                 f"MAXZOOM={BUILDING_ZOOMS[1]}",
+                         datasetCreationOptions=[f"MINZOOM={min(z for z, _ in ZOOMS.values())}",
+                                                 f"MAXZOOM={max(z for _, z in ZOOMS.values())}",
                                                  f"CONF={json.dumps(conf)}",
-                                                 "NAME=3-30-300 Zuid-Holland"],
+                                                 "NAME=3-regel Zuid-Holland"],
                          callback=gdal.TermProgress_nocb)
     tmp.replace(OUT)
     staging.unlink()

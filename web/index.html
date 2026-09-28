@@ -40,6 +40,20 @@
   details p { font-size: 12px; margin-top: 6px; }
   .maplibregl-popup-content { background: var(--bg); color: var(--fg); font: inherit; }
   .maplibregl-popup-tip { border-top-color: var(--bg) !important; border-bottom-color: var(--bg) !important; }
+  .info-btn { font: 600 16px/29px Georgia, serif !important; color: #333; }
+  dialog#info { max-width: 560px; width: calc(100vw - 48px); box-sizing: border-box;
+                border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+                color: var(--fg); padding: 18px 20px; }
+  dialog#info::backdrop { background: rgba(0, 0, 0, .35); }
+  dialog#info h2 { font-size: 16px; margin: 0 0 10px; }
+  dialog#info h3 { font-size: 13px; margin: 14px 0 4px; }
+  dialog#info table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  dialog#info td, dialog#info th { text-align: left; vertical-align: top; padding: 4px 6px;
+                                   border-bottom: 1px solid var(--border); }
+  dialog#info p { font-size: 13px; margin: 6px 0; }
+  dialog#info a { color: inherit; }
+  dialog#info .close { float: right; border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+                       border-radius: 6px; padding: 3px 10px; cursor: pointer; font: inherit; }
   @media (max-width: 600px) {
     .panel { top: auto; bottom: 24px; padding: 10px 12px; }
     .panel p.intro, details { display: none; }
@@ -62,19 +76,32 @@
   <div id="legend-buildings">
     <div class="legend-title">Zichtbare bomen per woning</div>
   </div>
-  <div id="legend-municipalities">
-    <div class="legend-title">Woningen met ≥ 3 zichtbare bomen</div>
+  <div id="legend-areas">
+    <div class="legend-title" id="legend-areas-title">Woningen met ≥ 3 zichtbare bomen</div>
   </div>
-  <div class="hint" id="hint">Zoom in om de afzonderlijke woningen te zien.</div>
+  <div class="hint" id="hint"></div>
 
   <details>
     <summary>Hoe is dit berekend?</summary>
     <p>Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin
        (AHN4-hoogtemodel, 0,5 m). Een woning (BAG-pand met een woonfunctie) krijgt het hoogste
        aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte)
-       gezien wordt. Grijs: geen vrije gevel om te meten, bijvoorbeeld een ingesloten pand.</p>
+       gezien wordt. Grijs: geen vrije gevel om te meten, bijvoorbeeld een ingesloten pand.
+       Bronnen en actualiteit: knop <b>i</b> rechtsboven.</p>
   </details>
 </div>
+
+<dialog id="info">
+  <button class="close" id="info-close" type="button">Sluiten</button>
+  <h2>Bronnen en actualiteit</h2>
+  <table id="sources"><tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr></table>
+  <h3>Is alles vergelijkbaar in de tijd?</h3>
+  <p id="timing"></p>
+  <h3>Methode en code</h3>
+  <p>De volledige berekening, de keuzes en de bekende open punten staan in de
+     <a href="https://github.com/RobertoTjesse/3-regel" target="_blank" rel="noopener">GitHub-repository</a>
+     (zie ook de <a href="https://github.com/RobertoTjesse/3-regel/issues" target="_blank" rel="noopener">open punten</a>).</p>
+</dialog>
 
 <script>
 // ---------------------------------------------------------------------------
@@ -92,18 +119,63 @@ const CLASSES = [
 ];
 const NO_RING = ["#bdbdbd", "geen vrije gevel"];
 
-// Municipalities: share of homes with >= 3 visible trees (%)
-const MUNICIPALITY_STEPS = [
-  [0,  "#fdae6b", "< 90%"],
-  [90, "#c7e9c0", "90-94%"],
-  [94, "#74c476", "94-97%"],
-  [97, "#238b45", "≥ 97%"],
+// Areas (gemeente / wijk / buurt): share of homes with >= 3 visible trees (%).
+// One scale for all levels, so colours compare across them.
+const AREA_STEPS = [
+  [0,  "#d7301f", "< 80%"],
+  [80, "#fdae6b", "80-90%"],
+  [90, "#c7e9c0", "90-95%"],
+  [95, "#74c476", "95-98%"],
+  [98, "#238b45", "≥ 98%"],
+];
+const MIN_HOMES = 10;                        // fewer homes: no percentage shown
+const FEW_HOMES = ["#d9d9d9", `minder dan ${MIN_HOMES} woningen`];
+
+// Which level is shown at which zoom (web/build_tiles.py holds each level in this range)
+const LEVELS = [
+  { layer: "gemeenten", name: "gemeente", from: 0,    to: 10 },
+  { layer: "wijken",    name: "wijk",     from: 10,   to: 11.5 },
+  { layer: "buurten",   name: "buurt",    from: 11.5, to: 13 },
 ];
 const BUILDINGS_FROM_ZOOM = 13;
+
+// Sources shown under the (i) button: [data, source (HTML), state/date]
+const SOURCES = [
+  ["Hoogtemodel", '<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, oppervlaktemodel 0,5 m (ruw)', "ingewonnen 2020–2022"],
+  ["Bomen", "Bomenbestand met boomposities (alle statussen, zie open punten)", "status 2020–2022"],
+  ["Woningen en panden", '<a href="https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag" target="_blank" rel="noopener">BAG</a> via PDOK', "27 september 2026"],
+  ["Gemeentegrenzen", "Bestuurlijke gebieden (Kadaster) via PDOK", "28 september 2026"],
+  ["Wijken en buurten", '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2025" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2025</a> via PDOK', "2025"],
+  ["Achtergrondkaart", "BRT-achtergrondkaart grijs (Kadaster) via PDOK", "actueel"],
+];
+const TIMING = "Hoogtemodel en bomen komen uit dezelfde periode (2020–2022) en passen dus bij elkaar. " +
+  "De woningen (BAG) zijn van 2026. Woningen die na de inwinning van het hoogtemodel zijn gebouwd, " +
+  "staan wel op de kaart, maar hun omgeving is die van 2020–2022: bomen die sindsdien zijn geplant of " +
+  "gekapt en gebouwen die sindsdien zijn verrezen, zijn niet meegenomen. Het gaat om 3 à 5% van de " +
+  "woningen: 53.000 woningen staan in een pand met bouwjaar 2023 of later, 97.000 met bouwjaar 2020 " +
+  "of later (van 1,8 miljoen; BAG-bouwjaar). Deze woningen zijn niet weggefilterd.";
 // ---------------------------------------------------------------------------
 
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
+
+const areaColour = ["case",
+  ["<", ["coalesce", ["get", "woningen"], 0], MIN_HOMES], FEW_HOMES[0],
+  ["step", ["coalesce", ["get", "pct_3_of_meer"], 0],
+   ...AREA_STEPS.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]];
+
+const areaLayers = LEVELS.flatMap((lv) => [
+  {
+    id: `${lv.layer}-fill`, type: "fill", source: "data", "source-layer": lv.layer,
+    minzoom: lv.from, maxzoom: lv.to,
+    paint: { "fill-color": areaColour, "fill-opacity": 0.75 },
+  },
+  {
+    id: `${lv.layer}-line`, type: "line", source: "data", "source-layer": lv.layer,
+    minzoom: lv.from, maxzoom: lv.to,
+    paint: { "line-color": "#555", "line-width": lv.layer === "gemeenten" ? 0.8 : 0.5 },
+  },
+]);
 
 const map = new maplibregl.Map({
   container: "map",
@@ -122,25 +194,12 @@ const map = new maplibregl.Map({
       },
       data: {
         type: "vector", url: "pmtiles://" + new URL(TILES, location.href).href,
-        attribution: "BAG, AHN4, bomen: provincie Zuid-Holland",
+        attribution: "AHN4, BAG, CBS, bomenbestand (bronnen: knop i)",
       },
     },
     layers: [
       { id: "brt", type: "raster", source: "brt" },
-      {
-        id: "gemeenten-fill", type: "fill", source: "data", "source-layer": "gemeenten",
-        maxzoom: BUILDINGS_FROM_ZOOM,
-        paint: {
-          "fill-color": ["step", ["coalesce", ["get", "pct_3_of_meer"], 0],
-                         ...MUNICIPALITY_STEPS.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])],
-          "fill-opacity": 0.75,
-        },
-      },
-      {
-        id: "gemeenten-line", type: "line", source: "data", "source-layer": "gemeenten",
-        maxzoom: BUILDINGS_FROM_ZOOM,
-        paint: { "line-color": "#555", "line-width": 0.8 },
-      },
+      ...areaLayers,
       {
         id: "woningen", type: "fill", source: "data", "source-layer": "woningen",
         minzoom: BUILDINGS_FROM_ZOOM,
@@ -154,8 +213,37 @@ const map = new maplibregl.Map({
     ],
   },
 });
+
+// (i) button: sources and dates
+const info = document.getElementById("info");
+class InfoControl {
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "info-btn";
+    btn.title = btn.ariaLabel = "Bronnen en actualiteit";
+    btn.textContent = "i";
+    btn.onclick = () => info.showModal();
+    div.appendChild(btn);
+    return div;
+  }
+  onRemove() {}
+}
+map.addControl(new InfoControl(), "top-right");
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+const table = document.getElementById("sources");
+for (const [what, src, when] of SOURCES) {
+  const tr = table.insertRow();
+  tr.insertCell().textContent = what;
+  tr.insertCell().innerHTML = src;
+  tr.insertCell().textContent = when;
+}
+document.getElementById("timing").textContent = TIMING;
+document.getElementById("info-close").onclick = () => info.close();
 
 // Legend
 function legendRow(colour, label) {
@@ -168,20 +256,29 @@ function legendRow(colour, label) {
 const lb = document.getElementById("legend-buildings");
 CLASSES.forEach(([, c, l]) => lb.appendChild(legendRow(c, l)));
 lb.appendChild(legendRow(NO_RING[0], NO_RING[1]));
-const lm = document.getElementById("legend-municipalities");
-MUNICIPALITY_STEPS.forEach(([, c, l]) => lm.appendChild(legendRow(c, l)));
+const la = document.getElementById("legend-areas");
+AREA_STEPS.forEach(([, c, l]) => la.appendChild(legendRow(c, l)));
+la.appendChild(legendRow(FEW_HOMES[0], FEW_HOMES[1]));
 
 function updateLegend() {
-  const buildings = map.getZoom() >= BUILDINGS_FROM_ZOOM;
-  lb.style.display = buildings ? "" : "none";
-  lm.style.display = buildings ? "none" : "";
-  document.getElementById("hint").style.display = buildings ? "none" : "";
+  const z = map.getZoom();
+  const i = LEVELS.findIndex((lv) => z >= lv.from && z < lv.to);
+  lb.style.display = i < 0 ? "" : "none";
+  la.style.display = i < 0 ? "none" : "";
+  const hint = document.getElementById("hint");
+  hint.style.display = i < 0 ? "none" : "";
+  if (i >= 0) {
+    document.getElementById("legend-areas-title").textContent =
+      `Woningen met ≥ 3 zichtbare bomen, per ${LEVELS[i].name}`;
+    hint.textContent = `Zoom in voor ${i + 1 < LEVELS.length ? "de " + LEVELS[i + 1].layer : "de afzonderlijke woningen"}.`;
+  }
 }
 map.on("zoom", updateLegend);
 updateLegend();
 
 // Popups
 const fmt = (n) => n == null ? "–" : Number(n).toLocaleString("nl-NL");
+const pct = (n) => n == null ? "–" : `${fmt(n)}%`;
 function popup(lngLat, rows) {
   const div = document.createElement("div");
   rows.forEach(([k, v], i) => {
@@ -199,16 +296,19 @@ map.on("click", "woningen", (e) => {
     ["Gemeente", p.gemeente],
   ]);
 });
-map.on("click", "gemeenten-fill", (e) => {
-  const p = e.features[0].properties;
-  popup(e.lngLat, [
-    [null, p.naam],
-    ["Woningen", fmt(p.woningen)],
-    ["Met ≥ 3 zichtbare bomen", p.pct_3_of_meer == null ? "–" : `${fmt(p.pct_3_of_meer)}%`],
-    ["Met 0 zichtbare bomen", p.pct_0 == null ? "–" : `${fmt(p.pct_0)}%`],
-  ]);
-});
-for (const id of ["woningen", "gemeenten-fill"]) {
+for (const lv of LEVELS) {
+  map.on("click", `${lv.layer}-fill`, (e) => {
+    const p = e.features[0].properties;
+    const few = (p.woningen ?? 0) < MIN_HOMES;
+    popup(e.lngLat, [
+      [null, lv.layer === "gemeenten" ? p.naam : `${p.naam} (${lv.name}, ${p.gemeente})`],
+      ["Woningen", fmt(p.woningen)],
+      ["Met ≥ 3 zichtbare bomen", few ? `– (minder dan ${MIN_HOMES} woningen)` : pct(p.pct_3_of_meer)],
+      ["Met 0 zichtbare bomen", few ? "–" : pct(p.pct_0)],
+    ]);
+  });
+}
+for (const id of ["woningen", ...LEVELS.map((lv) => `${lv.layer}-fill`)]) {
   map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
   map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
 }
