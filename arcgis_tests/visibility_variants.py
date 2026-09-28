@@ -72,7 +72,12 @@ CANOPY_RADIUS_CELLS = 3       # 3 x 0.5 m = 1.5 m, as TREE_HEIGHT_BUFFER_RADIUS
 # which is what the reference run used.
 VARIANTS = [
     # name, tool, keyword arguments for that tool
+    # Visibility reads a positive radius as 3D line-of-sight distance and a
+    # negative one as 2D (Esri docs); the reference run used "30", i.e. 3D.
+    # GDAL and Viewshed2 (default) use 2D.
     ("vis_interp_default", "Visibility", dict(observer_elevation="Z_INTERP", observer_offset="")),
+    ("vis_interp_default_2d", "Visibility", dict(observer_elevation="Z_INTERP", observer_offset="",
+                                                 outer_radius="-30")),   # = -OUTER_RADIUS
     ("vis_interp_off0",    "Visibility", dict(observer_elevation="Z_INTERP", observer_offset="0")),
     ("vis_cell_default",   "Visibility", dict(observer_elevation="Z_CELL", observer_offset="")),
     ("vis_canopy_off0",    "Visibility", dict(observer_elevation="CANOPY_TOP", observer_offset="0")),
@@ -84,11 +89,15 @@ VARIANTS = [
     ("v2_canopy_off0",     "Viewshed2",  dict(observer_elevation="CANOPY_TOP", observer_offset="0")),
 ]
 ONLY = []                     # e.g. ["vis_interp_default", "v2_canopy_off0"]; [] = all
-# Tools to run. The legacy Visibility tool crashes ArcGIS Pro 3.6.1 on this
-# machine (native access violation — Pro closes, Python can't catch it),
-# even on the reference run's own data; it did work on the machine that
-# made visibility_Delft. Add "Visibility" back when running it there.
-RUN_TOOLS = ["Viewshed2"]
+# Tools to run. The Visibility tool has crashed ArcGIS Pro 3.6.1 on this
+# machine (native access violation — Pro closes, Python can't catch it):
+# save the project first. Fallback: run the tool from its dialog with the
+# parameters of a variant below and save the output in OUT_GDB under the
+# variant's name — this script then collects it (REUSE_EXISTING).
+RUN_TOOLS = ["Visibility"]
+# True: a variant whose raster already exists in OUT_GDB is not recomputed,
+# only copied and summarised; prepared test inputs are reused too.
+REUSE_EXISTING = True
 # ---------------------------------------------------------------------------
 
 SURFACE_OFFSET = 1.8          # target (eye) height, same as the reference run
@@ -98,6 +107,11 @@ CSV_PATH = os.path.join(REPO, "arcgis_tests", "visibility_variants.csv")
 
 def prepare_inputs():
     """Clip DEM + trees to the test area (+ margin) and add observer height fields."""
+    dem = os.path.join(OUT_GDB, "dem_test")
+    valid = os.path.join(OUT_GDB, "trees_test_valid")
+    if REUSE_EXISTING and arcpy.Exists(dem) and arcpy.Exists(valid):
+        print(f"Reusing prepared inputs: {dem}, {valid} ({arcpy.management.GetCount(valid)[0]} trees)")
+        return dem, valid
     ext = arcpy.Extent(XMIN - MARGIN, YMIN - MARGIN, XMAX + MARGIN, YMAX + MARGIN)
     sr = arcpy.Describe(DEM).spatialReference
     box = arcpy.Polygon(arcpy.Array([arcpy.Point(ext.XMin, ext.YMin), arcpy.Point(ext.XMin, ext.YMax),
@@ -105,7 +119,6 @@ def prepare_inputs():
     box_fc = os.path.join(OUT_GDB, "test_area_with_margin")
     arcpy.management.CopyFeatures(box, box_fc)
 
-    dem = os.path.join(OUT_GDB, "dem_test")
     arcpy.management.Clip(DEM, f"{ext.XMin} {ext.YMin} {ext.XMax} {ext.YMax}", dem,
                           nodata_value="", clipping_geometry="NONE",
                           maintain_clipping_extent="MAINTAIN_EXTENT")
@@ -124,7 +137,6 @@ def prepare_inputs():
     lyr = arcpy.management.MakeFeatureLayer(
         trees, "trees_valid", "Z_INTERP IS NOT NULL AND Z_CELL IS NOT NULL AND CANOPY_TOP IS NOT NULL")
     n_valid = int(arcpy.management.GetCount(lyr)[0])
-    valid = os.path.join(OUT_GDB, "trees_test_valid")
     arcpy.management.CopyFeatures(lyr, valid)
     arcpy.management.Delete(lyr)
     print(f"{n_valid} of {n_all} trees in the test area (+{MARGIN:.0f} m) have all heights")
@@ -198,9 +210,11 @@ def main():
         print(f"\n{name}: {tool} {kwargs}")
         t0 = time.time()
         try:
-            out = run_variant(tool, dem, trees, kwargs)
             path = os.path.join(OUT_GDB, name)
-            out.save(path)
+            if REUSE_EXISTING and arcpy.Exists(path):
+                print("  exists — reusing (set REUSE_EXISTING = False to recompute)")
+            else:
+                run_variant(tool, dem, trees, kwargs).save(path)
             if COPY_TO_EXPERIMENTS:
                 arcpy.management.CopyRaster(path, os.path.join(EXPERIMENTS_DIR, f"arc_{name}.tif"),
                                             pixel_type="16_BIT_UNSIGNED", format="TIFF")
@@ -213,11 +227,17 @@ def main():
             print(f"  FAILED: {exc}")
             results.append({"variant": name, "tool": tool, "params": repr(kwargs), "error": str(exc)})
 
+    # Merge with earlier runs (e.g. the other tool): replace rows by variant name
     fields = ["variant", "tool", "params", "pixels", "mean", "pct_0", "pct_ge3", "max", "seconds", "error"]
+    rows = {}
+    if os.path.exists(CSV_PATH):
+        with open(CSV_PATH, newline="", encoding="utf-8") as fh:
+            rows = {r["variant"]: r for r in csv.DictReader(fh)}
+    rows.update({r["variant"]: r for r in results})
     with open(CSV_PATH, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)
         w.writeheader()
-        w.writerows(results)
+        w.writerows(rows[v[0]] for v in VARIANTS if v[0] in rows)
     print(f"\nSummary: {CSV_PATH}")
     if COPY_TO_EXPERIMENTS:
         print("Rasters copied to data\\processed\\experiments\\ — run qgis_validation\\build_project.py "
