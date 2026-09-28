@@ -83,3 +83,12 @@ trees should be excluded, is still open.
 - Lesson: with an unfilled NoData sentinel (3.4e38) in the clip the
   results were meaningless for every tool — the fill matters.
 - Tree data: NEO (purchased); the web map now says so.
+- Result: GDAL 37.7% of cells visible, exact reference 36.4%, ArcGIS
+  Viewshed2 47.3% (2D radius). Of the cells only Viewshed2 sees, 83% are
+  blocked in the exact test by the tree's own crown within 5 m (median
+  1.2 m from the tree, 0.27 m above the sightline): Viewshed2 hardly lets
+  the surface right around the observer block. GDAL is close to exact.
+- The classic ArcGIS Viewshed tool crashes Pro 3.6.1 here too.
+- Water/NoData: no rerun needed — stage 1 fills NoData in every tile, and
+  all 52 municipalities were tiled after that fix; only the ad-hoc test
+  clip (cut straight from the ArcGIS DEM) needed filling.
