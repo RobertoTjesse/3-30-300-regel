@@ -182,6 +182,28 @@ C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py
 The `.qgz` is gitignored (generated, machine-specific data behind it); the
 script is tracked.
 
+## Web map
+
+Public map of the results: https://robertotjesse.github.io/3-regel/ —
+municipalities (share of homes with >= 3 visible trees) when zoomed out,
+every residential building in its class from zoom 13, on the PDOK grey
+basemap, with address search.
+
+It is one static page (`web/index.html`, MapLibre) plus one vector-tile
+file (`web/data/zuid-holland.pmtiles`, ~85 MB — GitHub's per-file limit is
+100 MB), served by GitHub Pages from the `gh-pages` branch. The tile file
+is never committed to `master`. To update after new results:
+
+```
+python web\build_tiles.py        # after 05_merge_province.py
+python web\serve.py              # optional: preview at http://localhost:8000
+```
+
+then replace `index.html` and `data/zuid-holland.pmtiles` on the `gh-pages`
+branch (a single commit, force-pushed, so old tile files don't pile up in
+its history). Colours, class labels and texts are at the top of the
+`<script>` in `web/index.html`.
+
 ## Data layout
 
 ```
