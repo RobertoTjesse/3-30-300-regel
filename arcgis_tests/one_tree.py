@@ -10,7 +10,9 @@ difference comes from the viewshed calculation itself.
 
 Shared inputs, written to arcgis_tests/one_tree/ by `prepare`:
   dem.tif      AHN5 raw DSM 0.5 m (the reference run's DEM), 60 m around the tree
-  tree.shp     the tree point, field OBS_Z = absolute observer elevation (m NAP)
+  tree.shp     the tree point, field OBS_Z = absolute observer elevation (m NAP),
+               plus the classic Viewshed tool's SPOT/OFFSETA/OFFSETB/RADIUS2
+               (2D radius); tree_3d.shp the same with a 3D radius
 Settings: observer at OBS_Z (offset 0), target 1.8 m above the DSM, 30 m radius
 (2D), flat earth.
 
@@ -115,21 +117,29 @@ def prepare():
     print(f"dem.tif {dem.shape}, {n_nodata} NoData cells filled, range {dem.min():.2f} .. {dem.max():.2f} m")
     ds = None
 
-    # tree point with the absolute observer elevation
+    # Tree point with the absolute observer elevation. OBS_Z is passed
+    # explicitly to Viewshed2 / Visibility; the classic Viewshed tool only
+    # reads its fixed field names: SPOT (observer elevation), OFFSETA
+    # (observer offset), OFFSETB (target offset), RADIUS2 (outer radius,
+    # negative = 2D) — hence tree.shp (2D) and tree_3d.shp (RADIUS2 = +30).
     srs = osr.SpatialReference()
     srs.ImportFromWkt(wkt)
-    shp = DIR / "tree.shp"
     drv = ogr.GetDriverByName("ESRI Shapefile")
-    if shp.exists():
-        drv.DeleteDataSource(str(shp))
-    vds = drv.CreateDataSource(str(shp))
-    layer = vds.CreateLayer("tree", srs, ogr.wkbPoint)
-    layer.CreateField(ogr.FieldDefn("OBS_Z", ogr.OFTReal))
-    f = ogr.Feature(layer.GetLayerDefn())
-    f.SetField("OBS_Z", OBS_Z)
-    f.SetGeometry(ogr.CreateGeometryFromWkt(f"POINT ({TREE_X} {TREE_Y})"))
-    layer.CreateFeature(f)
-    vds = None
+    for fname, radius2 in (("tree.shp", -RADIUS), ("tree_3d.shp", RADIUS)):
+        shp = DIR / fname
+        if shp.exists():
+            drv.DeleteDataSource(str(shp))
+        vds = drv.CreateDataSource(str(shp))
+        layer = vds.CreateLayer(shp.stem, srs, ogr.wkbPoint)
+        values = {"OBS_Z": OBS_Z, "SPOT": OBS_Z, "OFFSETA": 0.0, "OFFSETB": TARGET_HEIGHT, "RADIUS2": radius2}
+        for k in values:
+            layer.CreateField(ogr.FieldDefn(k, ogr.OFTReal))
+        f = ogr.Feature(layer.GetLayerDefn())
+        for k, v in values.items():
+            f.SetField(k, v)
+        f.SetGeometry(ogr.CreateGeometryFromWkt(f"POINT ({TREE_X} {TREE_Y})"))
+        layer.CreateFeature(f)
+        vds = None
 
     # GDAL, as the pipeline calls it (observerHeight is added to the observer cell's DEM value)
     ds = gdal.Open(str(DIR / "dem.tif"))
@@ -148,7 +158,7 @@ def prepare():
 
     for name, order in (("exact_bilinear", 1), ("exact_nearest", 0)):
         write_raster(DIR / f"{name}.tif", exact_visibility(dem, gt, order), gt, wkt)
-    print(f"Wrote dem.tif, tree.shp, gdal.tif, exact_bilinear.tif, exact_nearest.tif in {DIR}")
+    print(f"Wrote dem.tif, tree.shp, tree_3d.shp, gdal.tif, exact_bilinear.tif, exact_nearest.tif in {DIR}")
 
 
 def compare():
