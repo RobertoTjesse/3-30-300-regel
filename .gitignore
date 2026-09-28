@@ -46,3 +46,6 @@ qgis_validation/*.qgd
 # ArcGIS test runs (arcgis_tests/visibility_variants.py) — outputs only
 arcgis_tests/*.gdb/
 arcgis_tests/*.csv
+
+# Web map data — built by web/build_tiles.py, published on the gh-pages branch only
+web/data/

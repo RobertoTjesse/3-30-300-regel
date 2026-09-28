@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3-30-300 Zuid-Holland</title>
+<meta name="description" content="Hoeveel bomen zijn zichtbaar vanaf elke woning in Zuid-Holland? De '3' van de 3-30-300-regel.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pmtiles@4/dist/pmtiles.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0;
+    --panel-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c2128; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d;
+      --panel-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+    }
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+               font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  .panel { position: absolute; top: 12px; left: 12px; width: 300px; max-width: calc(100vw - 24px);
+           box-sizing: border-box; background: var(--bg); border: 1px solid var(--border);
+           border-radius: 8px; box-shadow: var(--panel-shadow); padding: 14px 16px; z-index: 1; }
+  .panel h1 { font-size: 17px; margin: 0 0 4px; }
+  .panel p { margin: 0 0 10px; color: var(--muted); }
+  .search { display: flex; gap: 6px; margin-bottom: 12px; }
+  .search input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border);
+                  border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+  .search button { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+                   background: var(--bg); color: var(--fg); font: inherit; cursor: pointer; }
+  .legend-title { font-weight: 600; margin: 8px 0 4px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+  .swatch { width: 16px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,.25); flex: none; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 10px; }
+  details p { font-size: 12px; margin-top: 6px; }
+  .maplibregl-popup-content { background: var(--bg); color: var(--fg); font: inherit; }
+  .maplibregl-popup-tip { border-top-color: var(--bg) !important; border-bottom-color: var(--bg) !important; }
+  @media (max-width: 600px) {
+    .panel { top: auto; bottom: 24px; padding: 10px 12px; }
+    .panel p.intro, details { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="panel">
+  <h1>3-30-300 in Zuid-Holland</h1>
+  <p class="intro">Hoeveel bomen zijn zichtbaar vanaf elke woning? De "3" van de 3-30-300-regel:
+     elke woning ziet minstens 3 bomen.</p>
+
+  <form class="search" id="search">
+    <input id="q" type="search" placeholder="Zoek adres of plaats" aria-label="Zoek adres of plaats">
+    <button type="submit">Zoek</button>
+  </form>
+
+  <div id="legend-buildings">
+    <div class="legend-title">Zichtbare bomen per woning</div>
+  </div>
+  <div id="legend-municipalities">
+    <div class="legend-title">Woningen met ≥ 3 zichtbare bomen</div>
+  </div>
+  <div class="hint" id="hint">Zoom in om de afzonderlijke woningen te zien.</div>
+
+  <details>
+    <summary>Hoe is dit berekend?</summary>
+    <p>Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin
+       (AHN4-hoogtemodel, 0,5 m). Een woning (BAG-pand met een woonfunctie) krijgt het hoogste
+       aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte)
+       gezien wordt. Grijs: geen vrije gevel om te meten, bijvoorbeeld een ingesloten pand.</p>
+  </details>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Settings — edit colours and texts here
+// ---------------------------------------------------------------------------
+const TILES = "data/zuid-holland.pmtiles";
+
+// Building classes: same colours as the QGIS project (qgis_validation/build_project.py)
+const CLASSES = [
+  ["0",   "#d7191c", "0 bomen"],
+  ["1-2", "#fd8d3c", "1-2 bomen"],
+  ["3-5", "#74c476", "3-5 bomen"],
+  ["6-7", "#31a354", "6-7 bomen"],
+  ["8+",  "#006d2c", "8 of meer bomen"],
+];
+const NO_RING = ["#bdbdbd", "geen vrije gevel"];
+
+// Municipalities: share of homes with >= 3 visible trees (%)
+const MUNICIPALITY_STEPS = [
+  [0,  "#fdae6b", "< 90%"],
+  [90, "#c7e9c0", "90-94%"],
+  [94, "#74c476", "94-97%"],
+  [97, "#238b45", "≥ 97%"],
+];
+const BUILDINGS_FROM_ZOOM = 13;
+// ---------------------------------------------------------------------------
+
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol("pmtiles", protocol.tile);
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: [4.45, 52.0],
+  zoom: 9,
+  minZoom: 7,
+  hash: true,              // position in the URL, so a link opens the same view
+  maxBounds: [[2.8, 51.2], [5.9, 52.6]],
+  style: {
+    version: 8,
+    sources: {
+      brt: {
+        type: "raster", tileSize: 256, maxzoom: 19,
+        tiles: ["https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png"],
+        attribution: 'Achtergrond: <a href="https://www.pdok.nl">PDOK</a> BRT-achtergrondkaart (Kadaster)',
+      },
+      data: {
+        type: "vector", url: "pmtiles://" + new URL(TILES, location.href).href,
+        attribution: "BAG, AHN4, bomen: provincie Zuid-Holland",
+      },
+    },
+    layers: [
+      { id: "brt", type: "raster", source: "brt" },
+      {
+        id: "gemeenten-fill", type: "fill", source: "data", "source-layer": "gemeenten",
+        maxzoom: BUILDINGS_FROM_ZOOM,
+        paint: {
+          "fill-color": ["step", ["coalesce", ["get", "pct_3_of_meer"], 0],
+                         ...MUNICIPALITY_STEPS.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])],
+          "fill-opacity": 0.75,
+        },
+      },
+      {
+        id: "gemeenten-line", type: "line", source: "data", "source-layer": "gemeenten",
+        maxzoom: BUILDINGS_FROM_ZOOM,
+        paint: { "line-color": "#555", "line-width": 0.8 },
+      },
+      {
+        id: "woningen", type: "fill", source: "data", "source-layer": "woningen",
+        minzoom: BUILDINGS_FROM_ZOOM,
+        paint: {
+          "fill-color": ["match", ["coalesce", ["get", "klasse"], ""],
+                         ...CLASSES.flatMap(([k, c]) => [k, c]), NO_RING[0]],
+          "fill-opacity": 0.9,
+          "fill-outline-color": "rgba(40,40,40,0.5)",
+        },
+      },
+    ],
+  },
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+// Legend
+function legendRow(colour, label) {
+  const row = document.createElement("div");
+  row.className = "legend-row";
+  row.innerHTML = `<span class="swatch" style="background:${colour}"></span><span></span>`;
+  row.lastChild.textContent = label;
+  return row;
+}
+const lb = document.getElementById("legend-buildings");
+CLASSES.forEach(([, c, l]) => lb.appendChild(legendRow(c, l)));
+lb.appendChild(legendRow(NO_RING[0], NO_RING[1]));
+const lm = document.getElementById("legend-municipalities");
+MUNICIPALITY_STEPS.forEach(([, c, l]) => lm.appendChild(legendRow(c, l)));
+
+function updateLegend() {
+  const buildings = map.getZoom() >= BUILDINGS_FROM_ZOOM;
+  lb.style.display = buildings ? "" : "none";
+  lm.style.display = buildings ? "none" : "";
+  document.getElementById("hint").style.display = buildings ? "none" : "";
+}
+map.on("zoom", updateLegend);
+updateLegend();
+
+// Popups
+const fmt = (n) => n == null ? "–" : Number(n).toLocaleString("nl-NL");
+function popup(lngLat, rows) {
+  const div = document.createElement("div");
+  rows.forEach(([k, v], i) => {
+    const line = document.createElement(i === 0 ? "strong" : "div");
+    line.textContent = k === null ? v : `${k}: ${v}`;
+    div.appendChild(line);
+  });
+  new maplibregl.Popup({ maxWidth: "260px" }).setLngLat(lngLat).setDOMContent(div).addTo(map);
+}
+map.on("click", "woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, p.bomen == null ? "Geen vrije gevel" : `${fmt(p.bomen)} zichtbare bomen`],
+    ["Woningen in dit pand", fmt(p.woningen)],
+    ["Gemeente", p.gemeente],
+  ]);
+});
+map.on("click", "gemeenten-fill", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, p.naam],
+    ["Woningen", fmt(p.woningen)],
+    ["Met ≥ 3 zichtbare bomen", p.pct_3_of_meer == null ? "–" : `${fmt(p.pct_3_of_meer)}%`],
+    ["Met 0 zichtbare bomen", p.pct_0 == null ? "–" : `${fmt(p.pct_0)}%`],
+  ]);
+});
+for (const id of ["woningen", "gemeenten-fill"]) {
+  map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
+}
+
+// Address search: PDOK Locatieserver
+document.getElementById("search").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const q = document.getElementById("q").value.trim();
+  if (!q) return;
+  const url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?rows=1&fl=weergavenaam,centroide_ll,type"
+            + "&fq=provincienaam:Zuid-Holland&q=" + encodeURIComponent(q);
+  try {
+    const doc = (await (await fetch(url)).json()).response.docs[0];
+    if (!doc) { alert("Niets gevonden voor: " + q); return; }
+    const [lon, lat] = doc.centroide_ll.match(/POINT\(([^ ]+) ([^)]+)\)/).slice(1).map(Number);
+    const zoom = { adres: 18, weg: 16, postcode: 16, woonplaats: 13, gemeente: 11 }[doc.type] ?? 15;
+    map.flyTo({ center: [lon, lat], zoom });
+  } catch (err) {
+    alert("Zoeken lukt niet: " + err.message);
+  }
+});
+</script>
+</body>
+</html>
