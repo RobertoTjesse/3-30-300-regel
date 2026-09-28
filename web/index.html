@@ -142,7 +142,7 @@ const BUILDINGS_FROM_ZOOM = 13;
 // Sources shown under the (i) button: [data, source (HTML), state/date]
 const SOURCES = [
   ["Hoogtemodel", '<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, oppervlaktemodel 0,5 m (ruw)', "ingewonnen 2020–2022"],
-  ["Bomen", "Bomenbestand met boomposities (alle statussen, zie open punten)", "status 2020–2022"],
+  ["Bomen", "NEO boomdata (aangekocht; boomposities zelf niet gepubliceerd, alle statussen meegeteld, zie open punten)", "status 2020–2022"],
   ["Woningen en panden", '<a href="https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag" target="_blank" rel="noopener">BAG</a> via PDOK', "27 september 2026"],
   ["Gemeentegrenzen", "Bestuurlijke gebieden (Kadaster) via PDOK", "28 september 2026"],
   ["Wijken en buurten", '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2025" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2025</a> via PDOK', "2025"],
@@ -194,7 +194,7 @@ const map = new maplibregl.Map({
       },
       data: {
         type: "vector", url: "pmtiles://" + new URL(TILES, location.href).href,
-        attribution: "AHN4, BAG, CBS, bomenbestand (bronnen: knop i)",
+        attribution: "AHN4, BAG, CBS, bomen: NEO (bronnen: knop i)",
       },
     },
     layers: [
