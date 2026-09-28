@@ -30,7 +30,8 @@ HOW TO RUN — from a command prompt (preferred; ArcGIS Pro may stay closed):
     "C:\Program Files\ArcGIS\Pro\bin\Python\scripts\propy.bat" D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py
   Every variant then runs in its own child process: a tool that crashes
   only loses its own result, and the next variant still runs. Variants
-  whose .tif already exists are skipped (delete the .tif to redo one).
+  whose .tif already exists are skipped (delete the .tif to redo one;
+  this also holds in the Python window).
 Or in ArcGIS Pro → Analysis → Python window (all in one process — a crash
 takes Pro down):
     exec(open(r"D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py", encoding="utf-8").read())
@@ -89,6 +90,9 @@ def main(only=None):
     arcpy.env.cellSize = DEM
     for name, run in VARIANTS:
         if name not in (RUN if only is None else [only]):
+            continue
+        if only is None and os.path.exists(os.path.join(DIR, f"{name}.tif")):
+            print(f"{name}: already there, skipped")
             continue
         print(f"{name} ...", flush=True)
         try:
