@@ -8,6 +8,8 @@ This replaces an earlier QGIS/PyQGIS prototype which wrote one output raster
 Instead this pipeline accumulates visible-pixel counts per DEM tile and
 merges once per municipality.
 
+Recent work, step by step: [`WORKLOG.md`](WORKLOG.md).
+
 ## Setup
 
 GDAL/OGR comes from a **QGIS / OSGeo4W install**, not pip. Machine-specific
@@ -230,6 +232,15 @@ automatically as the pipeline runs) into `BENCHMARKS.md`.
 
 ## Known data issues
 
+- **[OPEN]** Tree status: 21% of the trees the pipeline counts are marked
+  "disappeared, small tree" in the source registry (`current_st`), 3% "not
+  seen once". Whether they should be excluded is unclear —
+  [issue #1](https://github.com/RobertoTjesse/3-regel/issues/1).
+- **[OPEN]** ArcGIS comparison: ArcGIS's Visibility tool sees clearly more
+  trees than this pipeline on identical inputs (Viewshed2 is much closer);
+  the remaining Visibility variants could not be run because the tool
+  fails on ArcGIS Pro 3.6.1 here — `ARCHITECTURE.md` §14,
+  [issue #2](https://github.com/RobertoTjesse/3-regel/issues/2).
 - DEMs must be **floating point** (AHN: Float32). `01_tile_dem.py` checks
   the province VRT and every source behind it before tiling and stops if
   one is stored as integers (heights truncated to whole metres — happened

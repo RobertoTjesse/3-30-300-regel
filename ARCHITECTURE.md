@@ -448,3 +448,51 @@ municipalities re-tiled).
 2026-09-28: its source export had been converted to Int32 — heights
 truncated to whole metres — which makes the comparison invalid. All
 production DEMs are Float32, ~0.1 mm steps.)
+
+## 14. Comparison with ArcGIS Pro viewshed tools (2026-09-28)
+
+A reference result for Delft (`visibility_Delft`) was made in ArcGIS Pro
+with the Spatial Analyst **Visibility** tool: AHN5 raw DSM, observer at
+the DSM value at the tree point (bilinear, `ExtractValuesToPoints
+INTERPOLATE`) plus the tool's default 1 m observer offset, 1.8 m surface
+offset, 30 m outer radius. Over all of Delft it correlates poorly with
+this pipeline (pixel r = 0.26; >= 3 trees: 53% ArcGIS vs 72% here), and
+visually it shows less self-occlusion.
+
+**Test on identical inputs.** On a 528 x 466 m area in Delft, with the
+same AHN5 DEM, the same 1,038 trees and the same observer heights, only
+the viewshed engine differs (`arcgis_tests/visibility_variants.py`):
+
+| Engine | Mean trees visible | Pixels >= 3 trees |
+|---|---:|---:|
+| ArcGIS Visibility (reference run) | 5.52 | 72.8% |
+| ArcGIS Viewshed2 / Geodesic Viewshed | 4.03 | 60.4% |
+| GDAL `ViewshedGenerate` (this pipeline) | 3.42 | 52.6% |
+
+- The engine, not the tree-height rule, explains most of the difference:
+  canopy top vs point + 1 m changes the mean by only 0.15-0.26 (both
+  engines); on 3,000 Delft trees the canopy top is a median 2 m *higher*
+  than the reference observer, which alone would make this pipeline see
+  more, not less.
+- GDAL follows Viewshed2's pattern closely (r = 0.96) but is somewhat
+  stricter (-0.6 trees on average). Esri documents Viewshed2 as more
+  accurate than its wavefront-based Viewshed tools; GDAL's algorithm
+  (Wang et al. 2000) is also a wavefront method, yet sees fewer trees than
+  Visibility, so the two wavefront implementations differ.
+- Viewshed2 options barely matter here: a 3D outer radius -0.19, perimeter
+  sightlines ~0.
+- Visibility reads a positive radius as a 3D line-of-sight distance
+  (negative = 2D): the reference run's 30 m was 3D, this pipeline's is 2D.
+  From a raised observer 3D reaches slightly less far, so it does not
+  explain why Visibility sees more.
+- The observer offset matters a lot: with 0 instead of 1 m on the
+  reference observer, GDAL's mean drops from 3.42 to 1.64.
+
+So §6's "the canopy top already avoids nearly all self-occlusion" holds
+relative to the exact tree point *within GDAL*; compared with ArcGIS's
+Visibility tool, GDAL still occludes more. If an ArcGIS reference is
+needed, Viewshed2 is the closer and (per Esri) more accurate one.
+
+**Open** (GitHub issue #2): the Visibility variants could not be run —
+on ArcGIS Pro 3.6.1 here the tool crashes Pro from Python and errors in
+the tool dialog.
