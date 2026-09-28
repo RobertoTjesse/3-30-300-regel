@@ -26,12 +26,20 @@ once. The Visibility tool has crashed ArcGIS Pro 3.6.1 on this machine (the
 classic Viewshed tool is from the same wavefront family and may too); if one
 does, the results before it are already on disk. Set RUN to skip variants.
 
-HOW TO RUN — ArcGIS Pro → Analysis → Python window:
+HOW TO RUN — from a command prompt (preferred; ArcGIS Pro may stay closed):
+    "C:\Program Files\ArcGIS\Pro\bin\Python\scripts\propy.bat" D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py
+  Every variant then runs in its own child process: a tool that crashes
+  only loses its own result, and the next variant still runs. Variants
+  whose .tif already exists are skipped (delete the .tif to redo one).
+Or in ArcGIS Pro → Analysis → Python window (all in one process — a crash
+takes Pro down):
     exec(open(r"D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py", encoding="utf-8").read())
 Then, in OSGeo4W Python:  python arcgis_tests\one_tree.py compare
 """
 
 import os
+import subprocess
+import sys
 
 import arcpy
 from arcpy.sa import Viewshed, Viewshed2, Visibility
@@ -69,25 +77,47 @@ VARIANTS = [
 ]
 
 
-def main():
+def main(only=None):
+    """Run the variants in RUN in this process (or just `only`)."""
     for f in (DEM, TREE):
         if not arcpy.Exists(f):
-            raise SystemExit(f"Not found: {f} — run `python arcgis_tests/one_tree.py prepare` first")
+            raise SystemExit(f"Not found: {f} - run `python arcgis_tests/one_tree.py prepare` first")
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.overwriteOutput = True
     arcpy.env.snapRaster = DEM
     arcpy.env.extent = DEM
     arcpy.env.cellSize = DEM
     for name, run in VARIANTS:
-        if name not in RUN:
+        if name not in (RUN if only is None else [only]):
             continue
-        print(f"{name} …")
+        print(f"{name} ...", flush=True)
         try:
             run().save(os.path.join(DIR, f"{name}.tif"))
-            print(f"  saved {name}.tif")
+            print(f"  saved {name}.tif", flush=True)
         except Exception as exc:        # a normal tool error: report and continue
-            print(f"  FAILED: {exc}")
+            print(f"  FAILED: {exc}", flush=True)
+            if only is not None:
+                raise SystemExit(1)
+
+
+def main_isolated():
+    """Command line: one child process per variant, so a crash loses only that variant."""
+    for name, _ in VARIANTS:
+        if name not in RUN:
+            continue
+        if os.path.exists(os.path.join(DIR, f"{name}.tif")):
+            print(f"{name}: already there, skipped")
+            continue
+        code = subprocess.run([sys.executable, os.path.abspath(__file__), name]).returncode
+        if code != 0:
+            print(f"  {name}: child process ended with code {code} (crash or tool error), no result")
     print("Done. Compare with:  python arcgis_tests\\one_tree.py compare")
 
 
-main()
+if "__file__" not in globals():         # exec() in the ArcGIS Pro Python window
+    main()
+    print("Done. Compare with:  python arcgis_tests\\one_tree.py compare")
+elif len(sys.argv) > 1:                 # child process: one variant
+    main(sys.argv[1])
+else:
+    main_isolated()
