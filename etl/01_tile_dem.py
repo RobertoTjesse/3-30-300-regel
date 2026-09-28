@@ -118,6 +118,34 @@ def _fill_nodata(tile_path: Path) -> None:
     ds = None
 
 
+def check_float_dems(province_vrt) -> list:
+    """
+    Return a problem description for every DEM stage 1 would read that is
+    not stored as floating point (or carries a scale/offset the pipeline
+    doesn't apply). Checks the province VRT and every source file behind it
+    — a tile's halo reads neighbouring municipalities too.
+
+    Why: an integer DEM silently truncates heights to whole metres (found
+    2026-09-28 in an AHN5 export: Int32, -11..108 m). The viewshed then sees
+    1 m terraces and false walls, with no error anywhere. A scaled integer
+    (e.g. centimetres with scale 0.01) would be read as raw values, i.e.
+    100x too high, since nothing downstream applies the scale.
+    """
+    problems = []
+    sources = [f for f in province_vrt.GetFileList() if f.lower().endswith((".tif", ".tiff"))]
+    for path in [config.PROVINCE_DEM_VRT, *sources]:
+        ds = gdal.Open(str(path))
+        band = ds.GetRasterBand(1)
+        dtype = gdal.GetDataTypeName(band.DataType)
+        if not dtype.startswith("Float"):
+            problems.append(f"{path}: stored as {dtype} (heights in whole units)")
+        scale, offset = band.GetScale(), band.GetOffset()
+        if (scale not in (None, 1.0)) or (offset not in (None, 0.0)):
+            problems.append(f"{path}: scale {scale} / offset {offset} set — not applied by the pipeline")
+        ds = None
+    return problems
+
+
 # ---------------------------------------------------------------------------
 def tile_dem(dem_path: Path, tiles_dir: Path, tile_index_path: Path, province_vrt) -> int:
     """Returns the total number of tiles written.
@@ -271,6 +299,15 @@ if __name__ == "__main__":
     province_vrt = gdal.Open(str(config.PROVINCE_DEM_VRT))
     if province_vrt is None:
         sys.exit(f"ERROR: GDAL could not open {config.PROVINCE_DEM_VRT}")
+
+    problems = check_float_dems(province_vrt)
+    if problems:
+        sys.exit(
+            "ERROR: DEM(s) not stored as plain floating point — heights would be\n"
+            "truncated or mis-scaled. Re-export as Float32 (see sde_reexport/):\n  "
+            + "\n  ".join(problems)
+        )
+    log.info(f"DEM check: province VRT and {len(province_vrt.GetFileList()) - 1} sources are floating point")
 
     log.info(f"Municipalities to tile: {[name for name, _, _ in pairs]}")
 

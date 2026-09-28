@@ -208,6 +208,11 @@ automatically as the pipeline runs) into `BENCHMARKS.md`.
 
 ## Known data issues
 
+- DEMs must be **floating point** (AHN: Float32). `01_tile_dem.py` checks
+  the province VRT and every source behind it before tiling and stops if
+  one is stored as integers (heights truncated to whole metres — happened
+  once in an AHN5 export) or carries a scale/offset (e.g. centimetre
+  integers), which the pipeline would not apply.
 - **[RESOLVED 2026-09-07]** 12 of 52 municipality DEMs (`Barendrecht`,
   `Dordrecht`, `Goeree-Overflakkee`, `Gorinchem`, `Hardinxveld-Giessendam`,
   `Hellevoetsluis`, `Hendrik-Ido-Ambacht`, `Hoeksche Waard`, `Nissewaard`,
