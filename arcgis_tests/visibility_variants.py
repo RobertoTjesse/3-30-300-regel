@@ -160,12 +160,15 @@ def run_variant(tool, dem, trees, kwargs):
     raise ValueError(f"unknown tool {tool}")
 
 
-def stats(raster_path):
-    """Mean count and % of pixels with 0 / >= 3 visible trees, inside the test area."""
+def stats(raster_path, dem):
+    """Mean count and % of pixels with 0 / >= 3 visible trees, inside the test
+    area, on cells where the DEM has data. NoData in the result counts as 0:
+    Viewshed2 writes "not visible" as NoData, Visibility as 0."""
     cell = float(arcpy.Describe(raster_path).meanCellWidth)
     ncols, nrows = round((XMAX - XMIN) / cell), round((YMAX - YMIN) / cell)
-    arr = arcpy.RasterToNumPyArray(raster_path, arcpy.Point(XMIN, YMIN), ncols, nrows, nodata_to_value=-1)
-    valid = arr[arr >= 0]
+    arr = arcpy.RasterToNumPyArray(raster_path, arcpy.Point(XMIN, YMIN), ncols, nrows, nodata_to_value=0)
+    has_dem = arcpy.RasterToNumPyArray(dem, arcpy.Point(XMIN, YMIN), ncols, nrows, nodata_to_value=-9999) != -9999
+    valid = arr[has_dem]
     n = valid.size or 1
     return {"pixels": int(valid.size), "mean": round(float(valid.mean()), 3) if valid.size else None,
             "pct_0": round(100 * float((valid == 0).sum()) / n, 1),
@@ -201,7 +204,7 @@ def main():
             if COPY_TO_EXPERIMENTS:
                 arcpy.management.CopyRaster(path, os.path.join(EXPERIMENTS_DIR, f"arc_{name}.tif"),
                                             pixel_type="16_BIT_UNSIGNED", format="TIFF")
-            s = stats(path)
+            s = stats(path, dem)
             print(f"  {time.time() - t0:.0f}s  mean {s['mean']}  0 trees {s['pct_0']}%  "
                   f">=3 trees {s['pct_ge3']}%  max {s['max']}")
             results.append({"variant": name, "tool": tool, "params": repr(kwargs), **s,
