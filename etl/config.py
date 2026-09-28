@@ -34,12 +34,12 @@ VIEWSHED_TILES_DIR   = INTERIM_DIR / "viewshed_tiles"  # per municipality, per-t
 # Root of the QGIS / OSGeo4W install that holds GDAL/OGR (nothing is pip-installed).
 OSGEO4W_ROOT = r"C:\OSGeo4W"
 
-# Source: one DEM (.tif) + one tree-position layer (.shp) per municipality,
-# sharing the same basename (e.g. Papendrecht.tif / Papendrecht.shp).
+# Source: one DEM (.tif) + one tree-position layer (.gpkg) per municipality,
+# sharing the same basename (e.g. Papendrecht.tif / Papendrecht.gpkg).
 VIEWANALYSE_DIR = Path(r"\\your-server\path\to\viewanalyse")
 
 # Restrict processing to these municipalities (by file basename).
-# Empty list = process every tif/shp pair found in VIEWANALYSE_DIR.
+# Empty list = process every tif/gpkg pair found in VIEWANALYSE_DIR.
 MUNICIPALITIES = ["Papendrecht"]
 
 # Municipalities to always skip regardless of MUNICIPALITIES above — e.g. a
@@ -79,6 +79,17 @@ def municipality_pairs():
         gpkg = VIEWANALYSE_DIR / f"{name}.gpkg"
         if gpkg.exists():
             yield name, tif, gpkg
+
+
+def require_municipality_pairs() -> list:
+    """municipality_pairs() as a list; exits with a hint if there are none."""
+    pairs = list(municipality_pairs())
+    if not pairs:
+        sys.exit(
+            f"ERROR: no tif+gpkg pairs found in {VIEWANALYSE_DIR}\n"
+            "Check config.VIEWANALYSE_DIR and config.MUNICIPALITIES."
+        )
+    return pairs
 
 
 def dem_tiles_dir(name: str) -> Path:
@@ -181,7 +192,7 @@ TREE_HEIGHT_MAX_PLAUSIBLE = 35.0  # metres
 # ---------------------------------------------------------------------------
 # Benchmark logging — one row per (municipality, stage) run, appended as it
 # happens so partial data survives if a long multi-municipality run is
-# interrupted. See scripts/generate_benchmark_report.py for turning this
+# interrupted. See etl/generate_benchmark_report.py for turning this
 # into BENCHMARKS.md.
 # ---------------------------------------------------------------------------
 BENCHMARK_LOG = BASE_DIR / "logs" / "benchmark.csv"
@@ -267,10 +278,3 @@ TILE_CREATION_OPTIONS = ["COMPRESS=DEFLATE", "PREDICTOR=3", "TILED=YES", "BIGTIF
 # ---------------------------------------------------------------------------
 NUM_WORKERS  = 4     # parallel processes for tile-level parallelism
 LOG_EVERY    = 5000  # log a progress line every N trees within a tile
-
-# ---------------------------------------------------------------------------
-# Output raster type
-# ---------------------------------------------------------------------------
-# UInt32 supports up to ~4 billion trees visible per pixel.
-# Use UInt16 to halve the file size if you are sure counts stay < 65535.
-OUTPUT_DTYPE = "UInt32"

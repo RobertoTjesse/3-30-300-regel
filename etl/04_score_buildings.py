@@ -79,7 +79,7 @@ def residential_building_ids(xmin, ymin, xmax, ymax):
 
 
 def score_municipality(name):
-    vs_path = config.PROCESSED_DIR / f"{name}_viewshed.tif"
+    vs_path = config.final_output_path(name)
     if not vs_path.exists():
         log.warning(f"[{name}] no viewshed output ({vs_path.name}) — skipped")
         return None
@@ -199,7 +199,7 @@ def main():
             log.error(f"[{name}] scoring failed: {exc}")
             continue
         if n is not None:
-            config.log_benchmark(name, "score_buildings", time.perf_counter() - t0, trees="")
+            config.log_benchmark(name, "score_buildings", time.perf_counter() - t0)
 
 
 if __name__ == "__main__":

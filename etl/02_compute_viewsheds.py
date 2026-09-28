@@ -11,11 +11,10 @@ For each municipality (config.municipality_pairs()):
        tree just across a tile OR municipality boundary can still be within
        MAX_DISTANCE of an inner pixel on this side. (The same tree gets
        queried again by the neighbouring tile too; that's fine, see step 4.)
-    2. For each tree, cut the DEM within MAX_DISTANCE into a small in-memory
-       raster with the tree's own crown flattened (building pixels kept),
-       place the observer at the canopy top (see _prepare_tree()), and call
-       gdal.ViewshedGenerate() against that window
-       buffered tile DEM with MAX_DISTANCE = 30 m, pasting the (small,
+    2. For each tree, cut the tile DEM within MAX_DISTANCE into a small
+       in-memory raster (own crown flattened if OWN_CROWN_RADIUS > 0),
+       place the observer at the canopy top (see _prepare_tree()), call
+       gdal.ViewshedGenerate() on that window, and paste the (small,
        observer-centred) result into a tile-sized accumulator at the right
        pixel offset.
     3. Accumulate visible-pixel counts in a uint32 numpy array.
@@ -40,9 +39,6 @@ import json
 import logging
 import argparse
 import time
-import os
-import subprocess
-import tempfile
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -69,40 +65,22 @@ log = logging.getLogger(__name__)
 # Tree reading
 # ---------------------------------------------------------------------------
 
-def _open_tree_layer(db_path: Path, layer_name=None):
-    """Open the OGR data source and return (ds, layer)."""
-    ds = ogr.Open(str(db_path), 0)  # read-only
-    if ds is None:
-        raise RuntimeError(f"OGR cannot open {db_path}")
-    layer = ds.GetLayerByName(layer_name) if layer_name else ds.GetLayer(0)
-    if layer is None:
-        raise RuntimeError(f"Layer '{layer_name}' not found in {db_path}")
-    return ds, layer
-
-
 def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
                               xmax: float, ymax: float, layer_name=None):
     """
     Generator that yields (x, y) for every tree whose geometry falls within
     [xmin,xmax] x [ymin,ymax].
 
-    Uses OGR SetSpatialFilter for server-side (or index-assisted) filtering,
-    so it is safe even for multi-million-row databases. Height is not
-    determined here — see _prepare_tree(), which reads it from the DEM
-    once the tile raster is available.
+    Uses OGR's spatial filter (index-assisted on a GeoPackage), so it is
+    safe even for multi-million-row layers. Height is not determined here —
+    see _prepare_tree(), which reads it from the DEM once the tile raster
+    is available.
     """
-    ds, layer = _open_tree_layer(db_path, layer_name)
-
-    ring = ogr.Geometry(ogr.wkbLinearRing)
-    ring.AddPoint(xmin, ymin)
-    ring.AddPoint(xmax, ymin)
-    ring.AddPoint(xmax, ymax)
-    ring.AddPoint(xmin, ymax)
-    ring.AddPoint(xmin, ymin)
-    bbox_poly = ogr.Geometry(ogr.wkbPolygon)
-    bbox_poly.AddGeometry(ring)
-
-    layer.SetSpatialFilter(bbox_poly)
+    ds = ogr.Open(str(db_path), 0)  # read-only; kept referenced while iterating
+    layer = ds.GetLayerByName(layer_name) if layer_name else ds.GetLayer(0)
+    if layer is None:
+        raise RuntimeError(f"Layer '{layer_name}' not found in {db_path}")
+    layer.SetSpatialFilterRect(xmin, ymin, xmax, ymax)
 
     for feat in layer:
         geom = feat.GetGeometryRef()
@@ -110,13 +88,9 @@ def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
             continue
         # Flatten to 2-D centroid (handles MultiPoint, etc.); wkbPoint25D is
         # a plain point with a Z, not a multi-part geometry, so skip it too.
-        geom_type = geom.GetGeometryType()
-        if geom_type not in (ogr.wkbPoint, ogr.wkbPoint25D):
+        if geom.GetGeometryType() not in (ogr.wkbPoint, ogr.wkbPoint25D):
             geom = geom.Centroid()
         yield geom.GetX(), geom.GetY()
-
-    layer.SetSpatialFilter(None)
-    ds = None  # closes file
 
 
 def _building_mask(gt, nx, ny, srs_wkt):
@@ -248,54 +222,6 @@ def _viewshed_python_api(dem_band, obs_x, obs_y, obs_h):
         return None, None
 
 
-def _viewshed_subprocess(dem_tile_path: Path, obs_x, obs_y, obs_h):
-    """
-    Fallback: call gdal_viewshed.exe as a subprocess and return
-    (arr, geotransform), or (None, None) on failure. Uses a temp file for
-    the output. Like the Python API, the output window is clipped to
-    maxDistance around the observer, not the full tile extent.
-    """
-    exe = os.path.join(config.GDAL_BIN, "gdal_viewshed.exe")
-    if not os.path.isfile(exe):
-        exe = os.path.join(config.GDAL_BIN, "gdal_viewshed")  # Linux / Mac
-
-    fd, tmp_path = tempfile.mkstemp(suffix=".tif")
-    os.close(fd)
-    try:
-        cmd = [
-            exe,
-            "-b", "1",
-            "-ox", str(obs_x),
-            "-oy", str(obs_y),
-            "-oz", str(obs_h),
-            "-tz", str(config.TARGET_HEIGHT),
-            "-md", str(config.MAX_DISTANCE),
-            "-cc", str(config.CURVATURE_COEFF),
-            "-f", "GTiff",
-            str(dem_tile_path),
-            tmp_path,
-        ]
-        result = subprocess.run(cmd, capture_output=True, timeout=30)
-        if result.returncode != 0:
-            return None, None
-
-        ds = gdal.Open(tmp_path)
-        if ds is None:
-            return None, None
-        arr = ds.GetRasterBand(1).ReadAsArray()
-        gt = ds.GetGeoTransform()
-        ds = None
-        return arr, gt
-    except Exception as exc:
-        log.debug(f"gdal_viewshed subprocess failed for observer ({obs_x}, {obs_y}): {exc}")
-        return None, None
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-
-
 def _paste_into_accumulator(accumulator, arr, arr_gt, tile_gt):
     """
     Add arr (a small viewshed window) into accumulator (the full tile-sized
@@ -332,7 +258,6 @@ def process_tile(args):
     """
     tile_id, tile_info, trees_db_path, output_dir_str, resume = args
 
-    # Re-import config in child process (env vars already set by fork/spawn)
     output_dir = Path(output_dir_str)
     out_path   = output_dir / f"{tile_id}.tif"
 
@@ -343,39 +268,33 @@ def process_tile(args):
     if not tile_path.exists():
         return tile_id, 0, f"ERROR: tile file missing {tile_path}"
 
-    # Query trees over the *buffered* extent, not just the inner extent: a
-    # tree owned by the neighbouring tile can still be within MAX_DISTANCE of
-    # a pixel on this side of the boundary. The same tree gets queried again
-    # by that neighbour too — that's fine, since only the inner (non-
-    # overlapping) window of each tile's result ever gets written to disk.
-    xmin = tile_info["buf_xmin"]
-    xmax = tile_info["buf_xmax"]
-    ymin = tile_info["buf_ymin"]
-    ymax = tile_info["buf_ymax"]
-
-    # Open DEM tile once for the whole tile
+    # Read the whole DEM tile once
     dem_ds = gdal.Open(str(tile_path))
-    if dem_ds is None:
-        return tile_id, 0, f"ERROR: cannot open DEM tile {tile_path}"
-
     dem_band = dem_ds.GetRasterBand(1)
     gt       = dem_ds.GetGeoTransform()
     proj     = dem_ds.GetProjection()
     nx       = dem_ds.RasterXSize
     ny       = dem_ds.RasterYSize
-
     dem = dem_band.ReadAsArray()
     nodata = dem_band.GetNoDataValue()
+    dem_band = dem_ds = None
+
     buildings = _building_mask(gt, nx, ny, proj)
     mem = gdal.GetDriverByName("MEM")
 
     accumulator = np.zeros((ny, nx), dtype=np.uint32)
     n_trees = 0
 
-    db_path = Path(trees_db_path)
+    # Query trees over the *buffered* extent, not just the inner extent: a
+    # tree owned by the neighbouring tile can still be within MAX_DISTANCE of
+    # a pixel on this side of the boundary. The same tree gets queried again
+    # by that neighbour too — that's fine, since only the inner (non-
+    # overlapping) window of each tile's result ever gets written to disk.
     try:
         for x, y in iter_tree_points_in_bbox(
-            db_path, xmin, ymin, xmax, ymax,
+            Path(trees_db_path),
+            tile_info["buf_xmin"], tile_info["buf_ymin"],
+            tile_info["buf_xmax"], tile_info["buf_ymax"],
             layer_name=config.TREES_LAYER,
         ):
             n_trees += 1
@@ -383,7 +302,7 @@ def process_tile(args):
             if prepared is None:          # bbox query can return a point on the edge
                 continue
             window, window_gt, h, _info = prepared
-            # Each tree gets its own small in-memory DEM (its own crown removed)
+            # Each tree gets its own small in-memory DEM (see _prepare_tree)
             win_ds = mem.Create("", window.shape[1], window.shape[0], 1, gdal.GDT_Float32)
             win_ds.SetGeoTransform(window_gt)
             win_ds.GetRasterBand(1).WriteArray(window)
@@ -399,10 +318,7 @@ def process_tile(args):
                 log.info(f"    [{tile_id}] {n_trees} trees processed so far…")
 
     except Exception as exc:
-        dem_ds = None
         return tile_id, n_trees, f"ERROR during tree iteration: {exc}"
-
-    dem_ds = None  # close DEM
 
     if n_trees == 0:
         return tile_id, 0, "no trees in buffered extent — skipped"
@@ -548,7 +464,7 @@ def process_municipality(name: str, dem_path: Path, workers: int, resume: bool):
         log.warning(
             f"[{name}] Zero trees processed across all tiles — this usually "
             "means broken/mismatched input data, not an empty municipality. "
-            "Check the tree shapefile."
+            "Check the tree layer."
         )
 
     return completed, errors, total_trees
@@ -575,13 +491,7 @@ def main():
             "(see README, 'Per-tree height')."
         )
 
-    pairs = list(config.municipality_pairs())
-    if not pairs:
-        sys.exit(
-            f"ERROR: no tif+shp pairs found in {config.VIEWANALYSE_DIR}\n"
-            "Check config.VIEWANALYSE_DIR and config.MUNICIPALITIES."
-        )
-
+    pairs = config.require_municipality_pairs()
     log.info(f"Municipalities to process: {[name for name, _, _ in pairs]}")
 
     for name, dem_path, _trees_path in pairs:

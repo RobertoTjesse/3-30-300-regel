@@ -401,7 +401,7 @@ normal rotation.
 | `TILE_PIXELS` | 1000 px (500 m) | Inner tile size |
 | `TILE_BUFFER_PX` | 70 px (35 m) | Halo width; must be `>= MAX_DISTANCE / pixel_size` |
 | `NUM_WORKERS` | 4 | Parallel tile processing |
-| `OUTPUT_DTYPE` | UInt32 | Per-pixel visible-tree count |
+| Output raster dtype | UInt32 | Per-pixel visible-tree count (fixed in stages 2 and 3) |
 | DEM resolution / CRS | 0.5 m / EPSG:28992 | RD New |
 | DEM source | AHN4, `_05M_RUW` | Raw/unfiltered surface model (DSM, not bare-earth) |
 

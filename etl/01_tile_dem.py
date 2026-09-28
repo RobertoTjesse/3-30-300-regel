@@ -38,8 +38,6 @@ import logging
 import time
 from pathlib import Path
 
-import numpy as np
-
 import config  # sets env vars, adds OSGeo4W to PATH
 
 try:
@@ -282,12 +280,7 @@ def tile_dem(dem_path: Path, tiles_dir: Path, tile_index_path: Path, province_vr
 
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    pairs = list(config.municipality_pairs())
-    if not pairs:
-        sys.exit(
-            f"ERROR: no tif+shp pairs found in {config.VIEWANALYSE_DIR}\n"
-            "Check config.VIEWANALYSE_DIR and config.MUNICIPALITIES."
-        )
+    pairs = config.require_municipality_pairs()
 
     if not config.PROVINCE_DEM_VRT.exists():
         sys.exit(

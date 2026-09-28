@@ -139,19 +139,13 @@ def main():
         w.writerow(["gemeente", "gebouwen", "woningen", *[f"pct_woningen_{c}" for c in CLASSES],
                     "pct_woningen_geen_ring", "pct_woningen_3_of_meer"])
         total = defaultdict(int)
-        for gem in sorted(stats):
-            s = stats[gem]
+        for s in stats.values():
             for k, v in s.items():
                 total[k] += v
-            pct = lambda k: round(100 * s[k] / s["woningen"], 1) if s["woningen"] else 0.0
-            w.writerow([gem, s["gebouwen"], s["woningen"], *[pct(f"w_{c}") for c in CLASSES],
-                        pct("w_geen_ring"),
-                        round(100 * sum(s[f"w_{c}"] for c in CLASSES[2:]) / max(s["woningen"], 1), 1)])
-        t = total
-        w.writerow([PROVINCE, t["gebouwen"], t["woningen"],
-                    *[round(100 * t[f"w_{c}"] / t["woningen"], 1) for c in CLASSES],
-                    round(100 * t["w_geen_ring"] / t["woningen"], 1),
-                    round(100 * sum(t[f"w_{c}"] for c in CLASSES[2:]) / t["woningen"], 1)])
+        for gem, s in [*sorted(stats.items()), (PROVINCE, total)]:
+            pct = lambda n: round(100 * n / s["woningen"], 1) if s["woningen"] else 0.0
+            w.writerow([gem, s["gebouwen"], s["woningen"], *[pct(s[f"w_{c}"]) for c in CLASSES],
+                        pct(s["w_geen_ring"]), pct(sum(s[f"w_{c}"] for c in CLASSES[2:]))])
     print(f"Wrote {out_path.name} ({len(seen):,} buildings) and {csv_path.name}")
 
 

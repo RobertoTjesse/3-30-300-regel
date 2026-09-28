@@ -136,13 +136,7 @@ def main():
     )
     args = parser.parse_args()
 
-    pairs = list(config.municipality_pairs())
-    if not pairs:
-        sys.exit(
-            f"ERROR: no tif+shp pairs found in {config.VIEWANALYSE_DIR}\n"
-            "Check config.VIEWANALYSE_DIR and config.MUNICIPALITIES."
-        )
-
+    pairs = config.require_municipality_pairs()
     log.info(f"Municipalities to merge: {[name for name, _, _ in pairs]}")
 
     for name, _dem_path, _trees_path in pairs:

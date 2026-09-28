@@ -12,6 +12,9 @@ First run creates the project with:
                     classed on "number of trees visible":
                       0 red | 1-2 orange | 3-5 green | 6-7 darker green |
                       8+ dark green
+  - Hoogtemodel     the province DEM mosaic (data/interim/province_dem.vrt,
+                    the pixel source of stage 1), hillshaded, switched off
+                    by default — for checking the input surface model
   - Bomen           all trees (data/interim/province_trees.gpkg, only drawn
                     when zoomed in — 13M points) + every
                     data/processed/<name>_tree_heights.gpkg
@@ -45,6 +48,7 @@ from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsRendererCategory,
     QgsFillSymbol,
+    QgsHillshadeRenderer,
     QgsLayerTreeGroup,
     QgsMarkerSymbol,
     QgsProject,
@@ -60,11 +64,13 @@ REPO = Path(__file__).resolve().parent.parent
 PROJECT_PATH = REPO / "qgis_validation" / "3-regel_validation.qgz"
 PROCESSED_DIR = REPO / "data" / "processed"
 PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
+PROVINCE_DEM = REPO / "data" / "interim" / "province_dem.vrt"
 EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
 
 GROUP_HOMES = "Woningen (aantal zichtbare bomen)"
 GROUP_VIEWSHED = "Viewshed (aantal zichtbare bomen)"
 GROUP_TREES = "Bomen"
+GROUP_DEM = "Hoogtemodel"
 GROUP_3DBAG = "3D BAG"
 GROUP_BACKGROUND = "Achtergrond"
 GROUP_EXPERIMENTS = "Experimenten"
@@ -210,6 +216,14 @@ def main():
             name = gpkg.stem.removesuffix("_tree_heights")
             layer = QgsVectorLayer(str(gpkg), f"Boomhoogtes {name}", "ogr")
             if _add(project, trees_group, layer, visible=False):
+                added += 1
+
+        if PROVINCE_DEM.exists() and PROVINCE_DEM.resolve() not in have:
+            layer = QgsRasterLayer(str(PROVINCE_DEM), "DEM Zuid-Holland (province_dem.vrt)", "gdal")
+            if _add(project, _group(root, GROUP_DEM, 2), layer, visible=False):
+                # Hillshade makes DEM faults visible at a glance: integer
+                # terraces, NoData holes, seams between municipality exports
+                layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
                 added += 1
 
         homes = sorted(PROCESSED_DIR.glob("*_woningen.gpkg"))

@@ -11,7 +11,7 @@ from pathlib import Path
 # Root of your QGIS / OSGeo4W install.
 OSGEO4W_ROOT = r"C:\Users\<you>\AppData\Local\Programs\OSGeo4W"
 
-# Folder holding one DEM (.tif) + tree-position (.shp) pair per municipality.
+# Folder holding one DEM (.tif) + tree-position (.gpkg) pair per municipality.
 VIEWANALYSE_DIR = Path(r"R:\path\to\viewanalyse")
 
 # Municipalities to process. Empty list = process everything found above.

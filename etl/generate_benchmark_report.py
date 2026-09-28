@@ -71,7 +71,7 @@ def main():
     lines.append(f"| Tile size (inner) | {config.TILE_PIXELS} px ({config.TILE_PIXELS * 0.5:.0f} m) |")
     lines.append(f"| Tile buffer | {config.TILE_BUFFER_PX} px ({config.TILE_BUFFER_PX * 0.5:.1f} m), extends across municipality boundaries |")
     lines.append(f"| Parallel workers | {config.NUM_WORKERS} |")
-    lines.append(f"| Output raster dtype | {config.OUTPUT_DTYPE} |")
+    lines.append("| Output raster dtype | UInt32 (per-pixel visible-tree count) |")
     lines.append("")
 
     lines.append("## Per-municipality timing")
