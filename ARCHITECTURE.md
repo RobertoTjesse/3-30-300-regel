@@ -416,29 +416,35 @@ documentation) — a NoData sentinel in the input DEM (e.g. `-9999`) gets
 treated as literal terrain elevation. Wherever a tree's 30m viewshed radius
 happened to touch a gap in the source raster (most commonly water, bridges,
 or a municipality's own padding around its real coverage — see §11), this
-silently created a phantom cliff (or, for a large positive sentinel like
-AHN5's `9999`, a phantom mountain), producing wrong visibility results with
+silently created a phantom cliff (or, for a large positive sentinel such
+as `9999`, a phantom mountain), producing wrong visibility results with
 no error or warning from the pipeline itself.
 
 **Fix**: `01_tile_dem.py`'s `_fill_nodata()` runs on every tile immediately
 after it's cut from the province VRT, before any viewshed call ever sees
-it. It interpolates NoData cells from surrounding valid pixels
-(`gdal.FillNodata()`, `maxSearchDist=2000` — comfortably larger than a
-buffered tile's own ~1140px dimensions, so a fill always reaches valid data
-if any exists anywhere in the tile) and only then clears the NoData flag.
+it:
 
-**A smaller `maxSearchDist` (originally 300px/150m) is not safe** — found
-by direct inspection of real output, not by reasoning about the algorithm
-in the abstract: 2 of Delft's 208 tiles had gaps up to ~265x140px that went
-completely unfilled at 300px, silently leaving `-9999` disguised as real
-elevation once the NoData flag was stripped anyway. `_fill_nodata()` now
-also checks its own work afterward — if any sentinel values remain (e.g. a
-tile with no valid data anywhere at all, which no amount of interpolation
-can fix), it leaves the NoData flag in place and logs a warning instead of
-silently clearing it, so the failure stays visible rather than
-masquerading as terrain.
+1. Small gaps (under bridges, narrow water, data holes) are interpolated
+   from the surrounding surface with `gdal.FillNodata()`, reaching at most
+   `FILL_SEARCH_PX` (50 px = 25m).
+2. Whatever remains is a large gap — open water, wide rivers — and is set to
+   the lowest valid value in the tile: a flat, low "water level" that can
+   never block a line of sight.
+3. A tile with no valid pixel at all (open sea, outside the province) keeps
+   its NoData flag — nothing to fill from, and the raw sentinel must never
+   masquerade as elevation.
 
-This fix has been verified on Delft (both AHN4 and, separately, an AHN5
-comparison run — see `delft_benchmark/`) but has **not yet been applied
-pipeline-wide**: every other municipality's tiles predate this fix and
-would need re-tiling to benefit from it.
+**History (2026-09-11 → 09-27).** The first version interpolated
+everything with `maxSearchDist=2000` (after 300px had left a ~265x140px
+void unfilled on 2 of Delft's 208 tiles). Correct, but a tile that was
+mostly water then spent ~30s interpolating across it — hours in total for
+coastal municipalities (Brielle's tiling stalled at 40 of 285 tiles in 13
+minutes). The two-step fill above does Brielle in 290s.
+
+Applied province-wide in the full run of 2026-09-27/28 (all 52
+municipalities re-tiled).
+
+(An AHN5 comparison run for Delft, `delft_benchmark/`, was removed on
+2026-09-28: its source export had been converted to Int32 — heights
+truncated to whole metres — which makes the comparison invalid. All
+production DEMs are Float32, ~0.1 mm steps.)

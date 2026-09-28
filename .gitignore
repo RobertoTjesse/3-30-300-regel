@@ -22,13 +22,6 @@ logs/*
 sde_reexport/raw_clips/
 sde_reexport/finished/
 
-# Delft AHN5 comparison — large rasters/vectors and generated tiles, never
-# committed. Keep the driver scripts (tracked), not the source data or
-# per-run outputs.
-delft_benchmark/*
-!delft_benchmark/run_benchmark.py
-!delft_benchmark/run_pipeline_ahn5.py
-
 # Python
 __pycache__/
 *.pyc
