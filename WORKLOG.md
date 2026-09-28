@@ -71,3 +71,15 @@ trees should be excluded, is still open.
   buildings with BAG construction year >= 2023, 96,823 (5.4%) >= 2020, of
   1,797,328. Their surroundings are those of 2020-2022. Decision: not
   filtered out; stated on the map instead.
+
+**8. One-tree comparison** (issue #2) — `arcgis_tests/one_tree.py` +
+`one_tree_arcgis.py`
+- One ~26 m tree 245 m from the Markt in Delft; all tools get the same
+  AHN5 DEM clip (NoData filled as in stage 1), the same absolute observer
+  elevation (27.85 m NAP, offset 0), target 1.8 m, radius 30 m.
+- First result (GDAL vs an exact line-of-sight reference): 37.7% vs 36.4%
+  of the cells within 30 m visible, same verdict on 95.5% of cells. For
+  this tree GDAL is close to exact; the ArcGIS results are still to come.
+- Lesson: with an unfilled NoData sentinel (3.4e38) in the clip the
+  results were meaningless for every tool — the fill matters.
+- Tree data: NEO (purchased); the web map now says so.
