@@ -100,7 +100,11 @@ def score_municipality(name):
     # neighbours out of each ring (needs its own spatial filter per building)
     margin = config.FACADE_RING_M + 1
     bld_layer.SetSpatialFilterRect(xmin - margin, ymin - margin, xmax + margin, ymax + margin)
-    all_ds = ogr.GetDriverByName("Memory").CreateDataSource("")
+    # In-memory GeoPackage, not the "Memory" driver: GPKG gets an R-tree, so
+    # the per-building neighbour lookup below is an index query instead of a
+    # scan of every footprint (quadratic — Zuidplas took 22 min without it).
+    mem_path = f"/vsimem/footprints_{name}.gpkg"
+    all_ds = ogr.GetDriverByName("GPKG").CreateDataSource(mem_path)
     all_layer = all_ds.CopyLayer(bld_layer, "footprints")
 
     out_path = config.PROCESSED_DIR / f"{name}_woningen.gpkg"
@@ -169,6 +173,9 @@ def score_municipality(name):
         out_layer.CreateFeature(out)
     out_layer.CommitTransaction()
     out_ds = None
+    all_layer = None
+    all_ds = None
+    gdal.Unlink(mem_path)
     try:
         tmp_path.replace(out_path)
     except PermissionError:   # e.g. open in QGIS: keep the new result next to it
