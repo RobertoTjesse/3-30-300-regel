@@ -50,7 +50,9 @@ from qgis.core import (
     QgsFillSymbol,
     QgsHillshadeRenderer,
     QgsLayerTreeGroup,
+    QgsLineSymbol,
     QgsMarkerSymbol,
+    QgsPalettedRasterRenderer,
     QgsProject,
     QgsRasterLayer,
     QgsRasterShader,
@@ -66,6 +68,7 @@ PROCESSED_DIR = REPO / "data" / "processed"
 PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
 PROVINCE_DEM = REPO / "data" / "interim" / "province_dem.vrt"
 EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
+ONE_TREE_DIR = REPO / "arcgis_tests" / "one_tree"
 
 GROUP_HOMES = "Woningen (aantal zichtbare bomen)"
 GROUP_VIEWSHED = "Viewshed (aantal zichtbare bomen)"
@@ -74,6 +77,7 @@ GROUP_DEM = "Hoogtemodel"
 GROUP_3DBAG = "3D BAG"
 GROUP_BACKGROUND = "Achtergrond"
 GROUP_EXPERIMENTS = "Experimenten"
+GROUP_ONE_TREE = "Eén boom: GDAL vs ArcGIS vs exact (arcgis_tests/one_tree)"
 
 # (upper bound inclusive, colour, label) — discrete classes on integer counts
 VIEWSHED_CLASSES = [
@@ -140,6 +144,61 @@ def _style_homes(layer):
     cats.append(QgsRendererCategory(None, QgsFillSymbol.createSimple(
         {"color": "#bdbdbd", "outline_color": "#404040", "outline_width": "0.1"}), "geen gevelring"))
     layer.setRenderer(QgsCategorizedSymbolRenderer("klasse", cats))
+
+
+def _style_paletted(layer, classes):
+    """classes: [(value, colour or None, label)]; None = transparent."""
+    items = [QgsPalettedRasterRenderer.Class(v, QColor(c) if c else QColor(0, 0, 0, 0), lbl)
+             for v, c, lbl in classes]
+    layer.setRenderer(QgsPalettedRasterRenderer(layer.dataProvider(), 1, items))
+
+
+def _add_one_tree(project, root, have):
+    """The one-tree viewshed comparison (arcgis_tests/one_tree.py): every
+    tool's result (visible cells coloured), the difference maps vs the exact
+    line-of-sight test, the tree with its 30 m circle and the DEM. All off
+    by default except the tree and circle."""
+    if not (ONE_TREE_DIR / "dem.tif").exists():
+        return 0
+    group = _group(root, GROUP_ONE_TREE, 0)
+    added = 0
+    gpkg = ONE_TREE_DIR / "tree_ring.gpkg"
+    if gpkg.exists() and gpkg.resolve() not in have:
+        for name, props in (("tree", {"name": "circle", "color": "#e31a1c", "size": "3"}),
+                            ("ring30", None)):
+            layer = QgsVectorLayer(f"{gpkg}|layername={name}", "boom / 30 m" if name == "ring30" else "boom", "ogr")
+            if _add(project, group, layer):
+                if props:
+                    layer.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(props)))
+                else:
+                    layer.setRenderer(QgsSingleSymbolRenderer(QgsLineSymbol.createSimple(
+                        {"line_color": "#e31a1c", "line_width": "0.6"})))
+                added += 1
+    for tif in sorted(ONE_TREE_DIR.glob("diff_*.tif")):
+        if tif.resolve() in have:
+            continue
+        tool = tif.stem.removeprefix("diff_")
+        layer = QgsRasterLayer(str(tif), f"verschil {tool} vs exact", "gdal")
+        if _add(project, _group(group, "Verschil met exact (oranje = alleen tool ziet, blauw = alleen exact ziet)"),
+                layer, visible=False):
+            _style_paletted(layer, [(0, None, "zelfde"), (1, "#ff7f00", f"alleen {tool} ziet"),
+                                    (2, "#1f78b4", "alleen exact ziet")])
+            added += 1
+    for tif in sorted(ONE_TREE_DIR.glob("*.tif")):
+        if tif.stem == "dem" or tif.stem.startswith("diff_") or tif.resolve() in have:
+            continue
+        layer = QgsRasterLayer(str(tif), tif.stem, "gdal")
+        if _add(project, _group(group, "Resultaten (gekleurd = zichtbaar)"), layer, visible=False):
+            _style_paletted(layer, [(0, None, "niet zichtbaar"), (1, "#238b45", "zichtbaar")])
+            layer.setOpacity(0.7)
+            added += 1
+    dem = ONE_TREE_DIR / "dem.tif"
+    if dem.resolve() not in have:
+        layer = QgsRasterLayer(str(dem), "DEM (AHN5 DSM, gevuld)", "gdal")
+        if _add(project, group, layer, visible=False):
+            layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
+            added += 1
+    return added
 
 
 def _add(project, group, layer, visible=True):
@@ -254,6 +313,8 @@ def main():
                     layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
                         {"color": "0,0,0,0", "outline_color": "#3f007d", "outline_width": "0.4"})))
                     added += 1
+
+        added += _add_one_tree(project, root, have)
 
         PROJECT_PATH.parent.mkdir(parents=True, exist_ok=True)
         if not project.write(str(PROJECT_PATH)):

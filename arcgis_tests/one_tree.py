@@ -169,7 +169,7 @@ def compare():
     inside = d <= RADIUS
     results = {}
     for path in sorted(DIR.glob("*.tif")):
-        if path.stem == "dem":
+        if path.stem == "dem" or path.stem.startswith("diff_"):
             continue
         rds = gdal.Open(str(path))
         rgt = rds.GetGeoTransform()
@@ -194,6 +194,37 @@ def compare():
         outside = (v & ~inside).sum()
         print(f"{name:26s} {100 * v[inside].mean():5.1f}% {ring}   {agree}"
               + (f"   ({outside} visible cells beyond {RADIUS:.0f} m)" if outside else ""))
+
+    # For the QGIS validation project (qgis_validation/build_project.py):
+    # per tool a difference map vs the exact test (1 = only the tool sees
+    # the cell, 2 = only the exact test sees it, 0 = same verdict), plus the
+    # tree and the 30 m circle
+    if ref is not None:
+        for name, v in results.items():
+            if name != "exact_bilinear":
+                diff = np.where(v & ~ref, 1, np.where(~v & ref, 2, 0)).astype(np.uint8)
+                write_raster(DIR / f"diff_{name}.tif", diff, gt, wkt)
+    write_tree_layers(DIR / "tree_ring.gpkg", wkt)
+    print(f"\nWrote diff_*.tif and tree_ring.gpkg; add them to QGIS with "
+          f"qgis_validation\\build_project.py")
+
+
+def write_tree_layers(path, wkt):
+    """The tree point and the 30 m circle, as two layers of one GeoPackage."""
+    drv = ogr.GetDriverByName("GPKG")
+    if path.exists():
+        drv.DeleteDataSource(str(path))
+    ds = drv.CreateDataSource(str(path))
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(wkt)
+    tree = ogr.CreateGeometryFromWkt(f"POINT ({TREE_X} {TREE_Y})")
+    for name, geom, gtype in (("tree", tree, ogr.wkbPoint),
+                              ("ring30", tree.Buffer(RADIUS, 64).Boundary(), ogr.wkbLineString)):
+        layer = ds.CreateLayer(name, srs, gtype)
+        f = ogr.Feature(layer.GetLayerDefn())
+        f.SetGeometry(geom)
+        layer.CreateFeature(f)
+    ds = None
 
 
 if __name__ == "__main__":

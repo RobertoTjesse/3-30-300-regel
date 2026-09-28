@@ -103,3 +103,16 @@ trees should be excluded, is still open.
   without a Python error. Viewshed2 works. Next test: the classic tools in
   a plain folder (D:\Temp\onetree), because the old GRID engine they share
   is known to fail on folder names like "3-regel".
+- Cause of the -1 exits: the path. Classic Viewshed and Visibility (old
+  GRID engine) fail on inputs under `D:\Repositories\3-regel`; copied to
+  `D:\Temp\onetree` they run (the script now does that).
+- Result, share of cells within 30 m visible (same verdict as exact):
+  exact 36.4%; classic Viewshed = Visibility 34.0% (97.2%); GDAL 37.7%
+  (95.5%); Viewshed2 47.3% (88.5%). Classic Viewshed and Visibility give
+  identical rasters and are the closest to exact; Viewshed2 is the outlier.
+- The classic tools ignore the 3D radius: RADIUS2 = +30 / outer radius 30
+  gives exactly the same raster as -30 (visible cells up to 30.0 m
+  horizontal, 38.5 m in 3D). So the reference visibility_Delft run, with
+  outer radius 30, is effectively 2D as well, like our pipeline.
+- All results in the QGIS validation project (group "Eén boom"), with
+  difference maps against the exact test.
