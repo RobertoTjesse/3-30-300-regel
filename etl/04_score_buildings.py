@@ -111,7 +111,7 @@ def score_municipality(name):
     tmp_path = out_path.with_suffix(".partial.gpkg")
     tmp_path.unlink(missing_ok=True)
     out_ds = ogr.GetDriverByName("GPKG").CreateDataSource(str(tmp_path))
-    out_layer = out_ds.CreateLayer(f"{name}_woningen", srs, ogr.wkbMultiPolygon)
+    out_layer = out_ds.CreateLayer("woningen", srs, ogr.wkbMultiPolygon)  # fixed name: GPKG rejects e.g. the apostrophe in 's-Gravenhage
     for fname, ftype in (("pand_id", ogr.OFTString), ("n_woningen", ogr.OFTInteger),
                          ("bomen_zichtbaar", ogr.OFTInteger), ("klasse", ogr.OFTString)):
         out_layer.CreateField(ogr.FieldDefn(fname, ftype))

@@ -34,6 +34,16 @@ gdalbuildvrt data/interim/province_dem.vrt "<VIEWANALYSE_DIR>\*.tif"
 # API's gdal.VectorTranslate() was used as a workaround for those).
 ```
 
+### BAG buildings, addresses and municipal boundaries
+
+Stage 4 needs `data/interim/province_buildings.gpkg` (BAG pand) and
+`province_addresses.gpkg` (BAG verblijfsobject with *gebruiksdoel* and
+*status*). `etl/download_bag_pdok.py` fetches both from PDOK (~25 min, ~1 GB);
+an SDE export works too — field names are set in `config.py` (`BAG_*`).
+Which address statuses count as lived in: `BAG_STATUSES_IN_USE`. Stage 5
+needs `data/interim/gemeenten.gpkg` and `provincies.gpkg` from PDOK's
+*bestuurlijkegebieden* WFS (command in the `05_merge_province.py` docstring).
+
 ## Source data
 
 One DEM (`.tif`, 0.5 m RD New / EPSG:28992) + one tree-position layer
@@ -62,6 +72,8 @@ is always excluded regardless of `MUNICIPALITIES` — see "Known data issues".
 | Extract | `etl/01_tile_dem.py` | Per municipality: splits its DEM into tiles with a buffer halo on each side, reading pixel data from `config.PROVINCE_DEM_VRT` (not the municipality's own .tif) so a tile near a municipality edge still gets real neighbour context. Writes `tile_index.json` (each tile's buffered *and* inner extents). |
 | Transform | `etl/02_compute_viewsheds.py` | Per municipality, per tile: reads trees from `config.PROVINCE_TREES_GPKG` within the tile's *buffered* extent (so a neighbour-owned tree near any boundary is still counted), samples each tree's height from the DEM, runs `gdal.ViewshedGenerate`, accumulates visible-pixel counts, then crops the result down to the tile's non-overlapping *inner* window before writing. Parallel across tiles. |
 | Load | `etl/03_merge_tiles.py` | Per municipality: mosaics all (non-overlapping) tile results via a VRT and translates to one Cloud-Optimized GeoTIFF (COG) per municipality. |
+| Score | `etl/04_score_buildings.py` | Per municipality: every residential building (BAG address in use with *woonfunctie*) gets the max viewshed value in a 1.5 m ring outside its facade → `<name>_woningen.gpkg`. Inside a footprint the surface model is the roof, so roof pixels mean "1.8 m above the roof" — the ring gives street/garden-level eye height instead. |
+| Province | `etl/05_merge_province.py` | Merges all `<name>_woningen.gpkg` (which overlap: each covers its DEM rectangle) into `ZuidHolland_woningen.gpkg`, each building once, assigned to its *current* municipality, plus `ZuidHolland_samenvatting.csv` per municipality. |
 
 Run in order:
 
@@ -69,6 +81,8 @@ Run in order:
 python etl/01_tile_dem.py
 python etl/02_compute_viewsheds.py --workers 4 --resume
 python etl/03_merge_tiles.py
+python etl/04_score_buildings.py
+python etl/05_merge_province.py
 ```
 
 Or run one municipality fully (all three stages) at a time with
