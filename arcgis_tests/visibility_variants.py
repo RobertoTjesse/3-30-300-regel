@@ -28,11 +28,11 @@ just outside still see into it); statistics use the test area only.
 
 HOW TO RUN — inside ArcGIS Pro (Analysis → Python window):
     exec(open(r"D:\Repositories\3-regel\arcgis_tests\visibility_variants.py", encoding="utf-8").read())
-Not standalone: on this machine (Pro 3.6.1) the legacy Visibility tool
-crashes the interpreter (access violation) outside Pro — even on the
-reference run's own data — while Viewshed2 and other Spatial Analyst tools
-work. A variant that fails inside Pro is logged in the CSV and the rest
-still runs.
+On this machine (Pro 3.6.1) the legacy Visibility tool crashes ArcGIS —
+inside Pro and standalone, even on the reference run's own data — so
+RUN_TOOLS below runs only Viewshed2 by default. A variant that raises a
+normal error is logged in the CSV and the rest still runs; a native crash
+closes Pro.
 
 Check the values under "EDIT THESE" first. Add, remove or change variants
 in VARIANTS; set ONLY to run a subset.
@@ -84,6 +84,11 @@ VARIANTS = [
     ("v2_canopy_off0",     "Viewshed2",  dict(observer_elevation="CANOPY_TOP", observer_offset="0")),
 ]
 ONLY = []                     # e.g. ["vis_interp_default", "v2_canopy_off0"]; [] = all
+# Tools to run. The legacy Visibility tool crashes ArcGIS Pro 3.6.1 on this
+# machine (native access violation — Pro closes, Python can't catch it),
+# even on the reference run's own data; it did work on the machine that
+# made visibility_Delft. Add "Visibility" back when running it there.
+RUN_TOOLS = ["Viewshed2"]
 # ---------------------------------------------------------------------------
 
 SURFACE_OFFSET = 1.8          # target (eye) height, same as the reference run
@@ -147,7 +152,7 @@ def run_variant(tool, dem, trees, kwargs):
         args = dict(analysis_type="FREQUENCY", refractivity_coefficient=0.13,
                     surface_offset=f"{SURFACE_OFFSET} Meters", outer_radius=f"{OUTER_RADIUS} Meters",
                     outer_radius_is_3d="GROUND", analysis_method="ALL_SIGHTLINES",
-                    analysis_target_device="GPU_THEN_CPU")
+                    analysis_target_device="CPU_ONLY")   # GPU path untested here; area is small
         args.update(kwargs)
         if args.get("observer_offset") not in (None, ""):
             args["observer_offset"] = f"{args['observer_offset']} Meters"
@@ -183,7 +188,8 @@ def main():
     arcpy.env.snapRaster = dem
     arcpy.env.extent = dem
 
-    variants = [v for v in VARIANTS if not ONLY or v[0] in ONLY]
+    variants = [v for v in VARIANTS if (not ONLY or v[0] in ONLY) and v[1] in RUN_TOOLS]
+    print(f"Running {len(variants)} variant(s) with {RUN_TOOLS}")
     results = []
     for name, tool, kwargs in variants:
         print(f"\n{name}: {tool} {kwargs}")
