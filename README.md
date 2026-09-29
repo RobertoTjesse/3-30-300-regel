@@ -235,7 +235,7 @@ file limit (now ~85 and ~94 MB).
 (`<Province>_gebieden.gpkg`). The 30 was computed per CBS buurt 2023 (sum of
 the NEO crowns touching the buurt / land area); crown and land area are carried
 over to the 2025 areas in proportion to overlapping area. Buurten without crown
-data (all of Voorne aan Zee) are left out, so such areas show "geen gegevens".
+data (all of Voorne aan Zee; 28 buurten in Schiedam, some in Westland, Leiderdorp, Pijnacker-Nootdorp and Delft — a gap in the crown table, those buurten do have tree points) are left out, so such areas show "geen gegevens".
 The 300 is recounted per area from the buildings' walking class.
 
 Preview and publish:
