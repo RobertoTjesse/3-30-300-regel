@@ -105,14 +105,14 @@
   <p>De berekening van de 3 staat in de
      <a href="https://github.com/RobertoTjesse/3-regel" target="_blank" rel="noopener">GitHub-repository</a>;
      de 30 en de 300 zijn met FME berekend. Alleen de 3 is per woning met zichtlijnen bepaald.
-     <a href="../">Naar de kaart met alleen de 3</a>.</p>
+     <a href="https://robertotjesse.github.io/3-regel/">Naar de kaart met alleen de 3</a>.</p>
 </dialog>
 
 <script>
 // ---------------------------------------------------------------------------
 // Settings — edit colours and texts here
 // ---------------------------------------------------------------------------
-const TILES_3 = "../data/zuid-holland.pmtiles";   // the 3-regel map's tile file (web/build_tiles.py)
+const TILES_3 = "data/zuid-holland.pmtiles";      // copy of the 3-regel map's tile file (web/build_tiles.py)
 const TILES_30_300 = "data/30-300.pmtiles";       // web/3-30-300/build_tiles.py
 
 // --- 3: visible trees per home (same colours as the 3-regel map) ---
@@ -131,7 +131,8 @@ const STEPS_3 = [
   [95, "#74c476", "95-98%"],
   [98, "#238b45", "≥ 98%"],
 ];
-const LEVELS_3 = [
+// Areas: the same gemeenten / wijken / buurten and zooms for 3, 30 and 300
+const LEVELS = [
   { layer: "gemeenten", name: "gemeente", from: 0,    to: 10 },
   { layer: "wijken",    name: "wijk",     from: 10,   to: 11.5 },
   { layer: "buurten",   name: "buurt",    from: 11.5, to: 13 },
@@ -158,11 +159,6 @@ const STEPS_300 = [
   [85, "#74c476", "85-95%"],
   [95, "#238b45", "≥ 95%"],
 ];
-const LEVELS_30_300 = [
-  { layer: "wijken",  name: "wijk",  from: 0,  to: 11 },
-  { layer: "buurten", name: "buurt", from: 11, to: 13 },
-];
-
 const MIN_HOMES = 10;                        // fewer homes: no percentage shown
 const NO_DATA = "#d9d9d9";
 const BUILDINGS_FROM_ZOOM = 13;
@@ -174,9 +170,10 @@ const THEMES = {
             "Een woning krijgt het hoogste aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte) gezien wordt.",
   },
   "30": {
-    intro: "Heeft elke buurt minstens 30% bedekking met boomkronen? Kroonoppervlak als aandeel van de oppervlakte, per wijk en buurt.",
-    method: "Per CBS-wijk en -buurt (2023) is het oppervlak van de boomkronen uit de groenkaart opgeteld en gedeeld door de oppervlakte " +
-            "van het gebied. Grijs: water of geen gegevens.",
+    intro: "Heeft elke buurt minstens 30% bedekking met boomkronen? Kroonoppervlak als aandeel van het landoppervlak, per gemeente, wijk en buurt.",
+    method: "Per CBS-buurt (2023) is het kroonoppervlak van de NEO-bomen opgeteld en gedeeld door het landoppervlak. " +
+            "Voor deze kaart zijn kroon- en landoppervlak naar de gemeenten, wijken en buurten van de 3 omgerekend, naar rato van overlappend oppervlak. " +
+            "Grijs: geen gegevens (Voorne aan Zee zit niet in de kroondata) of alleen water.",
   },
   "300": {
     intro: "Woont iedereen binnen 300 m van een park of bos? Looptijd over het wegennet van elke woning tot de dichtstbijzijnde ingang van groen.",
@@ -194,19 +191,21 @@ const SOURCES = {
     ["Gebieden", "Bestuurlijke gebieden; CBS wijken en buurten 2025", "2025–2026"],
   ],
   "30": [
-    ["Boomkronen", "Groenkaart (kroonvlakken), FME-invoer groenvoorzieningen", "–"],
-    ["Wijken en buurten", '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2023" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2023</a>', "2023"],
+    ["Boomkronen", "NEO boomkronen (aangekocht)", "2020–2022"],
+    ["Landoppervlak", '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2023" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2023</a>', "2023"],
+    ["Gebieden", "Zelfde als de 3", "2025–2026"],
   ],
   "300": [
     ["Groen en ingangen", "OpenStreetMap (parken, bossen, paden) en TOP10NL-groen", "2024–2025"],
     ["Looptijd", '<a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> (voetganger) over het OSM-wegennet', "2025"],
     ["Woningen", "BAG-panden met een woonfunctie", "2025"],
-    ["Gebieden", "CBS wijken en buurten 2023", "2023"],
+    ["Gebieden", "Zelfde als de 3", "2025–2026"],
   ],
 };
-const CAVEATS = "De drie onderdelen gebruiken verschillende bronnen en jaren: de 3 heeft CBS-gebieden van 2025 en BAG van 2026, " +
-  "de 30 en de 300 CBS-gebieden van 2023. Percentages per gebied zijn dus niet één op één te vergelijken tussen de tabbladen. " +
-  "Een kroonbedekking boven 100% (één buurt) is een fout in de invoer. De 300 meet looptijd tot een ingang, niet hemelsbreed tot de rand van het groen.";
+const CAVEATS = "Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 is berekend op de buurten van 2023 " +
+  "en omgerekend: waar een buurt sinds 2023 is gesplitst of samengevoegd, is de kroonbedekking een benadering. Een boom telt mee in elke " +
+  "buurt die zijn kroon raakt. De woningen van de 3 (BAG 2026) en de 300 (BAG 2025) zijn apart geteld; het aantal woningen per gebied kan " +
+  "daardoor iets verschillen. De 300 meet looptijd tot een ingang, niet hemelsbreed tot de rand van het groen.";
 const BASE_SOURCES = [["Achtergrondkaart", "BRT-achtergrondkaart grijs (Kadaster) via PDOK", "actueel"]];
 // ---------------------------------------------------------------------------
 
@@ -223,7 +222,7 @@ const matchColour = (classes, fallback) =>
 const layers = { "3": [], "30": [], "300": [] };
 function add(theme, def) { def.layout = { ...(def.layout || {}), visibility: "none" }; layers[theme].push(def); }
 
-for (const lv of LEVELS_3) {
+for (const lv of LEVELS) {
   add("3", { id: `3-${lv.layer}-fill`, type: "fill", source: "t3", "source-layer": lv.layer,
              minzoom: lv.from, maxzoom: lv.to,
              paint: { "fill-color": stepColour("pct_3_of_meer", STEPS_3), "fill-opacity": 0.75 } });
@@ -235,10 +234,9 @@ add("3", { id: "3-woningen", type: "fill", source: "t3", "source-layer": "woning
                     "fill-outline-color": "rgba(40,40,40,0.5)" } });
 
 // 30: buurten stay on beyond zoom 13 (there is nothing per building)
-const groenColour = ["case",
-  ["any", ["==", ["get", "water"], 1], ["!", ["has", "groen"]]], NO_DATA,
+const groenColour = ["case", ["!", ["has", "groen"]], NO_DATA,
   ["step", ["get", "groen"], ...STEPS_30.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]];
-for (const lv of LEVELS_30_300) {
+for (const lv of LEVELS) {
   const to = lv.layer === "buurten" ? 24 : lv.to;
   add("30", { id: `30-${lv.layer}-fill`, type: "fill", source: "t30", "source-layer": lv.layer,
               minzoom: lv.from, maxzoom: to, paint: { "fill-color": groenColour, "fill-opacity": 0.7 } });
@@ -365,38 +363,33 @@ function legendBlock(title, rows) {
   rows.forEach((r) => div.appendChild(legendRow(...r)));
   return div;
 }
-function currentLevel(levels) {
-  const z = map.getZoom();
-  return levels.findIndex((lv) => z >= lv.from && z < lv.to);
-}
 function updateLegend() {
   const legend = document.getElementById("legend");
   const hint = document.getElementById("hint");
   legend.replaceChildren();
   hint.textContent = "";
   const few = [NO_DATA, `minder dan ${MIN_HOMES} woningen`];
+  const z = map.getZoom();
+  let i = LEVELS.findIndex((lv) => z >= lv.from && z < lv.to);
+  if (theme === "30" && i < 0) i = LEVELS.length - 1;       // the 30 stays on buurten
+  const next = i + 1 < LEVELS.length ? "de " + LEVELS[i + 1].layer : "de afzonderlijke woningen";
+  if (i >= 0 && !(theme === "30" && i === LEVELS.length - 1)) hint.textContent = `Zoom in voor ${next}.`;
   if (theme === "3") {
-    const i = currentLevel(LEVELS_3);
     if (i < 0) {
       legend.appendChild(legendBlock("Zichtbare bomen per woning", [...CLASSES_3.map(([, c, l]) => [c, l]), NO_RING]));
     } else {
-      legend.appendChild(legendBlock(`Woningen met ≥ 3 zichtbare bomen, per ${LEVELS_3[i].name}`,
+      legend.appendChild(legendBlock(`Woningen met ≥ 3 zichtbare bomen, per ${LEVELS[i].name}`,
                                      [...STEPS_3.map(([, c, l]) => [c, l]), few]));
-      hint.textContent = `Zoom in voor ${i + 1 < LEVELS_3.length ? "de " + LEVELS_3[i + 1].layer : "de afzonderlijke woningen"}.`;
     }
   } else if (theme === "30") {
-    const i = currentLevel(LEVELS_30_300);
-    const name = i === 0 ? "wijk" : "buurt";
-    legend.appendChild(legendBlock(`Kroonbedekking per ${name}`, [...STEPS_30.map(([, c, l]) => [c, l]), [NO_DATA, "water of geen gegevens"]]));
-    if (i === 0) hint.textContent = "Zoom in voor de buurten.";
+    legend.appendChild(legendBlock(`Kroonbedekking per ${LEVELS[i].name}`,
+                                   [...STEPS_30.map(([, c, l]) => [c, l]), [NO_DATA, "geen gegevens"]]));
   } else {
-    const i = currentLevel(LEVELS_30_300);
     if (i < 0) {
       legend.appendChild(legendBlock("Looptijd naar park of bos", [...CLASSES_300.map(([, c, l]) => [c, l])]));
     } else {
-      legend.appendChild(legendBlock(`Woningen binnen 5 min lopen van groen, per ${LEVELS_30_300[i].name}`,
+      legend.appendChild(legendBlock(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`,
                                      [...STEPS_300.map(([, c, l]) => [c, l]), few]));
-      hint.textContent = `Zoom in voor ${i === 0 ? "de buurten" : "de afzonderlijke woningen"}.`;
     }
     if (isoBox.checked) {
       legend.appendChild(legendBlock("Looptijdzones", [["#006d2c", "5 minuten", "solid"], ["#e6550d", "15 minuten", "dashed"]]));
@@ -426,12 +419,13 @@ map.on("click", "3-woningen", (e) => {
     ["Gemeente", p.gemeente],
   ]);
 });
-for (const lv of LEVELS_3) {
+const areaTitle = (p, lv) => lv.layer === "gemeenten" ? p.naam : `${p.naam} (${lv.name}, ${p.gemeente})`;
+for (const lv of LEVELS) {
   map.on("click", `3-${lv.layer}-fill`, (e) => {
     const p = e.features[0].properties;
     const few = (p.woningen ?? 0) < MIN_HOMES;
     popup(e.lngLat, [
-      [null, lv.layer === "gemeenten" ? p.naam : `${p.naam} (${lv.name}, ${p.gemeente})`],
+      [null, areaTitle(p, lv)],
       ["Woningen", fmt(p.woningen)],
       ["Met ≥ 3 zichtbare bomen", few ? "–" : pct(p.pct_3_of_meer)],
       ["Met 0 zichtbare bomen", few ? "–" : pct(p.pct_0)],
@@ -447,14 +441,14 @@ map.on("click", "300-woningen", (e) => {
     ["Bouwjaar", p.bouwjaar ?? "–"],
   ]);
 });
-for (const lv of LEVELS_30_300) {
+for (const lv of LEVELS) {
   for (const t of ["30", "300"]) {
     map.on("click", `${t}-${lv.layer}-fill`, (e) => {
       const p = e.features[0].properties;
       const few = (p.woningen ?? 0) < MIN_HOMES;
       popup(e.lngLat, [
-        [null, `${p.naam} (${lv.name}, ${p.gemeente})`],
-        ["Kroonbedekking (30)", p.water === 1 ? "– (water)" : pct(p.groen)],
+        [null, areaTitle(p, lv)],
+        ["Kroonbedekking (30)", pct(p.groen)],
         ["Kroonoppervlak", p.kroon_m2 == null ? "–" : `${fmt(p.kroon_m2)} m²`],
         ["Woningen", fmt(p.woningen)],
         ["Binnen 5 min lopen van groen (300)", few ? "–" : pct(p.pct_5)],

@@ -4,26 +4,30 @@ build_tiles.py — Build the 3-30-300 web map's vector tiles
 The 3 comes from the 3-regel map's own tile file (web/build_tiles.py).
 
 Layers:
-  wijken      zoom 7-11   CBS wijken 2023   } canopy cover (the 30) and the
-  buurten     zoom 11-13  CBS buurten 2023  } share of homes within 5 / 15
-                                              minutes' walk of green (the 300)
+  gemeenten   zoom 6-9    } the same areas as the 3-regel map, with canopy
+  wijken      zoom 9-11   } cover (the 30) and the share of homes within 5 / 15
+  buurten     zoom 11-12  } minutes' walk of green (the 300)
   iso5, iso15 zoom 9-16   5- and 15-minute walking isochrones from the entrances
   ingangen    zoom 13-16  entrances of parks and woods
   woningen    zoom 13-16  every BAG pand with a woonfunctie and its walking class
 
-Inputs (FME output on the share, see SRC below):
-  30_regel_v2.gdb   FeatureClass1 (wijken), FeatureClass_buurt (buurten):
-                    Percentage_groen = crown area / area, per wijk/buurt
+Inputs:
+  ZuidHolland_gebieden.gpkg   gemeenten, wijken 2025, buurten 2025 (06_area_summaries.py)
+  FME output on the share (SRC):
+  30_regel_v2.gdb   FeatureClass_buurt: crown area (sum of NEO crowns touching
+                    the buurt) and land area per CBS buurt 2023. Carried over to
+                    the areas above in proportion to overlapping area.
   300.gdb           _300regel / _300regel_15: every BAG pand, _related_suppliers
                     = 1 when it lies in a 5 / 15 minute pedestrian isochrone
                     (Valhalla) from an entrance of a park or wood >= 300 m2;
                     isochrones_dissolved(_15); ingang_parken
 
 Usage (OSGeo4W Python, reads R:):
-    python web/3-30-300/build_tiles.py
+    python web/3-30-300/build_tiles.py [path\\to\\ZuidHolland_gebieden.gpkg]
 """
 
 import json
+import sys
 from pathlib import Path
 
 from osgeo import gdal, ogr, osr
@@ -31,9 +35,11 @@ gdal.UseExceptions()
 ogr.UseExceptions()
 
 SRC = Path(r"R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\fme output")
+GEBIEDEN = Path(sys.argv[1]) if len(sys.argv) > 1 else \
+    Path(__file__).resolve().parents[2] / "data" / "processed" / "ZuidHolland_gebieden.gpkg"
 OUT = Path(__file__).resolve().parent / "data" / "30-300.pmtiles"
-ZOOMS = {"wijken": (7, 11), "buurten": (11, 13), "iso15": (9, 16), "iso5": (9, 16),
-         "ingangen": (13, 16), "woningen": (13, 16)}
+ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12),
+         "iso15": (9, 16), "iso5": (9, 16), "ingangen": (13, 16), "woningen": (13, 16)}
 GONE = {"Pand gesloopt", "Niet gerealiseerd pand", "Pand buiten gebruik"}
 
 RD = osr.SpatialReference()
@@ -87,44 +93,74 @@ def woningen(dst):
     return pts
 
 
-def areas(dst, pts):
-    """Wijken and buurten: canopy cover, and the share of homes by walking class."""
+def buurten_2023(dst):
+    """The FME 30 per CBS buurt 2023: crown area and land area (m2), as a layer
+    to apportion from. FME: Percentage_groen = crown m2 / 100 / land ha."""
     gdb = ogr.Open(str(SRC / "30_regel_v2.gdb"))
-    for level, layer, name in (("wijken", "FeatureClass1", "wijknaam"),
-                               ("buurten", "FeatureClass_buurt", "buurtnaam")):
-        src = gdb.GetLayerByName(layer)
+    src = gdb.GetLayerByName("FeatureClass_buurt")
+    out = dst.CreateLayer("buurten_2023", RD, ogr.wkbMultiPolygon)
+    for fname in ("kroon", "land"):
+        out.CreateField(ogr.FieldDefn(fname, ogr.OFTReal))
+    dst.StartTransaction()
+    for f in src:
+        kroon = f.GetField("totaal_kroonoppervlak_m2")
+        if kroon in (None, ""):              # no crown data (all of Voorne aan Zee): leave out
+            continue
+        land = f.GetField("oppervlakte_land_in_ha") or 0
+        nf = ogr.Feature(out.GetLayerDefn())
+        nf.SetField("kroon", float(kroon))
+        nf.SetField("land", max(land, 0) * 1e4)          # -99997 = no land
+        g = f.GetGeometryRef().Clone()
+        nf.SetGeometry(g if g.IsValid() else g.MakeValid())
+        out.CreateFeature(nf)
+    dst.CommitTransaction()
+    return out
+
+
+def areas(dst, pts, b23):
+    """Gemeenten, wijken and buurten of the 3-regel map (same polygons):
+    canopy cover apportioned from the 2023 buurten by overlapping area, and the
+    share of homes by walking class."""
+    src_ds = ogr.Open(str(GEBIEDEN))
+    for level in ("gemeenten", "wijken", "buurten"):
+        src = src_ds.GetLayerByName(level)
         out = dst.CreateLayer(level, RD, ogr.wkbMultiPolygon)
         for fname, ftype in (("naam", ogr.OFTString), ("gemeente", ogr.OFTString),
-                             ("water", ogr.OFTInteger), ("groen", ogr.OFTReal),
-                             ("kroon_m2", ogr.OFTInteger), ("woningen", ogr.OFTInteger),
+                             ("groen", ogr.OFTReal), ("kroon_m2", ogr.OFTInteger),
+                             ("woningen", ogr.OFTInteger),
                              ("pct_5", ogr.OFTReal), ("pct_15", ogr.OFTReal)):
             out.CreateField(ogr.FieldDefn(fname, ftype))
-        out.StartTransaction()
+        dst.StartTransaction()
         for f in src:
             g = f.GetGeometryRef()
+            valid = g if g.IsValid() else g.MakeValid()
             counts = {"5": 0, "15": 0, "ver": 0}
             pts.SetSpatialFilter(g)
             for p in pts:
                 counts[p.GetField("klasse")] += p.GetField("woningen")
             total = sum(counts.values())
+            kroon = land = 0.0
+            b23.SetSpatialFilter(g)
+            for b in b23:
+                bg = b.GetGeometryRef()
+                share = valid.Intersection(bg).GetArea() / bg.GetArea() if bg.GetArea() else 0
+                kroon += share * b.GetField("kroon")
+                land += share * b.GetField("land")
             nf = ogr.Feature(out.GetLayerDefn())
-            nf.SetField("naam", f.GetField(name))
-            nf.SetField("gemeente", f.GetField("gemeentenaam"))
-            nf.SetField("water", 1 if f.GetField("water") == "JA" else 0)
-            groen = f.GetField("Percentage_groen")
-            if groen is not None:
-                nf.SetField("groen", max(0.0, num(groen)))
-            kroon = f.GetField("totaal_kroonoppervlak_m2")
-            if kroon not in (None, ""):
-                nf.SetField("kroon_m2", round(float(kroon)))
+            nf.SetField("naam", f.GetField("naam"))
+            nf.SetField("gemeente", f.GetField("gemeente"))
+            if land > 0:
+                nf.SetField("groen", num(100 * kroon / land))
+                nf.SetField("kroon_m2", round(kroon))
             nf.SetField("woningen", total)
             if total:
                 nf.SetField("pct_5", num(100 * counts["5"] / total))
                 nf.SetField("pct_15", num(100 * (counts["5"] + counts["15"]) / total))
             nf.SetGeometry(g)
             out.CreateFeature(nf)
-        out.CommitTransaction()
+        dst.CommitTransaction()
         pts.SetSpatialFilter(None)
+        b23.SetSpatialFilter(None)
         print(f"{level}: {out.GetFeatureCount():,}")
 
 
@@ -158,11 +194,10 @@ def main():
     staging.unlink(missing_ok=True)
     dst = ogr.GetDriverByName("GPKG").CreateDataSource(str(staging))
     pts = woningen(dst)
-    areas(dst, pts)
+    areas(dst, pts, buurten_2023(dst))
     copy(dst, "isochrones_dissolved", "iso5")
     copy(dst, "isochrones_dissolved_15", "iso15")
     copy(dst, "ingang_parken", "ingangen", ("type", "name"))
-    dst.DeleteLayer(pts.GetName())
     dst = None
 
     conf = {layer: {"minzoom": z0, "maxzoom": z1} for layer, (z0, z1) in ZOOMS.items()}
