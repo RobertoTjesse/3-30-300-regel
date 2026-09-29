@@ -18,6 +18,10 @@ trees that see a cell):
                    dem_raw, observer_elevation RASTERVALU, observer_offset
                    left out (tool default, 1 m), surface_offset 1.8, outer
                    radius 30, FREQUENCY, flat earth
+  arc_bench_offset.tif  the same, but RASTERVALU as observer_offset and no
+                   observer_elevation: the observer the benchmark turned
+                   out to use (surface + RASTERVALU)
+  arc_bench_both.tif    RASTERVALU as observer_elevation AND observer_offset
   arc_v2_2d.tif    Viewshed2, 30 m measured on the ground (2D)
   arc_v2_3d.tif    Viewshed2, 30 m as 3D line-of-sight distance
   arc_vs_2d.tif    classic Viewshed, RADIUS2 = -30
@@ -59,7 +63,7 @@ from arcpy.sa import Viewshed, Viewshed2, Visibility
 ROOT = r"D:\Repositories\3-regel\arcgis_tests\one_tree"
 WORK = r"D:\Temp\onetree"     # plain path for the old GRID-engine tools; None = work in ROOT
 CASES = ["tree_68418", "group_5", "tree_58448"]
-RUN = ["arc_bench", "arc_v2_2d", "arc_v2_3d", "arc_vs_2d", "arc_vs_3d", "arc_vis_2d", "arc_vis_3d"]
+RUN = ["arc_bench", "arc_bench_offset", "arc_bench_both", "arc_v2_2d", "arc_v2_3d", "arc_vs_2d", "arc_vs_3d", "arc_vis_2d", "arc_vis_3d"]
 
 # Set per case by use_case()
 DEM = DEM_RAW = TREE = TREE_3D = None
@@ -86,6 +90,18 @@ VARIANTS = [
         DEM_RAW, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
         curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
         surface_offset="1.8", observer_elevation="RASTERVALU", outer_radius="30")),
+    # the observer the benchmark turned out to use (one_tree.py compare): RASTERVALU
+    # given as the observer OFFSET (height above the surface), no observer elevation
+    ("arc_bench_offset", lambda: Visibility(
+        DEM_RAW, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
+        curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
+        surface_offset="1.8", observer_offset="RASTERVALU", outer_radius="30")),
+    # ... or RASTERVALU for both the elevation and the offset
+    ("arc_bench_both", lambda: Visibility(
+        DEM_RAW, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
+        curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
+        surface_offset="1.8", observer_elevation="RASTERVALU", observer_offset="RASTERVALU",
+        outer_radius="30")),
     ("arc_v2_2d", lambda: _v2("GROUND")),
     ("arc_v2_3d", lambda: _v2("3D")),
     # classic Viewshed: observer settings from the SPOT/OFFSETA/OFFSETB/RADIUS2 fields

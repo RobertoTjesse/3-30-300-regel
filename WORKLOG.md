@@ -138,3 +138,25 @@ trees should be excluded, is still open.
 - Next: `one_tree_arcgis.py` with the new `arc_bench` variant (Visibility
   with exactly the benchmark's settings) to see whether ArcGIS reproduces
   the benchmark on these trees.
+- ArcGIS on all three cases (2026-09-29). `arc_bench` (Visibility with the
+  documented benchmark settings: raw DSM, observer_elevation RASTERVALU,
+  offset left out) does NOT reproduce the benchmark: tree_68418 0.4% seen
+  vs benchmark 91.9%; group_5 mean 0.48 vs 2.09. It sees even less than
+  RASTERVALU + 1 m, so Visibility seems to add no 1 m default offset.
+- **The benchmark's observer was surface + RASTERVALU**, i.e. RASTERVALU
+  used as the observer OFFSET. Fitting the observer height for tree 68418
+  gives 31.5-32 m NAP = 2 x RASTERVALU (15.99). With that observer: exact
+  test = benchmark on 99.4% (tree_68418) and 87.7% (group_5) of cells,
+  GDAL 98.5% / 79.0%; with the documented observer 9.9% / 76.7%.
+  So the benchmark vs pipeline difference is the observer height, not the
+  viewshed engine. Consequences in the benchmark: tall trees get their
+  height twice (median RASTERVALU 8.1 m; 41.9% of trees >= 10 m), and the
+  6,516 trees (7.4%) with RASTERVALU < 0 (below NAP) have their observer
+  BELOW the surface.
+- `pipeline_ahn5` (the pipeline's own canopy-top logic on the same AHN5
+  clip): tree_68418 12.0%, group_5 73.4%, tree_58448 35.9% seen; exact
+  1.7 / 71.9 / 36.4%. On AHN5 the pipeline is consistent with the exact
+  test; the old `pipeline_Delft` cut-out (87% for tree_68418) comes from
+  the production DEM, where that tree point is 10.8 m below its canopy.
+- Next: `arc_bench_offset` (Visibility with observer_offset = RASTERVALU)
+  to confirm in ArcGIS itself.

@@ -26,8 +26,14 @@ Written to arcgis_tests/one_tree/<case>/ by `prepare`:
                SPOT/OFFSETA/OFFSETB/RADIUS2 (2D radius); tree_3d.shp the
                same with RADIUS2 = +30
   gdal.tif, exact_bilinear.tif, exact_nearest.tif
+  gdal_bench_obs.tif, exact_bench_obs.tif  the same with the observer the
+               benchmark turned out to use: RASTERVALU as the observer
+               OFFSET, so surface + RASTERVALU (see WORKLOG, section 9)
+  pipeline_ahn5.tif  this pipeline's own per-tree logic (canopy-top
+               observer, etl/02_compute_viewsheds.py) on this AHN5 dem.tif
   bench_visibility_Delft.tif  the benchmark result, cut out
   pipeline_Delft.tif          this pipeline's Delft_viewshed.tif, cut out
+                              (production DEM, not AHN5)
   others.tif   1 = within 30 m of a tree NOT in the case: the benchmark and
                pipeline counts include that tree there, so compare skips it
   case.json    the trees and their observer elevations
@@ -159,6 +165,32 @@ def gdal_visibility(folder, dem, gt, tree):
     return full
 
 
+def pipeline_visibility(folder, dem, gt, wkt, trees):
+    """This pipeline's own per-tree logic (etl/02_compute_viewsheds.py:
+    canopy-top observer ignoring building pixels, plausibility check, GDAL
+    ViewshedGenerate), run on this case's AHN5 dem.tif instead of the
+    production DEM — so it is comparable with the benchmark's surface."""
+    import importlib
+    mod = importlib.import_module("02_compute_viewsheds")
+    buildings = mod._building_mask(gt, dem.shape[1], dem.shape[0], wkt)
+    total = np.zeros(dem.shape, np.uint8)
+    for t in trees:
+        prepared = mod._prepare_tree(dem, buildings, gt, t["x"], t["y"])
+        window, wgt, obs_h, info = prepared
+        mem = gdal.GetDriverByName("MEM").Create("", window.shape[1], window.shape[0], 1, gdal.GDT_Float32)
+        mem.SetGeoTransform(wgt)
+        mem.SetProjection(wkt)
+        mem.GetRasterBand(1).WriteArray(window)
+        arr, agt = mod._viewshed_python_api(mem.GetRasterBand(1), t["x"], t["y"], obs_h)
+        co, ro = round((agt[0] - gt[0]) / CELL), round((gt[3] - agt[3]) / CELL)
+        total[ro:ro + arr.shape[0], co:co + arr.shape[1]] += (arr > 0).astype(np.uint8)
+        top = f"{info['canopy_top']:.2f}" if info["canopy_top"] is not None else "-"
+        print(f"  pipeline observer, tree {t['fid']}: canopy top {top} m NAP, offset {obs_h:.2f} m"
+              f"{'' if info['plausible'] else ' (implausible: default offset)'}"
+              f" — benchmark-style observer {t['obs_z']:.2f}")
+    write_raster(folder / "pipeline_ahn5.tif", total, gt, wkt)
+
+
 def prepare(case):
     folder = ROOT / case
     trees = load_case(case)
@@ -256,7 +288,15 @@ def prepare(case):
     write_raster(folder / "gdal.tif", sum(gdal_visibility(folder, dem, gt, t) for t in trees), gt, wkt)
     for name, order in (("exact_bilinear", 1), ("exact_nearest", 0)):
         write_raster(folder / f"{name}.tif", sum(exact_visibility(dem, gt, t, order) for t in trees), gt, wkt)
-    print(f"Wrote the inputs, gdal.tif, exact_bilinear.tif and exact_nearest.tif in {folder}")
+    # The same with the observer the benchmark turned out to use: RASTERVALU
+    # as the observer OFFSET, i.e. surface (bilinear) + RASTERVALU
+    as_run = [dict(t, obs_z=2 * t["rastervalu"]) for t in trees]
+    write_raster(folder / "gdal_bench_obs.tif", sum(gdal_visibility(folder, dem, gt, t) for t in as_run),
+                 gt, wkt)
+    write_raster(folder / "exact_bench_obs.tif", sum(exact_visibility(dem, gt, t, 1) for t in as_run),
+                 gt, wkt)
+    pipeline_visibility(folder, dem, gt, wkt, trees)
+    print(f"Wrote the inputs, gdal.tif, exact_bilinear.tif, exact_nearest.tif and pipeline_ahn5.tif in {folder}")
 
 
 def read_counts(path, shape, gt):
