@@ -220,19 +220,22 @@ its history). Colours, class labels and texts are at the top of the
 
 ### 3-30-300 web map
 
-https://robertotjesse.github.io/3-regel/3-30-300/ — the same map with a
-3 / 30 / 300 switch. The 3 reads the tile file above; the 30 (canopy cover
-per CBS wijk/buurt 2023) and the 300 (homes within a 5 / 15 minute walk of
-a park or wood entrance, per building and per wijk/buurt) come from the FME
-results on the share (`...\Tijdelijk_Roberto\3-30-300\fme output`), built
-into `web/3-30-300/data/30-300.pmtiles`:
+https://robertotjesse.github.io/3-30-300-regel/ — the same map with a
+3 / 30 / 300 switch, on the same gemeenten, wijken and buurten as the 3. The 30
+(canopy cover) and the 300 (homes within a 5 / 15 minute walk of a park or
+wood entrance) come from the FME results on the share
+(`...\Tijdelijk_Roberto\3-30-300\fme output`), built into
+`web/3-30-300/data/30-300.pmtiles`. The 30 was computed per CBS buurt 2023;
+its crown and land area are carried over to the 2025 areas in proportion to
+overlapping area (no crown data for Voorne aan Zee).
 
 ```
-python web\3-30-300\build_tiles.py
-python web\serve.py              # preview at http://localhost:8000/3-30-300/
+python web\3-30-300\build_tiles.py   # after 06_area_summaries.py
 ```
 
-then put `index.html` and `data/30-300.pmtiles` in `3-30-300/` on `gh-pages`.
+The site is the `gh-pages` branch of the 3-30-300-regel repository: `index.html`
+(= `web/3-30-300/index.html`), `data/zuid-holland.pmtiles` (the 3) and
+`data/30-300.pmtiles`.
 
 ## Data layout
 
