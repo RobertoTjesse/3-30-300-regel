@@ -10,7 +10,7 @@ The **3-30-300 rule** (Konijnendijk, 2023) asks for green in three ways:
 
 All three are computed for the province of **Zuid-Holland** and published
 together as one web map with a 3 / 30 / 300 switch, per gemeente, wijk,
-buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**, with
+buurt and home: **https://robertotjesse.github.io/330300regel/**, with
 explanation pages in Dutch (`/uitleg/`). The 3 can be run for another
 province without code changes ([Another province](#another-province)); the
 30 and 300 still depend on FME, and moving them to open-source Python is
@@ -115,8 +115,9 @@ crown data. The 300 is recounted per area from the
 buildings' walking class.
 
 **Publishing:** copy `web/` without the `.py` files to the `gh-pages` branch
-(plus an empty `.nojekyll`); GitHub Pages serves that branch. The live site
-is still published from `RobertoTjesse/3-30-300-regel`.
+(plus an empty `.nojekyll`); GitHub Pages serves that branch at
+https://robertotjesse.github.io/330300regel/. (Until 2026-09-29 the site was
+published from `RobertoTjesse/3-30-300-regel`.)
 
 ## Validation
 
