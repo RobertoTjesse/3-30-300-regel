@@ -173,3 +173,10 @@ trees should be excluded, is still open.
   original and with Delft_viewshed.tif (mean, 0 / >= 3 trees, pixel r).
   `one_tree_arcgis.py` got the same settings as `arc_bench_fixed`, to check
   them against the exact test on the three cases.
+- Corrected benchmark, test area ("stukje", 1,039 trees, ~1.5 min from
+  the ArcGIS Python Command Prompt; the same run crashed Pro when started
+  inside Pro): mean 3.22 trees visible, 49.3% of cells >= 3 trees; the
+  original benchmark 5.59 / 72.3%; the pipeline (production DEM) 4.74 /
+  67.6%. With the intended observer Visibility is close to GDAL on the same
+  area and observer (3.42 / 52.6%, ARCHITECTURE.md section 14). Pixel r:
+  corrected vs original 0.78, corrected vs pipeline 0.67.
