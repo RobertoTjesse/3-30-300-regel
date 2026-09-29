@@ -88,10 +88,15 @@ om de buurt gaat en niet om het stadsgemiddelde. Wij rekenen:</p>
 <ul>
   <li><b>Dubbeltelling op grenzen.</b> Een kroon die over een buurtgrens hangt telt in beide buurten helemaal mee. In
       kleine buurten weegt dat zwaar: één buurt komt zo boven de 100% uit (282%).</li>
-  <li id="ontbrekend"><b>Ontbrekende kroondata.</b> In 115 buurten (2023) met land vond de berekening geen enkele kroon,
-      terwijl er volgens het bomenbestand wel bomen staan. Dat is een gat in de kroonvlakken, geen boomloos gebied: in
-      Noordkethelpolder (Schiedam) staan bijvoorbeeld ruim 2.700 bomen. Het gaat om heel Voorne aan Zee (70 buurten),
-      28 buurten in Schiedam, 7 in Westland, 5 in Leiderdorp, 3 in Pijnacker-Nootdorp en 1 in Delft. Op de kaart
+  <li id="ontbrekend"><b>Ontbrekende waarden door een fout in de berekening.</b> In 115 buurten (2023) met land vond de
+      berekening geen enkele kroon, terwijl er wel bomen staan (in Noordkethelpolder, Schiedam, bijvoorbeeld ruim 2.700).
+      De kroondata zijn compleet; de oorzaak zit in de FME-berekening. Die zoekt de grens van een gebied op in de
+      CBS-kaart van <b>2022</b>, met de code uit de kaart van <b>2023</b>. Buurten en wijken die in 2023 een nieuwe code
+      kregen, worden dan niet gevonden: dat zijn er precies 114 van de 115 (de laatste is het strand van Katwijk, echt
+      zonder bomen). Het gaat om heel Voorne aan Zee (ontstaan in 2023, 70 buurten), 28 buurten in Schiedam (nieuwe
+      indeling in 2023), 7 in Westland, 5 in Leiderdorp, 3 in Pijnacker-Nootdorp en 1 in Delft. Waar een grens tussen 2022
+      en 2023 verschoof maar de code bleef, telt de berekening de kronen binnen de oude grens en deelt ze door het nieuwe
+      landoppervlak; ook dat kan afwijkende waarden geven. De open-source versie van de 30 lost dit op. Op de kaart
       krijgt een gebied alleen een waarde als minstens de helft ervan kroondata heeft; anders is het grijs ("geen
       gegevens"). Daardoor zijn de gemeenten Schiedam, Leiderdorp en Voorne aan Zee grijs. Voor Westland en
       Pijnacker-Nootdorp is de waarde berekend op het deel mét kroondata.</li>

@@ -216,6 +216,11 @@ road network; only their results enter this repository
 (`web/build_tiles_30_300.py`). The goal is the same pipeline shape for all
 three, so any province can repeat the whole rule:
 
+- **30** — known bug in the FME version: it looks up each area in
+  `GRENZEN.CBS_WIJKKAART_2022_VERSIE3` by its 2023 code, so the 114 buurten and 19
+  wijken with new codes in 2023 (all of Voorne aan Zee, 28 buurten in Schiedam, ...)
+  get no crowns at all, and areas whose boundary moved are counted over the 2022
+  polygon but divided by the 2023 land area. BOMEN_KRONEN itself is complete.
 - **30** (`etl/30_canopy.py`): clip the crown polygons to each area instead
   of counting every crown that touches it (removes the double counting on
   boundaries; one buurt now reaches 282%), sum, divide by the CBS land area,
