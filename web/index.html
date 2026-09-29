@@ -429,6 +429,18 @@ function legendBlock(title, rows) {
   rows.forEach((r) => div.appendChild(legendRow(...r)));
   return div;
 }
+// Under the per-home legend: a model result per home is an indication
+function homeNote(href) {
+  const p = document.createElement("p");
+  p.className = "hint";
+  p.append("Per woning is dit een indicatie uit een model, geen meting ter plekke. ");
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.textContent = "Klopt het niet voor jouw woning?";
+  p.appendChild(a);
+  return p;
+}
 function updateLegend() {
   const legend = document.getElementById("legend");
   const hint = document.getElementById("hint");
@@ -443,6 +455,7 @@ function updateLegend() {
   if (theme === "3") {
     if (i < 0) {
       legend.appendChild(legendBlock("Zichtbare bomen per woning", [...CLASSES_3.map(([, c, l]) => [c, l]), NO_RING]));
+      legend.appendChild(homeNote("uitleg/3.html#mijn-woning"));
     } else {
       legend.appendChild(legendBlock(`Woningen met ≥ 3 zichtbare bomen, per ${LEVELS[i].name}`,
                                      [...STEPS_3.map(([, c, l]) => [c, l]), few]));
@@ -453,6 +466,7 @@ function updateLegend() {
   } else {
     if (i < 0) {
       legend.appendChild(legendBlock("Looptijd naar park of bos", [...CLASSES_300.map(([, c, l]) => [c, l])]));
+      legend.appendChild(homeNote("uitleg/300.html#mijn-woning"));
     } else {
       legend.appendChild(legendBlock(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`,
                                      [...STEPS_300.map(([, c, l]) => [c, l]), few]));
@@ -477,13 +491,21 @@ tiles3.getHeader().then((h) => {
 // Popups
 const fmt = (n) => n == null ? "–" : Number(n).toLocaleString("nl-NL");
 const pct = (n) => n == null ? "–" : `${fmt(n)}%`;
-function popup(lngLat, rows) {
+function popup(lngLat, rows, link) {
   const div = document.createElement("div");
   rows.forEach(([k, v], i) => {
     const line = document.createElement(i === 0 ? "strong" : "div");
     line.textContent = k === null ? v : `${k}: ${v}`;
     div.appendChild(line);
   });
+  if (link) {                                   // [text, href]: e.g. "Waarom rood?" to the explanation
+    const a = document.createElement("a");
+    a.textContent = link[0];
+    a.href = link[1];
+    a.target = "_blank";
+    a.style.cssText = "display:block;margin-top:6px;color:var(--accent)";
+    div.appendChild(a);
+  }
   new maplibregl.Popup({ maxWidth: "280px" }).setLngLat(lngLat).setDOMContent(div).addTo(map);
 }
 map.on("click", "3-woningen", (e) => {
@@ -492,7 +514,7 @@ map.on("click", "3-woningen", (e) => {
     [null, p.bomen == null ? "Geen vrije gevel" : `${fmt(p.bomen)} zichtbare bomen`],
     ["Woningen in dit pand", fmt(p.woningen)],
     ["Gemeente", p.gemeente],
-  ]);
+  ], (p.bomen ?? 0) < 3 ? ["Ik zie wel bomen: waarom deze kleur?", "uitleg/3.html#mijn-woning"] : null);
 });
 const areaTitle = (p, lv) => lv.layer === "gemeenten" ? p.naam : `${p.naam} (${lv.name}, ${p.gemeente})`;
 for (const lv of LEVELS) {
@@ -513,7 +535,7 @@ map.on("click", "300-woningen", (e) => {
     [null, POPUP_300[p.klasse] ?? "onbekend"],
     ["Woningen in dit pand", fmt(p.woningen)],
     ["Bouwjaar", p.bouwjaar ?? "–"],
-  ]);
+  ], p.klasse !== "5" ? ["Er is wel groen dichtbij: waarom rood?", "uitleg/300.html#mijn-woning"] : null);
 });
 for (const lv of LEVELS) {
   for (const t of ["30", "300"]) {
