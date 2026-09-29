@@ -184,20 +184,23 @@ def prepare(code):
     mask = mem.GetRasterBand(1).ReadAsArray()
     write_raster(folder / "buurt.tif", mask, gt, wkt)
 
-    # Trees: the benchmark's tree layer, within the buffer, with a RASTERVALU
+    # Trees: the benchmark's tree layer, within the buffer. Trees without a
+    # RASTERVALU (0.4% of Delft) are kept with 0: the benchmark counted them
+    # (tree 41652 in the Molenbuurt is visible in visibility_Delft), most
+    # likely reading the empty value as 0.
     tds = ogr.Open(REFERENCE_GDB)
     tl = tds.GetLayerByName(BENCH_TREES)
     tl.SetSpatialFilter(buffer)
-    trees, skipped = [], 0
+    trees, no_value = [], 0
     for t in tl:
         rv = t.GetField("RASTERVALU")
         if rv is None:
-            skipped += 1                      # the benchmark could not use it either
-            continue
+            no_value += 1
+            rv = 0.0
         g = t.GetGeometryRef()
         trees.append({"fid": t.GetFID(), "x": g.GetX(), "y": g.GetY(), "rastervalu": rv})
     tds = None
-    print(f"{len(trees)} trees in buurt + buffer ({skipped} without RASTERVALU left out, as in the benchmark)")
+    print(f"{len(trees)} trees in buurt + buffer ({no_value} without RASTERVALU, kept with 0 as in the benchmark)")
 
     # The trees as a shapefile for ArcGIS's Visibility tool
     drv = ogr.GetDriverByName("ESRI Shapefile")
