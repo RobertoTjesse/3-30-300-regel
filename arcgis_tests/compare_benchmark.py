@@ -9,6 +9,11 @@ same count and with the same >= 3 verdict. Computed over the corrected
 raster's extent (the test area or all of Delft), on cells where all
 rasters have data, in blocks (Delft is ~176 million cells).
 
+For all of Delft only cells inside the municipality, at least 30 m from
+its boundary, are compared (MUNICIPALITY, INSET_M): the benchmark only
+has Delft's trees, the pipeline those of the whole province, so near and
+beyond the boundary their counts differ for that reason alone.
+
 Note: Delft_viewshed.tif was made on the pipeline's production DEM, not on
 AHN5, so its differences from the benchmarks mix the observer rule, the
 engine and the surface model.
@@ -28,13 +33,37 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "etl"))
 import config  # noqa: E402,F401  (GDAL environment)
 
-from osgeo import gdal  # noqa: E402
+from osgeo import gdal, ogr  # noqa: E402
 gdal.UseExceptions()
 
 REFERENCE_GDB = r"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/data.gdb"
 BENCH_NODATA = -2147483647            # visibility_Delft's undeclared NoData
 EXPERIMENTS = REPO / "data" / "processed" / "experiments"
 BLOCK_ROWS = 1024
+MUNICIPALITIES = REPO / "data" / "interim" / "gemeenten.gpkg"
+MUNICIPALITY = "Delft"
+INSET_M = 30.0                        # = outer radius
+
+
+def municipality_mask(gt, nx, ny, wkt):
+    """True inside MUNICIPALITY, at least INSET_M from its boundary, on the grid."""
+    ds = ogr.Open(str(MUNICIPALITIES))
+    layer = ds.GetLayer(0)
+    layer.SetAttributeFilter(f"naam = '{MUNICIPALITY}'")
+    f = layer.GetNextFeature()
+    if f is None:
+        raise SystemExit(f"{MUNICIPALITY} not found in {MUNICIPALITIES}")
+    inner = f.GetGeometryRef().Buffer(-INSET_M)
+    mem_v = ogr.GetDriverByName("Memory").CreateDataSource("")
+    lyr = mem_v.CreateLayer("m", layer.GetSpatialRef(), ogr.wkbMultiPolygon)
+    out = ogr.Feature(lyr.GetLayerDefn())
+    out.SetGeometry(inner)
+    lyr.CreateFeature(out)
+    mem = gdal.GetDriverByName("MEM").Create("", nx, ny, 1, gdal.GDT_Byte)
+    mem.SetGeoTransform(gt)
+    mem.SetProjection(wkt)
+    gdal.RasterizeLayer(mem, [1], lyr, burn_values=[1])
+    return mem.GetRasterBand(1).ReadAsArray().astype(bool)
 
 
 def open_aligned(path, ref_gt, nodata=None):
@@ -55,6 +84,7 @@ def main(test):
         raise SystemExit(f"Not found: {corrected} — run arcgis_tests/benchmark_corrected.py first")
     ref = gdal.Open(str(corrected))
     ref_gt, nx, ny = ref.GetGeoTransform(), ref.RasterXSize, ref.RasterYSize
+    inside = None if test else municipality_mask(ref_gt, nx, ny, ref.GetProjection())
     ref = None
 
     sources = {
@@ -70,7 +100,8 @@ def main(test):
     pair = {pq: dict(xy=0.0, same=0, same3=0) for pq in combinations(names, 2)}
     for r0 in range(0, ny, BLOCK_ROWS):
         rows = min(BLOCK_ROWS, ny - r0)
-        data, valid = {}, np.ones((rows, nx), bool)
+        data = {}
+        valid = np.ones((rows, nx), bool) if inside is None else inside[r0:r0 + rows].copy()
         for k, (ds, band, ro, co, nd) in opened.items():
             a = np.full((rows, nx), np.nan)
             src_r0, src_c0 = r0 + ro, co
@@ -102,7 +133,8 @@ def main(test):
     if not n:
         raise SystemExit("No cells where all rasters have data")
 
-    print(f"\n{name}: {n:,} cells where all three rasters have data\n")
+    where = "" if test else f" inside {MUNICIPALITY}, >= {INSET_M:.0f} m from its boundary,"
+    print(f"\n{name}: {n:,} cells{where} where all three rasters have data\n")
     print(f"{'':28s} {'mean':>6s} {'0 trees':>8s} {'>=3 trees':>10s}")
     mean, sd = {}, {}
     for k in names:

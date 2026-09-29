@@ -506,6 +506,12 @@ line-of-sight test agree closely (GDAL 95.5-99.7% of cells equal to the
 exact test on single trees); so the benchmark's difference from this
 pipeline is its observer height, not the viewshed engine, and the
 statements above that attribute it to the engine no longer hold.
+Rerun with the intended observer (`arcgis_tests/benchmark_corrected.py`,
+RASTERVALU + an explicit 1 m offset, in 500 m tiles), inside Delft at
+least 30 m from its boundary: mean 3.28 trees visible, 47.3% of cells
+>= 3 trees (original 6.16 / 69.5%; this pipeline 4.57 / 60.4%, pixel
+r 0.61 with the corrected benchmark). The remaining gap to this pipeline
+is its canopy-top observer and its own DEM.
 The Visibility crashes were caused by the repository path (a folder name
 starting with a digit and containing a hyphen), not the tool; the tool
 also ignores the sign of the outer radius (always 2D).

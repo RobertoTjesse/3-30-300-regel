@@ -184,3 +184,19 @@ trees should be excluded, is still open.
   still busy after 2.5 h on one core and was stopped. benchmark_corrected.py
   now runs in 500 m tiles (+30 m margin for the DEM and the trees, inner part
   kept, mosaicked), 5 tiles at a time in separate processes; resumable.
+- Corrected benchmark for all of Delft: 180 tiles of 500 m, 5 in parallel,
+  ~55 min. The first mosaic held the tiles' own NoData markers (65535 and
+  -128, 7.9 M cells, all on DEM NoData) as counts; cleaned, and tiles are
+  now written as 32-bit with one NoData value. No seams at tile edges
+  (neighbour differences 0.40 across edges vs 0.40 elsewhere).
+- Result inside Delft, >= 30 m from the boundary (86.6 M cells; outside it
+  the pipeline has the province's trees and the benchmarks only Delft's):
+  corrected benchmark mean 3.28 trees, 26.3% of cells 0 trees, 47.3% >= 3;
+  original 6.16 / 16.8% / 69.5%; pipeline (production DEM) 4.57 / 20.0% /
+  60.4%. Pixel r: corrected vs pipeline 0.61 (original vs pipeline 0.55),
+  corrected vs original 0.77. The pipeline still sees more than the
+  corrected benchmark: canopy-top observer (median ~2 m higher than point
+  + 1 m) and its own DEM.
+- QGIS validation project: visibility_Delft_corrected and the original
+  visibility_Delft (read from the geodatabase) side by side under
+  Experimenten.

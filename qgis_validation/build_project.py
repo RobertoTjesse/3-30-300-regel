@@ -55,6 +55,7 @@ from qgis.core import (
     QgsPalettedRasterRenderer,
     QgsProject,
     QgsRasterLayer,
+    QgsRasterRange,
     QgsRasterShader,
     QgsSingleBandPseudoColorRenderer,
     QgsSingleSymbolRenderer,
@@ -69,6 +70,11 @@ PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
 PROVINCE_DEM = REPO / "data" / "interim" / "province_dem.vrt"
 EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
 ONE_TREE_DIR = REPO / "arcgis_tests" / "one_tree"
+# The original ArcGIS benchmark (observer 2 x RASTERVALU, see ARCHITECTURE.md §14)
+BENCHMARK = ('OpenFileGDB:"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/data.gdb"'
+             ':visibility_Delft')
+BENCHMARK_NAME = "visibility_Delft (originele benchmark, observer 2x RASTERVALU)"
+BENCH_NODATA = -2147483647            # its undeclared NoData
 
 GROUP_HOMES = "Woningen (aantal zichtbare bomen)"
 GROUP_VIEWSHED = "Viewshed (aantal zichtbare bomen)"
@@ -111,7 +117,8 @@ def _group(root, name, index=None):
 def _prune_missing(project):
     """Remove local-file layers whose file is gone; return their names."""
     gone = [l for l in project.mapLayers().values()
-            if l.providerType() in ("gdal", "ogr") and not Path(l.source().split("|")[0]).exists()]
+            if l.providerType() in ("gdal", "ogr") and not l.source().startswith("OpenFileGDB:")
+            and not Path(l.source().split("|")[0]).exists()]
     names = [l.name() for l in gone]
     project.removeMapLayers([l.id() for l in gone])
     return names
@@ -343,6 +350,18 @@ def main():
                     layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
                         {"color": "0,0,0,0", "outline_color": "#3f007d", "outline_width": "0.4"})))
                     added += 1
+
+        # The original ArcGIS benchmark, read straight from its geodatabase,
+        # next to the corrected one (arcgis_tests/benchmark_corrected.py)
+        if not any(l.name() == BENCHMARK_NAME for l in project.mapLayers().values()):
+            layer = QgsRasterLayer(BENCHMARK, BENCHMARK_NAME, "gdal")
+            if layer.isValid():
+                layer.dataProvider().setUserNoDataValue(1, [QgsRasterRange(BENCH_NODATA, BENCH_NODATA)])
+                if _add(project, _group(root, GROUP_EXPERIMENTS, 1), layer, visible=False):
+                    _style_viewshed(layer)
+                    added += 1
+            else:
+                print(f"  NOTE: {BENCHMARK} not readable (R: drive?) — benchmark layer skipped")
 
         added += _add_one_tree(project, root, have)
 

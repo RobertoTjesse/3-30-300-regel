@@ -66,6 +66,7 @@ TILE_M = 500.0                 # tile size; the 85 s test area was 528 x 466 m
 MARGIN = 30.0                  # = outer radius: trees this far outside a tile see into it
 WORKERS = 5                    # tiles at the same time (this machine: 6 cores)
 CELL = 0.5
+NODATA = 2147483647           # of every tile and of the mosaic
 
 # The "stukje" test area in Delft (as arcgis_tests/visibility_variants.py)
 TEST_AREA = (82982.0, 445985.5, 83510.5, 446451.0)
@@ -118,8 +119,13 @@ def run_tile(x0, y0, x1, y1, out_tif, folder):
     full = os.path.join(folder, "vis.tif")
     result.save(full)
     arcpy.env.extent = arcpy.Extent(x0, y0, x1, y1)
-    arcpy.management.Clip(full, box(x0, y0, x1, y1), out_tif, nodata_value="",
+    inner = os.path.join(folder, "inner.tif")
+    arcpy.management.Clip(full, box(x0, y0, x1, y1), inner, nodata_value="",
                           clipping_geometry="NONE", maintain_clipping_extent="MAINTAIN_EXTENT")
+    # One pixel type and NoData value for every tile: otherwise each tile gets
+    # the smallest type for its values (8 or 16 bit, NoData -128 / 65535) and
+    # MosaicToNewRaster copies those markers into the result as counts
+    arcpy.management.CopyRaster(inner, out_tif, pixel_type="32_BIT_SIGNED", nodata_value=str(NODATA))
     return n
 
 
