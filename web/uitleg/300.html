@@ -22,7 +22,8 @@
 <main>
 <h1>De 300: een park binnen 300 meter</h1>
 <p class="lead">Woont iedereen op loopafstand van een park of bos? Vanaf elke ingang van een park of bos is berekend
-hoe ver je in 5 en in 15 minuten loopt over echte wegen en paden. Elke woning in die zones ligt op loopafstand.</p>
+hoe ver je in 5 minuten loopt over echte wegen en paden. Elke woning in die zone voldoet (groen op de kaart). Ter
+informatie is ook de zone van 15 minuten berekend.</p>
 
 <div class="facts">
   <div class="fact"><b>78,9%</b><span>van de woningen binnen 5 min lopen van groen</span></div>
@@ -48,11 +49,13 @@ de ingangen van het groen.</p>
     Alle paden en wegen waarover je mag lopen (OpenStreetMap, binnen 300 m rond elke gemeente) worden gesneden met de
     rand van het groen. Waar een pad het groen in gaat, ligt een ingang: 27.111 in totaal.</li>
   <li><strong>Loopzones berekenen.</strong>
-    Vanaf elke ingang berekent de open-source routeplanner Valhalla (profiel voetganger, over OpenStreetMap) het gebied
-    dat je in 5 en in 15 minuten lopend bereikt. Alle zones worden samengevoegd.</li>
+    Vanaf elke ingang berekent een isochronencalculator
+    (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) met een netwerkanalyse over de wegen en paden van
+    OpenStreetMap (profiel voetganger) het gebied dat je in 5 en in 15 minuten lopend bereikt. Alle zones worden
+    samengevoegd.</li>
   <li><strong>Woningen indelen.</strong>
-    Een BAG-pand met een woonfunctie dat in of op de rand van een 5-minutenzone ligt, valt in "binnen 5 minuten";
-    anders, als het in een 15-minutenzone ligt, in "binnen 15 minuten"; anders "verder".</li>
+    Een BAG-pand met een woonfunctie dat in of op de rand van een 5-minutenzone ligt, voldoet: groen op de kaart.
+    Alle andere woningen zijn rood. Of een rode woning wel binnen 15 minuten ligt, staat in de pop-up.</li>
   <li><strong>Per gemeente, wijk en buurt.</strong>
     Het aandeel woningen binnen 5 (en 15) minuten, op dezelfde gebieden als de 3 en de 30. Een pand telt voor zoveel
     woningen als het adressen met woonfunctie heeft.</li>
@@ -66,12 +69,17 @@ de ingangen van het groen.</p>
         oversteek. Het artikel spreekt zelf van "ongeveer 5 minuten lopen".</td>
     <td>Een cirkel van 300 m (buffer): eenvoudiger, maar negeert barrières.</td></tr>
 <tr><td>5 minuten</td>
-    <td>Valhalla rekent voor voetgangers standaard met 5,1 km/u: 5 minuten is ongeveer 425 m over de weg. Met de
+    <td>De netwerkanalyse (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) rekent voor voetgangers standaard met 5,1 km/u: 5 minuten is ongeveer 425 m over de weg. Met de
         gebruikelijke omweg van wegen ten opzichte van hemelsbreed komt dat rond de 300 m hemelsbreed uit.</td>
     <td>Precies 300 m over het netwerk: strenger dan de 300 m hemelsbreed van de WHO.</td></tr>
-<tr><td>Ook 15 minuten</td>
-    <td>Laat zien of woningen die de 300 niet halen er net naast zitten of echt ver van groen wonen.</td>
-    <td>Alleen voldoet/voldoet niet.</td></tr>
+<tr><td>Kleur alleen op 5 minuten</td>
+    <td>De regel is 300 m, ongeveer 5 minuten lopen: een woning voldoet of niet. De kaart kleurt daarom alleen groen
+        (binnen 5 minuten) en rood (verder).</td>
+    <td>Een aparte kleur voor 5–15 minuten: suggereert een tussencategorie die de regel niet kent.</td></tr>
+<tr><td>15 minuten als extra informatie</td>
+    <td>Laat zien of woningen die de 300 niet halen er net naast zitten of echt ver van groen wonen. Te zien in de
+        pop-ups en als looptijdzone, niet in de kleuren.</td>
+    <td>Helemaal weglaten.</td></tr>
 <tr><td>Vanaf de ingangen</td>
     <td>Je gaat een park in via een pad. Rekenen vanaf de rand zou ook hekken, water en dichte bosranden als toegang
         tellen.</td>
@@ -85,7 +93,7 @@ de ingangen van het groen.</p>
 <tr><td>Pand telt als het de zone raakt</td>
     <td>De voordeur ligt ergens aan de gevel; als een deel van het pand in de zone ligt, is het groen binnen bereik.</td>
     <td>Alleen het middelpunt van het pand: strenger bij grote panden.</td></tr>
-<tr><td>Open-source routeplanner (Valhalla)</td>
+<tr><td>Open-source isochronencalculator</td>
     <td>Gratis, reproduceerbaar en met een voetgangersprofiel over OpenStreetMap.</td>
     <td>Commerciële routediensten: kosten en niet te herhalen.</td></tr>
 </table></div>
@@ -98,7 +106,8 @@ de ingangen van het groen.</p>
   <li><b>Openbaarheid.</b> Of het groen openbaar toegankelijk is, is niet gecontroleerd; een ingang betekent alleen dat er
       een pad het groen in gaat.</li>
   <li><b>Groen zonder paden</b> (een open grasveld aan de straat) krijgt geen ingang en telt dus niet mee.</li>
-  <li><b>Gemaakt met FME</b>, met een Valhalla-server die tijdelijk lokaal draaide. De stappen zijn open data en
+  <li><b>Gemaakt met FME</b>, met een isochronencalculator
+      (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) die tijdelijk lokaal draaide. De stappen zijn open data en
       open software, maar de workbench staat nog niet in de repository. Het plan is om dit volledig in Python te doen
       (zie het <a href="./#toekomst">overzicht</a>).</li>
 </ul>
@@ -113,7 +122,7 @@ de ingangen van het groen.</p>
 <tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr>
 <tr><td>Parken en bossen</td><td>OpenStreetMap en TOP10NL (Kadaster)</td><td>2024</td></tr>
 <tr><td>Paden en wegen</td><td>OpenStreetMap (via PostGIS)</td><td>niet vastgelegd</td></tr>
-<tr><td>Looptijd</td><td><a href="https://github.com/valhalla/valhalla">Valhalla</a>, profiel voetganger</td><td>2025</td></tr>
+<tr><td>Looptijd</td><td>Isochronencalculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>), profiel voetganger</td><td>2025</td></tr>
 <tr><td>Panden met woonfunctie</td><td>BAG</td><td>2025</td></tr>
 </table></div>
 </main>
