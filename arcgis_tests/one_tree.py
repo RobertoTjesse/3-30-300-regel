@@ -1,27 +1,46 @@
 """
-one_tree.py — Viewshed of ONE tree, computed by GDAL (this pipeline), by
-ArcGIS Pro and by an exact line-of-sight reference, on identical inputs,
-to find where and why the tools differ (GitHub issue #2).
+one_tree.py — Viewshed of one tree, or of an isolated group of trees,
+computed by GDAL (this pipeline), by ArcGIS Pro and by an exact
+line-of-sight reference on identical inputs, and compared with the
+benchmark run (visibility_Delft) cut out around the same trees
+(GitHub issue #2).
 
-The tree: a ~26 m tree 245 m from the Markt in Delft (NEO tree data,
-bomen_Delft). For this tree the two observer-height rules nearly coincide
-(DSM at the point + 1 m = 27.85 m NAP; canopy top 27.73 m), so every
-difference comes from the viewshed calculation itself.
+Cases (CASES below; fids in bomen_Delft_met_hoogte_uit_AHN05ruw, which
+numbers the trees differently from bomen_Delft; NEO tree data):
+  tree_68418  one 16 m tree, no other tree within 56 m, open surroundings
+  group_5     a row of 5 trees (3-7 m, ~7 m apart), no other tree within 50 m
+  tree_58448  the first test tree: 26 m, city centre, trees around it
+Every result is a count: the number of the case's trees that see a cell
+(the benchmark's FREQUENCY output). For a single tree that is 0/1.
 
-Shared inputs, written to arcgis_tests/one_tree/ by `prepare`:
-  dem.tif      AHN5 raw DSM 0.5 m (the reference run's DEM), 60 m around the tree
-  tree.shp     the tree point, field OBS_Z = absolute observer elevation (m NAP),
-               plus the classic Viewshed tool's SPOT/OFFSETA/OFFSETB/RADIUS2
-               (2D radius); tree_3d.shp the same with a 3D radius
-Settings: observer at OBS_Z (offset 0), target 1.8 m above the DSM, 30 m radius
-(2D), flat earth.
+The observer is set as in the benchmark: RASTERVALU (bilinear AHN5 DSM at
+the tree point) + 1 m. Target 1.8 m above the DSM, 30 m radius (2D), flat
+earth.
+
+Written to arcgis_tests/one_tree/<case>/ by `prepare`:
+  dem.tif      AHN5 raw DSM 0.5 m (the benchmark's DEM), the trees + 60 m,
+               NoData filled as in stage 1
+  dem_raw.tif  the same without the fill: exactly what the benchmark saw
+  tree.shp     the trees: OBS_Z = observer elevation (m NAP), RASTERVALU
+               (as in the benchmark), and the classic Viewshed tool's
+               SPOT/OFFSETA/OFFSETB/RADIUS2 (2D radius); tree_3d.shp the
+               same with RADIUS2 = +30
+  gdal.tif, exact_bilinear.tif, exact_nearest.tif
+  bench_visibility_Delft.tif  the benchmark result, cut out
+  pipeline_Delft.tif          this pipeline's Delft_viewshed.tif, cut out
+  others.tif   1 = within 30 m of a tree NOT in the case: the benchmark and
+               pipeline counts include that tree there, so compare skips it
+  case.json    the trees and their observer elevations
+`compare` adds diff_<result>.tif (vs the exact test) and tree_ring.gpkg
+for the QGIS validation project (qgis_validation/build_project.py).
 
 Usage:
-    python arcgis_tests/one_tree.py prepare    # inputs + GDAL + exact reference
+    python arcgis_tests/one_tree.py prepare [case|all]   # default: all
     (run arcgis_tests/one_tree_arcgis.py in ArcGIS Pro — writes arc_*.tif)
-    python arcgis_tests/one_tree.py compare    # compare everything found
+    python arcgis_tests/one_tree.py compare [case|all]
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -37,13 +56,20 @@ gdal.UseExceptions()
 ogr.UseExceptions()
 
 REFERENCE_GDB = r"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/data.gdb"
-DIR = REPO / "arcgis_tests" / "one_tree"
-TREE_X, TREE_Y = 84274.25, 447451.50        # bomen_Delft fid 58448
-OBS_Z = 26.85 + 1.0                          # RASTERVALU (bilinear AHN5 at the point) + 1 m
-HALF = 60.0                                  # DEM clip: tree +/- 60 m
+BENCHMARK = f'OpenFileGDB:"{REFERENCE_GDB}":visibility_Delft'   # the reference Visibility run
+PIPELINE = REPO / "data" / "processed" / "Delft_viewshed.tif"   # this pipeline's Delft result
+BENCH_NODATA = -2147483647                   # visibility_Delft's undeclared NoData
+ROOT = REPO / "arcgis_tests" / "one_tree"
+CASES = {
+    "tree_68418": [68418],
+    "group_5": [15689, 17046, 17707, 17708, 17717],
+    "tree_58448": [58448],
+}
+HALF = 60.0                                  # DEM clip: the trees +/- 60 m
 CELL = 0.5
 RADIUS = 30.0
 TARGET_HEIGHT = 1.8
+OBSERVER_OFFSET = 1.0                        # the Visibility tool's default, as in the benchmark
 
 
 def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte):
@@ -55,30 +81,59 @@ def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte):
     ds = None
 
 
-def load_dem():
-    ds = gdal.Open(str(DIR / "dem.tif"))
-    return ds, ds.GetRasterBand(1).ReadAsArray().astype(np.float64), ds.GetGeoTransform(), ds.GetProjection()
+def load_dem(folder):
+    ds = gdal.Open(str(folder / "dem.tif"))
+    return ds.GetRasterBand(1).ReadAsArray().astype(np.float64), ds.GetGeoTransform(), ds.GetProjection()
 
 
-def exact_visibility(dem, gt, order):
-    """Exact sightline test to every cell centre within RADIUS; order 1 =
-    bilinear surface between cell centres, 0 = every cell a flat square.
-    Samples every <= 0.1 m; the target cell itself does not block."""
-    ny, nx = dem.shape
-    rows, cols = np.mgrid[0:ny, 0:nx]
-    tx, ty = gt[0] + (cols + 0.5) * CELL, gt[3] - (rows + 0.5) * CELL
-    d = np.hypot(tx - TREE_X, ty - TREE_Y)
+def load_case(case):
+    """The case's trees as [{fid, x, y, rastervalu, obs_z}], from case.json
+    or (first time) from bomen_Delft_met_hoogte_uit_AHN05ruw."""
+    folder = ROOT / case
+    info = folder / "case.json"
+    if info.exists():
+        return json.loads(info.read_text())
+    ds = ogr.Open(REFERENCE_GDB)
+    layer = ds.GetLayerByName("bomen_Delft_met_hoogte_uit_AHN05ruw")
+    trees = []
+    for fid in CASES[case]:
+        f = layer.GetFeature(fid)
+        g = f.GetGeometryRef()
+        rv = f.GetField("RASTERVALU")
+        if rv is None:
+            raise SystemExit(f"Tree {fid} has no RASTERVALU (NoData): the benchmark skipped it")
+        trees.append({"fid": fid, "x": g.GetX(), "y": g.GetY(), "rastervalu": rv,
+                      "obs_z": rv + OBSERVER_OFFSET})
+    ds = None
+    folder.mkdir(parents=True, exist_ok=True)
+    info.write_text(json.dumps(trees, indent=1))
+    return trees
+
+
+def cell_centres(shape, gt):
+    rows, cols = np.mgrid[0:shape[0], 0:shape[1]]
+    return gt[0] + (cols + 0.5) * CELL, gt[3] - (rows + 0.5) * CELL
+
+
+def exact_visibility(dem, gt, tree, order):
+    """Exact sightline test from one tree to every cell centre within
+    RADIUS; order 1 = bilinear surface between cell centres, 0 = every cell
+    a flat square. Samples every <= 0.1 m; the target cell does not block."""
+    ox, oy, oz = tree["x"], tree["y"], tree["obs_z"]
+    cx, cy = cell_centres(dem.shape, gt)
+    rows, cols = np.mgrid[0:dem.shape[0], 0:dem.shape[1]]
+    d = np.hypot(cx - ox, cy - oy)
     inside = d <= RADIUS
-    rows, cols, tx, ty, d = rows[inside], cols[inside], tx[inside], ty[inside], d[inside]
+    rows, cols, tx, ty, d = rows[inside], cols[inside], cx[inside], cy[inside], d[inside]
     n = int(RADIUS / 0.1)
     t = (np.arange(1, n) / n)[None, :]
-    sx, sy = TREE_X + t * (tx - TREE_X)[:, None], TREE_Y + t * (ty - TREE_Y)[:, None]
+    sx, sy = ox + t * (tx - ox)[:, None], oy + t * (ty - oy)[:, None]
     scol, srow = (sx - gt[0]) / CELL - 0.5, (gt[3] - sy) / CELL - 0.5
     if order == 0:
         scol, srow = np.floor(scol + 0.5), np.floor(srow + 0.5)
     surf = map_coordinates(dem, [srow.ravel(), scol.ravel()], order=order, mode="nearest").reshape(sx.shape)
     tz = dem[rows, cols] + TARGET_HEIGHT
-    line = OBS_Z + t * (tz - OBS_Z)[:, None]
+    line = oz + t * (tz - oz)[:, None]
     near_target = (1 - t) * d[:, None] < CELL / 2
     visible = ~((surf > line) & ~near_target).any(axis=1)
     out = np.zeros(dem.shape, np.uint8)
@@ -86,19 +141,45 @@ def exact_visibility(dem, gt, order):
     return out
 
 
-def prepare():
-    DIR.mkdir(parents=True, exist_ok=True)
-    # DEM clip from the reference run's DEM
+def gdal_visibility(folder, dem, gt, tree):
+    """GDAL, as the pipeline calls it (observerHeight is added to the
+    observer cell's DEM value), on the DEM grid."""
+    ds = gdal.Open(str(folder / "dem.tif"))
+    c, r = int((tree["x"] - gt[0]) / CELL), int((gt[3] - tree["y"]) / CELL)
+    out = gdal.ViewshedGenerate(srcBand=ds.GetRasterBand(1), driverName="MEM", targetRasterName="",
+                                creationOptions=[], observerX=tree["x"], observerY=tree["y"],
+                                observerHeight=tree["obs_z"] - dem[r, c], targetHeight=TARGET_HEIGHT,
+                                visibleVal=1, invisibleVal=0, outOfRangeVal=0, noDataVal=0,
+                                dfCurvCoeff=0, mode=gdal.GVM_Edge, maxDistance=RADIUS)
+    v = out.GetRasterBand(1).ReadAsArray()
+    ogt = out.GetGeoTransform()
+    full = np.zeros(dem.shape, np.uint8)
+    co, ro = round((ogt[0] - gt[0]) / CELL), round((gt[3] - ogt[3]) / CELL)
+    full[ro:ro + v.shape[0], co:co + v.shape[1]] = v
+    return full
+
+
+def prepare(case):
+    folder = ROOT / case
+    trees = load_case(case)
+    print(f"\n=== {case}: {len(trees)} tree(s), observer = RASTERVALU + {OBSERVER_OFFSET:.0f} m: "
+          + ", ".join(f"{t['fid']} {t['obs_z']:.2f}" for t in trees) + " m NAP")
+
+    # DEM clip from the benchmark's DEM, snapped to its grid
     src = gdal.Open(f'OpenFileGDB:"{REFERENCE_GDB}":AHN5ruw05m_Delft')
     sgt = src.GetGeoTransform()
-    x0 = sgt[0] + round((TREE_X - HALF - sgt[0]) / CELL) * CELL      # snap to the source grid
-    y1 = sgt[3] - round((sgt[3] - (TREE_Y + HALF)) / CELL) * CELL
-    n = int(2 * HALF / CELL)
-    gdal.Translate(str(DIR / "dem.tif"), src, projWin=[x0, y1, x0 + n * CELL, y1 - n * CELL],
-                   outputType=gdal.GDT_Float32, creationOptions=["COMPRESS=DEFLATE"])
-    # Fill NoData (water) exactly as stage 1 does, and drop the flag: every
-    # tool then sees the same surface, with no sentinel to interpret
-    ds = gdal.Open(str(DIR / "dem.tif"), gdal.GA_Update)
+    xs, ys = [t["x"] for t in trees], [t["y"] for t in trees]
+    x0 = sgt[0] + round((min(xs) - HALF - sgt[0]) / CELL) * CELL
+    y1 = sgt[3] - round((sgt[3] - (max(ys) + HALF)) / CELL) * CELL
+    nx = int(round((max(xs) + HALF - x0) / CELL))
+    ny = int(round((y1 - (min(ys) - HALF)) / CELL))
+    window = [x0, y1, x0 + nx * CELL, y1 - ny * CELL]
+    for name in ("dem.tif", "dem_raw.tif"):
+        gdal.Translate(str(folder / name), src, projWin=window, outputType=gdal.GDT_Float32,
+                       creationOptions=["COMPRESS=DEFLATE"])
+    # dem.tif: fill NoData (water) exactly as stage 1 does, and drop the
+    # flag, so GDAL and the exact test see a surface without a sentinel
+    ds = gdal.Open(str(folder / "dem.tif"), gdal.GA_Update)
     b = ds.GetRasterBand(1)
     nd = b.GetNoDataValue()
     raw = b.ReadAsArray()
@@ -113,119 +194,187 @@ def prepare():
     if nd is not None:
         b.DeleteNoDataValue()
     ds = None
-    ds, dem, gt, wkt = load_dem()
-    print(f"dem.tif {dem.shape}, {n_nodata} NoData cells filled, range {dem.min():.2f} .. {dem.max():.2f} m")
-    ds = None
+    dem, gt, wkt = load_dem(folder)
+    print(f"dem.tif {dem.shape}, {n_nodata} NoData cells filled (dem_raw.tif keeps them), "
+          f"range {dem.min():.2f} .. {dem.max():.2f} m")
 
-    # Tree point with the absolute observer elevation. OBS_Z is passed
-    # explicitly to Viewshed2 / Visibility; the classic Viewshed tool only
-    # reads its fixed field names: SPOT (observer elevation), OFFSETA
-    # (observer offset), OFFSETB (target offset), RADIUS2 (outer radius,
-    # negative = 2D) — hence tree.shp (2D) and tree_3d.shp (RADIUS2 = +30).
+    # The benchmark and this pipeline's result, cut out on the same grid
+    gdal.Translate(str(folder / "bench_visibility_Delft.tif"), gdal.Open(BENCHMARK), projWin=window,
+                   noData=BENCH_NODATA, creationOptions=["COMPRESS=DEFLATE"])
+    if PIPELINE.exists():
+        gdal.Translate(str(folder / "pipeline_Delft.tif"), gdal.Open(str(PIPELINE)), projWin=window,
+                       creationOptions=["COMPRESS=DEFLATE"])
+
+    # Cells within RADIUS of a tree outside the case: the counts there include it
+    cx, cy = cell_centres(dem.shape, gt)
+    others = np.zeros(dem.shape, bool)
+    tds = ogr.Open(REFERENCE_GDB)
+    layer = tds.GetLayerByName("bomen_Delft")
+    layer.SetSpatialFilterRect(window[0] - RADIUS, window[3] - RADIUS, window[2] + RADIUS, window[1] + RADIUS)
+    n_others = 0
+    for f in layer:
+        g = f.GetGeometryRef()
+        if any(abs(g.GetX() - t["x"]) < 0.01 and abs(g.GetY() - t["y"]) < 0.01 for t in trees):
+            continue                     # a case tree (fids differ between the two tree layers)
+        others |= np.hypot(cx - g.GetX(), cy - g.GetY()) <= RADIUS
+        n_others += 1
+    tds = None
+    write_raster(folder / "others.tif", others.astype(np.uint8), gt, wkt)
+    cover = np.zeros(dem.shape, bool)
+    for t in trees:
+        cover |= np.hypot(cx - t["x"], cy - t["y"]) <= RADIUS
+    print(f"{n_others} other trees near the clip; {100 * others[cover].mean():.1f}% of the case's "
+          f"{RADIUS:.0f} m area is also within {RADIUS:.0f} m of one of them (skipped in compare)")
+
+    # Tree points. OBS_Z is passed to Viewshed2 / Visibility, RASTERVALU to
+    # the benchmark variant; the classic Viewshed tool reads its fixed field
+    # names SPOT (observer elevation), OFFSETA (observer offset), OFFSETB
+    # (target offset) and RADIUS2 (outer radius) — hence tree.shp (-30) and
+    # tree_3d.shp (+30), although it turned out to ignore the sign.
     srs = osr.SpatialReference()
     srs.ImportFromWkt(wkt)
     drv = ogr.GetDriverByName("ESRI Shapefile")
     for fname, radius2 in (("tree.shp", -RADIUS), ("tree_3d.shp", RADIUS)):
-        shp = DIR / fname
+        shp = folder / fname
         if shp.exists():
             drv.DeleteDataSource(str(shp))
         vds = drv.CreateDataSource(str(shp))
         layer = vds.CreateLayer(shp.stem, srs, ogr.wkbPoint)
-        values = {"OBS_Z": OBS_Z, "SPOT": OBS_Z, "OFFSETA": 0.0, "OFFSETB": TARGET_HEIGHT, "RADIUS2": radius2}
-        for k in values:
-            layer.CreateField(ogr.FieldDefn(k, ogr.OFTReal))
-        f = ogr.Feature(layer.GetLayerDefn())
-        for k, v in values.items():
-            f.SetField(k, v)
-        f.SetGeometry(ogr.CreateGeometryFromWkt(f"POINT ({TREE_X} {TREE_Y})"))
-        layer.CreateFeature(f)
+        names = ["FID_BOOM", "OBS_Z", "RASTERVALU", "SPOT", "OFFSETA", "OFFSETB", "RADIUS2"]
+        for k in names:
+            layer.CreateField(ogr.FieldDefn(k, ogr.OFTInteger if k == "FID_BOOM" else ogr.OFTReal))
+        for t in trees:
+            f = ogr.Feature(layer.GetLayerDefn())
+            for k, v in zip(names, (t["fid"], t["obs_z"], t["rastervalu"], t["obs_z"], 0.0,
+                                    TARGET_HEIGHT, radius2)):
+                f.SetField(k, v)
+            f.SetGeometry(ogr.CreateGeometryFromWkt(f"POINT ({t['x']} {t['y']})"))
+            layer.CreateFeature(f)
         vds = None
 
-    # GDAL, as the pipeline calls it (observerHeight is added to the observer cell's DEM value)
-    ds = gdal.Open(str(DIR / "dem.tif"))
-    c, r = int((TREE_X - gt[0]) / CELL), int((gt[3] - TREE_Y) / CELL)
-    out = gdal.ViewshedGenerate(srcBand=ds.GetRasterBand(1), driverName="MEM", targetRasterName="",
-                                creationOptions=[], observerX=TREE_X, observerY=TREE_Y,
-                                observerHeight=OBS_Z - dem[r, c], targetHeight=TARGET_HEIGHT,
-                                visibleVal=1, invisibleVal=0, outOfRangeVal=0, noDataVal=0,
-                                dfCurvCoeff=0, mode=gdal.GVM_Edge, maxDistance=RADIUS)
-    v = out.GetRasterBand(1).ReadAsArray()
-    ogt = out.GetGeoTransform()
-    full = np.zeros(dem.shape, np.uint8)
-    co, ro = round((ogt[0] - gt[0]) / CELL), round((gt[3] - ogt[3]) / CELL)
-    full[ro:ro + v.shape[0], co:co + v.shape[1]] = v
-    write_raster(DIR / "gdal.tif", full, gt, wkt)
-
+    # GDAL and the exact test, summed over the trees (= FREQUENCY)
+    write_raster(folder / "gdal.tif", sum(gdal_visibility(folder, dem, gt, t) for t in trees), gt, wkt)
     for name, order in (("exact_bilinear", 1), ("exact_nearest", 0)):
-        write_raster(DIR / f"{name}.tif", exact_visibility(dem, gt, order), gt, wkt)
-    print(f"Wrote dem.tif, tree.shp, tree_3d.shp, gdal.tif, exact_bilinear.tif, exact_nearest.tif in {DIR}")
+        write_raster(folder / f"{name}.tif", sum(exact_visibility(dem, gt, t, order) for t in trees), gt, wkt)
+    print(f"Wrote the inputs, gdal.tif, exact_bilinear.tif and exact_nearest.tif in {folder}")
 
 
-def compare():
-    ds, dem, gt, wkt = load_dem()
-    ny, nx = dem.shape
-    rows, cols = np.mgrid[0:ny, 0:nx]
-    d = np.hypot(gt[0] + (cols + 0.5) * CELL - TREE_X, gt[3] - (rows + 0.5) * CELL - TREE_Y)
-    inside = d <= RADIUS
-    results = {}
-    for path in sorted(DIR.glob("*.tif")):
-        if path.stem == "dem" or path.stem.startswith("diff_"):
+def read_counts(path, shape, gt):
+    """A result as counts on the DEM grid; NoData = 0 (Viewshed2 writes 'not
+    visible' as NoData). Also returns the number of NoData cells."""
+    rds = gdal.Open(str(path))
+    rgt = rds.GetGeoTransform()
+    b = rds.GetRasterBand(1)
+    a = b.ReadAsArray().astype(np.int64)
+    nd = b.GetNoDataValue()
+    nodata = np.zeros(a.shape, bool) if nd is None else a == nd
+    a[nodata] = 0
+    full, full_nd = np.zeros(shape, np.int64), np.zeros(shape, bool)
+    co, ro = round((rgt[0] - gt[0]) / CELL), round((gt[3] - rgt[3]) / CELL)
+    r0, c0 = max(ro, 0), max(co, 0)
+    r1, c1 = min(ro + a.shape[0], shape[0]), min(co + a.shape[1], shape[1])
+    full[r0:r1, c0:c1] = a[r0 - ro:r1 - ro, c0 - co:c1 - co]
+    full_nd[r0:r1, c0:c1] = nodata[r0 - ro:r1 - ro, c0 - co:c1 - co]
+    return full, full_nd
+
+
+def compare(case):
+    folder = ROOT / case
+    if not (folder / "dem.tif").exists():
+        print(f"\n=== {case}: not prepared — run `one_tree.py prepare {case}` first")
+        return
+    trees = load_case(case)
+    dem, gt, wkt = load_dem(folder)
+    cx, cy = cell_centres(dem.shape, gt)
+    d = np.min([np.hypot(cx - t["x"], cy - t["y"]) for t in trees], axis=0)   # to the nearest case tree
+    circle = d <= RADIUS
+    others = read_counts(folder / "others.tif", dem.shape, gt)[0] > 0
+    clean = circle & ~others           # cells only the case's trees can see
+    raw_nd = read_counts(folder / "dem_raw.tif", dem.shape, gt)[1]
+
+    results, nodata = {}, {}
+    for path in sorted(folder.glob("*.tif")):
+        if path.stem in ("dem", "dem_raw", "others") or path.stem.startswith("diff_"):
             continue
-        rds = gdal.Open(str(path))
-        rgt = rds.GetGeoTransform()
-        a = rds.GetRasterBand(1).ReadAsArray().astype(float)
-        nd = rds.GetRasterBand(1).GetNoDataValue()
-        if nd is not None:
-            a[a == nd] = 0                                  # Viewshed2: not visible = NoData
-        full = np.zeros(dem.shape)
-        co, ro = round((rgt[0] - gt[0]) / CELL), round((gt[3] - rgt[3]) / CELL)
-        r0, c0 = max(ro, 0), max(co, 0)
-        r1, c1 = min(ro + a.shape[0], ny), min(co + a.shape[1], nx)
-        full[r0:r1, c0:c1] = a[r0 - ro:r1 - ro, c0 - co:c1 - co]
-        results[path.stem] = full > 0
-    ref = results.get("exact_bilinear")
+        results[path.stem], nd = read_counts(path, dem.shape, gt)
+        nodata[path.stem] = nd
+    ref, bench = results.get("exact_bilinear"), results.get("bench_visibility_Delft")
+    counts = {"bench_visibility_Delft", "pipeline_Delft"}     # include trees outside the case
     rings = [(0, 5), (5, 10), (10, 20), (20, 30)]
-    print(f"{inside.sum():,} cells within {RADIUS:.0f} m of the tree; share visible:\n")
-    print(f"{'':26s} {'all':>6s} " + " ".join(f"{f'{a}-{b} m':>8s}" for a, b in rings)
-          + "   agree with exact_bilinear")
-    for name, v in results.items():
-        ring = " ".join(f"{100 * v[inside & (d >= a) & (d < b)].mean():7.1f}%" for a, b in rings)
-        agree = f"{100 * (v == ref)[inside].mean():6.1f}%" if ref is not None else ""
-        outside = (v & ~inside).sum()
-        print(f"{name:26s} {100 * v[inside].mean():5.1f}% {ring}   {agree}"
-              + (f"   ({outside} visible cells beyond {RADIUS:.0f} m)" if outside else ""))
 
-    # For the QGIS validation project (qgis_validation/build_project.py):
-    # per tool a difference map vs the exact test (1 = only the tool sees
-    # the cell, 2 = only the exact test sees it, 0 = same verdict), plus the
-    # tree and the 30 m circle
+    def row(name, v, area, compare_to):
+        seen = v > 0
+        ring = " ".join(f"{100 * seen[area & (d >= a) & (d < b)].mean():6.1f}%"
+                        if (area & (d >= a) & (d < b)).any() else f"{'-':>7s}" for a, b in rings)
+        eq = " ".join(f"{100 * (v == c)[area].mean():6.1f}%" if c is not None else f"{'-':>7s}"
+                      for c in compare_to)
+        notes = []
+        outside = int((seen & ~circle).sum())
+        if outside and name not in counts:
+            notes.append(f"{outside} cells seen beyond {RADIUS:.0f} m")
+        if (nodata[name] & area).any():
+            notes.append(f"{int((nodata[name] & area).sum())} NoData cells")
+        print(f"{name:24s} {100 * seen[area].mean():5.1f}% {ring} {v[area].mean():5.2f} {eq}"
+              + (f"   ({'; '.join(notes)})" if notes else ""))
+
+    header = f"{'':24s} {'>=1':>6s} " + " ".join(f"{f'{a}-{b} m':>7s}" for a, b in rings) + f" {'mean':>5s}"
+    print(f"\n=== {case}: {len(trees)} tree(s), {circle.sum():,} cells within {RADIUS:.0f} m; "
+          f"{int((raw_nd & circle).sum())} of them NoData in the raw DSM (filled in dem.tif)")
+    print(f"\n1. The tools vs the exact test, all {circle.sum():,} cells: share of cells seen by "
+          f">= 1 tree (by distance to the nearest tree), mean count, share with the same count as exact\n")
+    print(header + f" {'=exact':>7s}")
+    for name, v in results.items():
+        if name not in counts:
+            row(name, v, circle, [ref])
+
+    print(f"\n2. Reproducing the benchmark: the {clean.sum():,} cells that no tree outside the case "
+          f"can see ({int((circle & others).sum()):,} skipped); same columns + share with the same "
+          f"count as the benchmark\n")
+    if not clean.any() or bench is None:
+        print("   (no such cells — every cell is also within 30 m of another tree)" if not clean.any()
+              else "   (bench_visibility_Delft.tif missing — run prepare)")
+    else:
+        print(header + f" {'=exact':>7s} {'=bench':>7s}")
+        for name, v in results.items():
+            row(name, v, clean, [ref, bench])
+
+    # For the QGIS validation project: per result a difference map vs the
+    # exact test (1 = the result counts more trees, 2 = fewer, 0 = same),
+    # plus the trees and their 30 m circles
     if ref is not None:
         for name, v in results.items():
             if name != "exact_bilinear":
-                diff = np.where(v & ~ref, 1, np.where(~v & ref, 2, 0)).astype(np.uint8)
-                write_raster(DIR / f"diff_{name}.tif", diff, gt, wkt)
-    write_tree_layers(DIR / "tree_ring.gpkg", wkt)
-    print(f"\nWrote diff_*.tif and tree_ring.gpkg; add them to QGIS with "
-          f"qgis_validation\\build_project.py")
+                diff = np.where(v > ref, 1, np.where(v < ref, 2, 0)).astype(np.uint8)
+                write_raster(folder / f"diff_{name}.tif", diff, gt, wkt)
+    write_tree_layers(folder / "tree_ring.gpkg", trees, wkt)
 
 
-def write_tree_layers(path, wkt):
-    """The tree point and the 30 m circle, as two layers of one GeoPackage."""
+def write_tree_layers(path, trees, wkt):
+    """The tree points and the outline of their 30 m circles, as two layers."""
     drv = ogr.GetDriverByName("GPKG")
     if path.exists():
         drv.DeleteDataSource(str(path))
     ds = drv.CreateDataSource(str(path))
     srs = osr.SpatialReference()
     srs.ImportFromWkt(wkt)
-    tree = ogr.CreateGeometryFromWkt(f"POINT ({TREE_X} {TREE_Y})")
-    for name, geom, gtype in (("tree", tree, ogr.wkbPoint),
-                              ("ring30", tree.Buffer(RADIUS, 64).Boundary(), ogr.wkbLineString)):
+    points = [ogr.CreateGeometryFromWkt(f"POINT ({t['x']} {t['y']})") for t in trees]
+    circles = points[0].Buffer(RADIUS, 64)
+    for p in points[1:]:
+        circles = circles.Union(p.Buffer(RADIUS, 64))
+    for name, geoms, gtype in (("tree", points, ogr.wkbPoint),
+                               ("ring30", [ogr.ForceToMultiLineString(circles.Boundary())], ogr.wkbMultiLineString)):
         layer = ds.CreateLayer(name, srs, gtype)
-        f = ogr.Feature(layer.GetLayerDefn())
-        f.SetGeometry(geom)
-        layer.CreateFeature(f)
+        for g in geoms:
+            f = ogr.Feature(layer.GetLayerDefn())
+            f.SetGeometry(g)
+            layer.CreateFeature(f)
     ds = None
 
 
 if __name__ == "__main__":
-    {"prepare": prepare, "compare": compare}[sys.argv[1] if len(sys.argv) > 1 else "prepare"]()
+    action = sys.argv[1] if len(sys.argv) > 1 else "compare"
+    which = sys.argv[2] if len(sys.argv) > 2 else "all"
+    for c in (CASES if which == "all" else [which]):
+        {"prepare": prepare, "compare": compare}[action](c)
+    if action == "compare":
+        print("\nDifference maps written; add them to QGIS with qgis_validation\\build_project.py")

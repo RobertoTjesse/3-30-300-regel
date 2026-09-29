@@ -176,11 +176,13 @@ produced, for visual checking:
 - **Achtergrond** — PDOK BRT grijs (WMTS) and PDOK luchtfoto (WMS).
 - **Experimenten** — anything placed in `data/processed/experiments/`
   (rasters get the viewshed styling, vectors an outline; off by default).
-- **Eén boom: GDAL vs ArcGIS vs exact** — the one-tree comparison
-  (`arcgis_tests/one_tree.py compare`): each tool's viewshed, a difference
-  map per tool against the exact line-of-sight test (orange = only the
-  tool sees the cell, blue = only the exact test sees it), the tree with
-  its 30 m circle, and the DEM as hillshade.
+- **Eén boom / boomgroep** — the one-tree and tree-group comparison
+  (`arcgis_tests/one_tree.py`), one subgroup per case: each result as the
+  number of the case's trees that see a cell, the benchmark
+  (`visibility_Delft`) and pipeline results cut out around the trees, a
+  difference map per result against the exact line-of-sight test (orange =
+  counts more trees, blue = fewer), the cells within 30 m of other trees
+  (grey, not compared), the trees with their 30 m circles, and the DEM.
 
 `run_all_municipalities.sh` runs it after every municipality. Re-runs only
 *add* new layers, so styling or other changes made in QGIS are kept;

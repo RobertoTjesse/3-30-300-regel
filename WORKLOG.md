@@ -116,3 +116,25 @@ trees should be excluded, is still open.
   outer radius 30, is effectively 2D as well, like our pipeline.
 - All results in the QGIS validation project (group "Eén boom"), with
   difference maps against the exact test.
+
+**9. Isolated tree and tree group vs the benchmark** (2026-09-29)
+- `one_tree.py` now runs cases: `tree_68418` (16 m tree, no other tree
+  within 56 m), `group_5` (a row of 5 trees 3-7 m tall, no other tree within
+  50 m), `tree_58448` (the first tree). The observer is set as in the
+  benchmark: RASTERVALU + 1 m. Results are counts (FREQUENCY). The benchmark
+  (`visibility_Delft`) and `Delft_viewshed.tif` are cut out around the
+  trees and compared only on cells no other tree can see.
+- Note: `bomen_Delft` and `bomen_Delft_met_hoogte_uit_AHN05ruw` number the
+  trees differently; the fids here are the latter's.
+- tree_68418: exact 1.8% of the circle visible, GDAL 1.8%, benchmark
+  91.9% (same count as exact on 9.9% of cells). The observer (16.99 m) is
+  inside the tree's own crown (up to 17.7 m), which blocks almost
+  everything beyond 5 m in the exact test; the benchmark sees past it.
+- group_5: exact 71.9%, GDAL 72.5%, benchmark 77.6% (mean count 2.00 /
+  1.91 / 2.09); the benchmark agrees with exact on 76.7% of cells.
+- The pipeline's Delft_viewshed.tif is on its own DEM: for tree 68418 the
+  point cell there is 10.8 m below the canopy top, in AHN5 at the top — not
+  a like-for-like comparison.
+- Next: `one_tree_arcgis.py` with the new `arc_bench` variant (Visibility
+  with exactly the benchmark's settings) to see whether ArcGIS reproduces
+  the benchmark on these trees.

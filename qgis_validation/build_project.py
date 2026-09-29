@@ -77,7 +77,8 @@ GROUP_DEM = "Hoogtemodel"
 GROUP_3DBAG = "3D BAG"
 GROUP_BACKGROUND = "Achtergrond"
 GROUP_EXPERIMENTS = "Experimenten"
-GROUP_ONE_TREE = "Eén boom: GDAL vs ArcGIS vs exact (arcgis_tests/one_tree)"
+GROUP_ONE_TREE = "Eén boom / boomgroep: GDAL vs ArcGIS vs benchmark (arcgis_tests/one_tree)"
+GROUP_ONE_TREE_OLD = "Eén boom: GDAL vs ArcGIS vs exact (arcgis_tests/one_tree)"
 
 # (upper bound inclusive, colour, label) — discrete classes on integer counts
 VIEWSHED_CLASSES = [
@@ -153,51 +154,80 @@ def _style_paletted(layer, classes):
     layer.setRenderer(QgsPalettedRasterRenderer(layer.dataProvider(), 1, items))
 
 
+COUNT_GREENS = ["#c7e9c0", "#a1d99b", "#74c476", "#41ab5d", "#238b45", "#006d2c", "#00441b"]
+
+
+def _style_counts(layer, top=40):
+    """Number of trees that see a cell: 0 transparent, 1..7+ light to dark green."""
+    _style_paletted(layer, [(0, None, "0")] + [
+        (v, COUNT_GREENS[min(v, len(COUNT_GREENS)) - 1], str(v) if v < len(COUNT_GREENS) else f"{v}")
+        for v in range(1, top + 1)])
+
+
 def _add_one_tree(project, root, have):
-    """The one-tree viewshed comparison (arcgis_tests/one_tree.py): every
-    tool's result (visible cells coloured), the difference maps vs the exact
-    line-of-sight test, the tree with its 30 m circle and the DEM. All off
-    by default except the tree and circle."""
-    if not (ONE_TREE_DIR / "dem.tif").exists():
+    """The one-tree / tree-group viewshed comparison (arcgis_tests/one_tree.py),
+    one subgroup per case folder: every result (number of the case's trees
+    that see a cell, 0 transparent), the difference maps vs the exact
+    line-of-sight test, the benchmark and pipeline cut-outs, the cells
+    within 30 m of other trees, the trees with their 30 m circles and the
+    DEM. All off by default except the trees and circles."""
+    cases = sorted(p for p in ONE_TREE_DIR.glob("*") if (p / "dem.tif").exists())         if ONE_TREE_DIR.exists() else []
+    old = root.findGroup(GROUP_ONE_TREE_OLD)     # the single-tree group of the first version
+    if old is not None and not old.findLayers():
+        old.parent().removeChildNode(old)
+    if not cases:
         return 0
-    group = _group(root, GROUP_ONE_TREE, 0)
+    top = _group(root, GROUP_ONE_TREE, 0)
     added = 0
-    gpkg = ONE_TREE_DIR / "tree_ring.gpkg"
-    if gpkg.exists() and gpkg.resolve() not in have:
-        for name, props in (("tree", {"name": "circle", "color": "#e31a1c", "size": "3"}),
-                            ("ring30", None)):
-            layer = QgsVectorLayer(f"{gpkg}|layername={name}", "boom / 30 m" if name == "ring30" else "boom", "ogr")
-            if _add(project, group, layer):
-                if props:
-                    layer.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(props)))
-                else:
-                    layer.setRenderer(QgsSingleSymbolRenderer(QgsLineSymbol.createSimple(
-                        {"line_color": "#e31a1c", "line_width": "0.6"})))
+    for case_dir in cases:
+        group = _group(top, case_dir.name)
+        gpkg = case_dir / "tree_ring.gpkg"
+        if gpkg.exists() and gpkg.resolve() not in have:
+            for name, label in (("tree", "bomen"), ("ring30", "30 m rond de bomen")):
+                layer = QgsVectorLayer(f"{gpkg}|layername={name}", label, "ogr")
+                if _add(project, group, layer):
+                    if name == "tree":
+                        layer.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(
+                            {"name": "circle", "color": "#e31a1c", "size": "3"})))
+                    else:
+                        layer.setRenderer(QgsSingleSymbolRenderer(QgsLineSymbol.createSimple(
+                            {"line_color": "#e31a1c", "line_width": "0.6"})))
+                    added += 1
+        diffs = _group(group, "Verschil met exact (oranje = telt meer bomen, blauw = minder)")
+        results = _group(group, "Resultaten (aantal bomen dat de cel ziet)")
+        for tif in sorted(case_dir.glob("*.tif")):
+            if tif.resolve() in have or tif.stem == "dem":
+                continue
+            if tif.stem.startswith("diff_"):
+                tool = tif.stem.removeprefix("diff_")
+                layer = QgsRasterLayer(str(tif), f"verschil {tool} vs exact", "gdal")
+                if _add(project, diffs, layer, visible=False):
+                    _style_paletted(layer, [(0, None, "zelfde"), (1, "#ff7f00", f"{tool} telt meer"),
+                                            (2, "#1f78b4", f"{tool} telt minder")])
+                    added += 1
+            elif tif.stem == "others":
+                layer = QgsRasterLayer(str(tif), "binnen 30 m van andere bomen (niet vergeleken)", "gdal")
+                if _add(project, group, layer, visible=False):
+                    _style_paletted(layer, [(0, None, "alleen deze bomen"), (1, "#969696", "ook andere bomen")])
+                    layer.setOpacity(0.6)
+                    added += 1
+            elif tif.stem == "dem_raw":
+                layer = QgsRasterLayer(str(tif), "DEM ongevuld (wat de benchmark zag)", "gdal")
+                if _add(project, group, layer, visible=False):
+                    layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
+                    added += 1
+            else:
+                layer = QgsRasterLayer(str(tif), tif.stem, "gdal")
+                if _add(project, results, layer, visible=False):
+                    _style_counts(layer)
+                    layer.setOpacity(0.75)
+                    added += 1
+        dem = case_dir / "dem.tif"
+        if dem.resolve() not in have:
+            layer = QgsRasterLayer(str(dem), "DEM (AHN5 DSM, gevuld)", "gdal")
+            if _add(project, group, layer, visible=False):
+                layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
                 added += 1
-    for tif in sorted(ONE_TREE_DIR.glob("diff_*.tif")):
-        if tif.resolve() in have:
-            continue
-        tool = tif.stem.removeprefix("diff_")
-        layer = QgsRasterLayer(str(tif), f"verschil {tool} vs exact", "gdal")
-        if _add(project, _group(group, "Verschil met exact (oranje = alleen tool ziet, blauw = alleen exact ziet)"),
-                layer, visible=False):
-            _style_paletted(layer, [(0, None, "zelfde"), (1, "#ff7f00", f"alleen {tool} ziet"),
-                                    (2, "#1f78b4", "alleen exact ziet")])
-            added += 1
-    for tif in sorted(ONE_TREE_DIR.glob("*.tif")):
-        if tif.stem == "dem" or tif.stem.startswith("diff_") or tif.resolve() in have:
-            continue
-        layer = QgsRasterLayer(str(tif), tif.stem, "gdal")
-        if _add(project, _group(group, "Resultaten (gekleurd = zichtbaar)"), layer, visible=False):
-            _style_paletted(layer, [(0, None, "niet zichtbaar"), (1, "#238b45", "zichtbaar")])
-            layer.setOpacity(0.7)
-            added += 1
-    dem = ONE_TREE_DIR / "dem.tif"
-    if dem.resolve() not in have:
-        layer = QgsRasterLayer(str(dem), "DEM (AHN5 DSM, gevuld)", "gdal")
-        if _add(project, group, layer, visible=False):
-            layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
-            added += 1
     return added
 
 

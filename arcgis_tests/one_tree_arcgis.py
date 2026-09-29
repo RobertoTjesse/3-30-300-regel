@@ -1,37 +1,46 @@
 r"""
-one_tree_arcgis.py — ArcGIS Pro half of the one-tree comparison
-(arcgis_tests/one_tree.py): the viewshed of one tree in Delft with
-Viewshed2, the classic Viewshed tool and Visibility, on exactly the
-inputs GDAL got.
+one_tree_arcgis.py — ArcGIS Pro half of the one-tree / tree-group comparison
+(arcgis_tests/one_tree.py): Viewshed2, the classic Viewshed tool and
+Visibility on exactly the inputs GDAL got, plus the benchmark's own
+Visibility settings.
 
-Inputs (made by `python arcgis_tests/one_tree.py prepare`):
-  arcgis_tests\one_tree\dem.tif    AHN5 raw DSM, 0.5 m, NoData already filled
-  arcgis_tests\one_tree\tree.shp   one point, OBS_Z = observer elevation (m NAP);
-                                   SPOT/OFFSETA/OFFSETB/RADIUS2 for the classic
-                                   Viewshed tool (RADIUS2 -30 = 2D)
-  arcgis_tests\one_tree\tree_3d.shp  the same with RADIUS2 = 30 (3D)
-Settings, identical for every tool: observer at OBS_Z with offset 0, target
-1.8 m above the surface, 30 m radius, flat earth.
+Inputs per case (made by `python arcgis_tests/one_tree.py prepare`), in
+arcgis_tests\one_tree\<case>\:
+  dem.tif       AHN5 raw DSM, 0.5 m, NoData filled (what GDAL got)
+  dem_raw.tif   the same without the fill (what the benchmark got)
+  tree.shp      the case's trees: OBS_Z = observer elevation (m NAP),
+                RASTERVALU (benchmark), SPOT/OFFSETA/OFFSETB/RADIUS2
+                (classic Viewshed, RADIUS2 -30); tree_3d.shp RADIUS2 = +30
 
-Outputs (arcgis_tests\one_tree\, same grid as dem.tif):
-  arc_v2_2d.tif        Viewshed2, 30 m measured on the ground (2D)
-  arc_v2_3d.tif        Viewshed2, 30 m as 3D line-of-sight distance
-  arc_vs_2d.tif        classic Viewshed, RADIUS2 = -30 (2D)
-  arc_vs_3d.tif        classic Viewshed, RADIUS2 = 30 (3D)
-  arc_vis_2d.tif       Visibility, outer radius -30 (negative = 2D)
-  arc_vis_3d.tif       Visibility, outer radius 30 (positive = 3D, as the
-                       reference visibility_Delft run)
-Order: Viewshed2, classic Viewshed, Visibility; every result is saved at
-once. The Visibility tool has crashed ArcGIS Pro 3.6.1 on this machine (the
-classic Viewshed tool is from the same wavefront family and may too); if one
-does, the results before it are already on disk. Set RUN to skip variants.
+Outputs per case (same grid as dem.tif; counts = number of the case's
+trees that see a cell):
+  arc_bench.tif    Visibility exactly as the benchmark visibility_Delft:
+                   dem_raw, observer_elevation RASTERVALU, observer_offset
+                   left out (tool default, 1 m), surface_offset 1.8, outer
+                   radius 30, FREQUENCY, flat earth
+  arc_v2_2d.tif    Viewshed2, 30 m measured on the ground (2D)
+  arc_v2_3d.tif    Viewshed2, 30 m as 3D line-of-sight distance
+  arc_vs_2d.tif    classic Viewshed, RADIUS2 = -30
+  arc_vs_3d.tif    classic Viewshed, RADIUS2 = 30
+  arc_vis_2d.tif   Visibility, OBS_Z with offset 0, outer radius -30
+  arc_vis_3d.tif   Visibility, OBS_Z with offset 0, outer radius 30
+All but arc_bench use dem.tif and OBS_Z (= RASTERVALU + 1 m) with offset 0:
+the same observer as the benchmark, on the filled DEM.
 
-HOW TO RUN — from a command prompt (preferred; ArcGIS Pro may stay closed):
-    "C:\Program Files\ArcGIS\Pro\bin\Python\scripts\propy.bat" D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py
-  Every variant then runs in its own child process: a tool that crashes
-  only loses its own result, and the next variant still runs. Variants
-  whose .tif already exists are skipped (delete the .tif to redo one;
-  this also holds in the Python window).
+The classic Viewshed and Visibility tools (old GRID engine) die with exit
+code -1 on inputs under D:\Repositories\3-regel (a folder name starting
+with a digit and containing a hyphen), so every case is copied to a plain
+work folder (WORK\<case>), the tools run there, and the results are copied
+back.
+
+HOW TO RUN — from the ArcGIS Pro Python Command Prompt (Start menu →
+ArcGIS → Python Command Prompt), all cases:
+    python D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py
+  or one case:
+    python D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py group_5
+  Every tool runs in its own child process: a tool that crashes only loses
+  its own result. Results that already exist are skipped (delete the .tif
+  to redo one).
 Or in ArcGIS Pro → Analysis → Python window (all in one process — a crash
 takes Pro down):
     exec(open(r"D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py", encoding="utf-8").read())
@@ -47,42 +56,45 @@ import sys
 import arcpy
 from arcpy.sa import Viewshed, Viewshed2, Visibility
 
-DIR = r"D:\Repositories\3-regel\arcgis_tests\one_tree"
-RUN = ["arc_v2_2d", "arc_v2_3d", "arc_vs_2d", "arc_vs_3d", "arc_vis_2d", "arc_vis_3d"]  # remove names to skip
-# The classic Viewshed and Visibility tools (old GRID engine) died with exit
-# code -1 on inputs under D:\Repositories\3-regel (a folder name starting
-# with a digit and containing a hyphen). They therefore work in a plain
-# folder: the inputs are copied there, the tools read and write there, and
-# every result is copied back to DIR. None = work in DIR itself.
-WORK = r"D:\Temp\onetree"
+ROOT = r"D:\Repositories\3-regel\arcgis_tests\one_tree"
+WORK = r"D:\Temp\onetree"     # plain path for the old GRID-engine tools; None = work in ROOT
+CASES = ["tree_68418", "group_5", "tree_58448"]
+RUN = ["arc_bench", "arc_v2_2d", "arc_v2_3d", "arc_vs_2d", "arc_vs_3d", "arc_vis_2d", "arc_vis_3d"]
 
-DEM = os.path.join(DIR, "dem.tif")
-TREE = os.path.join(DIR, "tree.shp")
-TREE_3D = os.path.join(DIR, "tree_3d.shp")
+# Set per case by use_case()
+DEM = DEM_RAW = TREE = TREE_3D = None
+
+
+def _v2(radius_3d):
+    return Viewshed2(
+        DEM, TREE, analysis_type="FREQUENCY", refractivity_coefficient=0.13,
+        surface_offset="1.8 Meters", observer_elevation="OBS_Z", observer_offset="0 Meters",
+        outer_radius="30 Meters", outer_radius_is_3d=radius_3d,
+        analysis_method="ALL_SIGHTLINES", analysis_target_device="CPU_ONLY")
+
+
+def _vis(radius):
+    return Visibility(
+        DEM, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
+        curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
+        surface_offset="1.8", observer_elevation="OBS_Z", observer_offset="0", outer_radius=radius)
+
+
 VARIANTS = [
-    ("arc_v2_2d", lambda: Viewshed2(
-        DEM, TREE, analysis_type="FREQUENCY", refractivity_coefficient=0.13,
-        surface_offset="1.8 Meters", observer_elevation="OBS_Z", observer_offset="0 Meters",
-        outer_radius="30 Meters", outer_radius_is_3d="GROUND",
-        analysis_method="ALL_SIGHTLINES", analysis_target_device="CPU_ONLY")),
-    ("arc_v2_3d", lambda: Viewshed2(
-        DEM, TREE, analysis_type="FREQUENCY", refractivity_coefficient=0.13,
-        surface_offset="1.8 Meters", observer_elevation="OBS_Z", observer_offset="0 Meters",
-        outer_radius="30 Meters", outer_radius_is_3d="3D",
-        analysis_method="ALL_SIGHTLINES", analysis_target_device="CPU_ONLY")),
+    # the benchmark run: raw DSM, RASTERVALU, observer_offset left at the tool default
+    ("arc_bench", lambda: Visibility(
+        DEM_RAW, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
+        curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
+        surface_offset="1.8", observer_elevation="RASTERVALU", outer_radius="30")),
+    ("arc_v2_2d", lambda: _v2("GROUND")),
+    ("arc_v2_3d", lambda: _v2("3D")),
     # classic Viewshed: observer settings from the SPOT/OFFSETA/OFFSETB/RADIUS2 fields
     ("arc_vs_2d", lambda: Viewshed(DEM, TREE, z_factor=1, curvature_correction="FLAT_EARTH",
                                    refractivity_coefficient=0.13)),
     ("arc_vs_3d", lambda: Viewshed(DEM, TREE_3D, z_factor=1, curvature_correction="FLAT_EARTH",
                                    refractivity_coefficient=0.13)),
-    ("arc_vis_2d", lambda: Visibility(
-        DEM, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
-        curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
-        surface_offset="1.8", observer_elevation="OBS_Z", observer_offset="0", outer_radius="-30")),
-    ("arc_vis_3d", lambda: Visibility(
-        DEM, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
-        curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
-        surface_offset="1.8", observer_elevation="OBS_Z", observer_offset="0", outer_radius="30")),
+    ("arc_vis_2d", lambda: _vis("-30")),
+    ("arc_vis_3d", lambda: _vis("30")),
 ]
 
 
@@ -92,63 +104,69 @@ def copy_files(stem, src, dst):
         shutil.copy2(f, dst)
 
 
-def main(only=None):
-    """Run the variants in RUN in this process (or just `only`)."""
-    global DEM, TREE, TREE_3D
-    for f in (DEM, TREE, TREE_3D):
-        if not arcpy.Exists(f):
-            raise SystemExit(f"Not found: {f} - run `python arcgis_tests/one_tree.py prepare` first")
-    work = WORK or DIR
+def use_case(case):
+    """Point DEM/DEM_RAW/TREE/TREE_3D to the case's inputs (copied to WORK)
+    and return (folder, work folder)."""
+    global DEM, DEM_RAW, TREE, TREE_3D
+    folder = os.path.join(ROOT, case)
+    work = os.path.join(WORK, case) if WORK else folder
+    for stem in ("dem", "dem_raw", "tree", "tree_3d"):
+        if not glob.glob(os.path.join(folder, stem + ".*")):
+            raise SystemExit(f"Not found: {folder}\\{stem} - run `python arcgis_tests/one_tree.py prepare` first")
     if WORK:
-        os.makedirs(WORK, exist_ok=True)
-        for stem in ("dem", "tree", "tree_3d"):
-            copy_files(stem, DIR, WORK)
-        DEM = os.path.join(WORK, "dem.tif")
-        TREE = os.path.join(WORK, "tree.shp")
-        TREE_3D = os.path.join(WORK, "tree_3d.shp")
+        os.makedirs(work, exist_ok=True)
+        for stem in ("dem", "dem_raw", "tree", "tree_3d"):
+            copy_files(stem, folder, work)
+    DEM, DEM_RAW = os.path.join(work, "dem.tif"), os.path.join(work, "dem_raw.tif")
+    TREE, TREE_3D = os.path.join(work, "tree.shp"), os.path.join(work, "tree_3d.shp")
+    return folder, work
+
+
+def main(cases, only=None):
+    """Run the variants in RUN (or just `only`) for the cases, in this process."""
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.overwriteOutput = True
-    arcpy.env.workspace = work
-    arcpy.env.scratchWorkspace = work
-    arcpy.env.snapRaster = DEM
-    arcpy.env.extent = DEM
-    arcpy.env.cellSize = DEM
-    for name, run in VARIANTS:
-        if name not in (RUN if only is None else [only]):
-            continue
-        if only is None and os.path.exists(os.path.join(DIR, f"{name}.tif")):
-            print(f"{name}: already there, skipped")
-            continue
-        print(f"{name} ...", flush=True)
-        try:
-            run().save(os.path.join(work, f"{name}.tif"))
-            if WORK:
-                copy_files(name, WORK, DIR)
-            print(f"  saved {name}.tif", flush=True)
-        except Exception as exc:        # a normal tool error: report and continue
-            print(f"  FAILED: {exc}", flush=True)
-            if only is not None:
-                raise SystemExit(1)
+    for case in cases:
+        folder, work = use_case(case)
+        arcpy.env.workspace = arcpy.env.scratchWorkspace = work
+        arcpy.env.snapRaster = arcpy.env.extent = arcpy.env.cellSize = DEM
+        for name, run in VARIANTS:
+            if name not in (RUN if only is None else [only]):
+                continue
+            if only is None and os.path.exists(os.path.join(folder, f"{name}.tif")):
+                print(f"{case} {name}: already there, skipped")
+                continue
+            print(f"{case} {name} ...", flush=True)
+            try:
+                run().save(os.path.join(work, f"{name}.tif"))
+                if work != folder:
+                    copy_files(name, work, folder)
+                print(f"  saved {name}.tif", flush=True)
+            except Exception as exc:        # a normal tool error: report and continue
+                print(f"  FAILED: {exc}", flush=True)
+                if only is not None:
+                    raise SystemExit(1)
 
 
-def main_isolated():
-    """Command line: one child process per variant, so a crash loses only that variant."""
-    for name, _ in VARIANTS:
-        if name not in RUN:
-            continue
-        if os.path.exists(os.path.join(DIR, f"{name}.tif")):
-            print(f"{name}: already there, skipped")
-            continue
-        code = subprocess.run([sys.executable, os.path.abspath(__file__), name]).returncode
-        if code != 0:
-            print(f"  {name}: child process ended with code {code} (crash or tool error), no result")
+def main_isolated(cases):
+    """Command line: one child process per case and variant, so a crash loses only that one."""
+    for case in cases:
+        for name, _ in VARIANTS:
+            if name not in RUN:
+                continue
+            if os.path.exists(os.path.join(ROOT, case, f"{name}.tif")):
+                print(f"{case} {name}: already there, skipped")
+                continue
+            code = subprocess.run([sys.executable, os.path.abspath(__file__), case, name]).returncode
+            if code != 0:
+                print(f"  {case} {name}: child process ended with code {code} (crash or tool error), no result")
     print("Done. Compare with:  python arcgis_tests\\one_tree.py compare")
 
 
 if "__file__" not in globals():         # exec() in the ArcGIS Pro Python window
-    main()
+    main(CASES)
     print("Done. Compare with:  python arcgis_tests\\one_tree.py compare")
-elif len(sys.argv) > 1:                 # child process: one variant
-    main(sys.argv[1])
+elif len(sys.argv) > 2:                 # child process: one case, one variant
+    main([sys.argv[1]], sys.argv[2])
 else:
-    main_isolated()
+    main_isolated([sys.argv[1]] if len(sys.argv) > 1 else CASES)
