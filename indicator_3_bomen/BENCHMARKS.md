@@ -15,7 +15,7 @@ Do not edit by hand — regenerate instead.
 | Tile size (inner) | 1000 px (500 m) |
 | Tile buffer | 70 px (35.0 m), extends across municipality boundaries |
 | Parallel workers | 4 |
-| Output raster dtype | UInt32 |
+| Output raster dtype | UInt32 (per-pixel visible-tree count) |
 
 ## Per-municipality timing
 
