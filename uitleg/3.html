@@ -16,7 +16,7 @@
   <a href="3.html" aria-current="page">3</a>
   <a href="30.html">30</a>
   <a href="300.html">300</a>
-  <a class="repo" href="https://github.com/RobertoTjesse/330300regel">Code</a>
+  <a class="repo" href="https://github.com/RobertoTjesse/3-30-300regel">Code</a>
 </nav></header>
 
 <main>
@@ -152,7 +152,7 @@ Dan zit het verschil meestal in een van deze punten:</p>
 bijvoorbeeld omdat ze aan de achterkant staan en de woonkamer aan de voorkant ligt. De kaart zegt of er ergens rond de
 woning drie bomen te zien zijn, niet vanuit welk raam.</div>
 <p>Zie je een fout die niet door deze punten verklaard wordt? Meld het via de
-<a href="https://github.com/RobertoTjesse/330300regel/issues">open punten</a> in de repository; zo wordt de kaart beter.</p>
+<a href="https://github.com/RobertoTjesse/3-30-300regel/issues">open punten</a> in de repository; zo wordt de kaart beter.</p>
 
 <h2>Beperkingen en open punten</h2>
 <ul>
@@ -160,28 +160,28 @@ woning drie bomen te zien zijn, niet vanuit welk raam.</div>
       van flats zien in werkelijkheid vaak meer (of andere) bomen.</li>
   <li><b>Boomstatus.</b> 21% van de getelde bomen staat in de bron als "verdwenen, kleine boom", 3% als "één keer niet
       gezien". Alle statussen tellen nu mee
-      (<a href="https://github.com/RobertoTjesse/330300regel/issues/1">open punt #1</a>).</li>
+      (<a href="https://github.com/RobertoTjesse/3-30-300regel/issues/1">open punt #1</a>).</li>
   <li><b>Actualiteit.</b> Hoogtemodel en bomen komen uit 2020–2022, de woningen uit 2026. Nieuwbouw staat op de
       kaart met de omgeving van toen (3 à 5% van de woningen).</li>
   <li><b>Geen puntclassificatie.</b> Het hoogtemodel onderscheidt boom, gebouw en hoogspanningsleiding niet. De
       hoogtecontrole vangt het grootste deel af; de geclassificeerde AHN-puntenwolk zou het oplossen.</li>
   <li><b>Vergelijking met ArcGIS.</b> Het eerdere ArcGIS-resultaat voor Delft zag meer bomen. Dat bleek te komen
       door een fout in de waarnemershoogte van die run, niet door de rekenmethode
-      (<a href="https://github.com/RobertoTjesse/330300regel/issues/2">open punt #2</a>).</li>
+      (<a href="https://github.com/RobertoTjesse/3-30-300regel/issues/2">open punt #2</a>).</li>
 </ul>
 
 <h2>Code en bronnen</h2>
 <div class="table-wrap"><table class="plain">
 <tr><th>Stap</th><th>Script</th></tr>
-<tr><td>Instellingen (straal, hoogtes, tegels)</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/config.py"><code>etl/config.py</code></a></td></tr>
-<tr><td>BAG downloaden (PDOK)</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/download_bag_pdok.py"><code>etl/download_bag_pdok.py</code></a></td></tr>
-<tr><td>1. Tegels knippen, gaten vullen</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/01_tile_dem.py"><code>etl/01_tile_dem.py</code></a></td></tr>
-<tr><td>2. Zichtbaarheid per boom</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/02_compute_viewsheds.py"><code>etl/02_compute_viewsheds.py</code></a></td></tr>
-<tr><td>3. Tegels samenvoegen</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/03_merge_tiles.py"><code>etl/03_merge_tiles.py</code></a></td></tr>
-<tr><td>4. Score per woning</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/04_score_buildings.py"><code>etl/04_score_buildings.py</code></a></td></tr>
-<tr><td>5. Provincie samenvoegen</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/05_merge_province.py"><code>etl/05_merge_province.py</code></a></td></tr>
-<tr><td>6. Per gemeente, wijk, buurt</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/etl/06_area_summaries.py"><code>etl/06_area_summaries.py</code></a></td></tr>
-<tr><td>Technische achtergrond (Engels)</td><td><a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/ARCHITECTURE.md"><code>ARCHITECTURE.md</code></a></td></tr>
+<tr><td>Instellingen (straal, hoogtes, tegels)</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/config.py"><code>etl/config.py</code></a></td></tr>
+<tr><td>BAG downloaden (PDOK)</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/download_bag_pdok.py"><code>etl/download_bag_pdok.py</code></a></td></tr>
+<tr><td>1. Tegels knippen, gaten vullen</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/01_tile_dem.py"><code>etl/01_tile_dem.py</code></a></td></tr>
+<tr><td>2. Zichtbaarheid per boom</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/02_compute_viewsheds.py"><code>etl/02_compute_viewsheds.py</code></a></td></tr>
+<tr><td>3. Tegels samenvoegen</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/03_merge_tiles.py"><code>etl/03_merge_tiles.py</code></a></td></tr>
+<tr><td>4. Score per woning</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/04_score_buildings.py"><code>etl/04_score_buildings.py</code></a></td></tr>
+<tr><td>5. Provincie samenvoegen</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/05_merge_province.py"><code>etl/05_merge_province.py</code></a></td></tr>
+<tr><td>6. Per gemeente, wijk, buurt</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/etl/06_area_summaries.py"><code>etl/06_area_summaries.py</code></a></td></tr>
+<tr><td>Technische achtergrond (Engels)</td><td><a href="https://github.com/RobertoTjesse/3-30-300regel/blob/master/indicator_3_bomen/ARCHITECTURE.md"><code>ARCHITECTURE.md</code></a></td></tr>
 </table></div>
 <div class="table-wrap"><table class="plain">
 <tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr>
@@ -192,7 +192,7 @@ woning drie bomen te zien zijn, niet vanuit welk raam.</div>
 <tr><td>Wijken en buurten</td><td>CBS Wijk- en Buurtkaart 2025 via PDOK</td><td>2025</td></tr>
 </table></div>
 </main>
-<footer>3-30-300-regel · <a href="https://github.com/RobertoTjesse/330300regel">broncode op GitHub</a> ·
+<footer>3-30-300-regel · <a href="https://github.com/RobertoTjesse/3-30-300regel">broncode op GitHub</a> ·
   Konijnendijk, C.C. (2023). <i>Evidence-based guidelines for greener, healthier, more resilient neighbourhoods:
   Introducing the 3–30–300 rule.</i> Journal of Forestry Research 34, 821–830.</footer>
 </body>
