@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
+<title>3-30-300-regel</title>
+<meta name="description" content="De 3-30-300-regel per woning, buurt, wijk en gemeente: 3 zichtbare bomen per woning, 30% kroonbedekking per buurt, groen binnen 300 m lopen.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pmtiles@4/dist/pmtiles.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0; --accent: #238b45;
+    --panel-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c2128; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --accent: #3fb950;
+      --panel-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+    }
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+               font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  .panel { position: absolute; top: 12px; left: 12px; width: 310px; max-width: calc(100vw - 24px);
+           max-height: calc(100vh - 48px); overflow-y: auto;
+           box-sizing: border-box; background: var(--bg); border: 1px solid var(--border);
+           border-radius: 8px; box-shadow: var(--panel-shadow); padding: 14px 16px; z-index: 1; }
+  .panel h1 { font-size: 17px; margin: 0 0 8px; }
+  .panel p { margin: 0 0 10px; color: var(--muted); }
+  .tabs { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+  .tabs button { flex: 1; padding: 6px 0; border: 0; background: var(--bg); color: var(--fg);
+                 font: 600 15px/1.2 inherit; font-family: inherit; cursor: pointer; }
+  .tabs button + button { border-left: 1px solid var(--border); }
+  .tabs button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .search { display: flex; gap: 6px; margin-bottom: 12px; }
+  .search input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border);
+                  border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+  .search button { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+                   background: var(--bg); color: var(--fg); font: inherit; cursor: pointer; }
+  .legend-title { font-weight: 600; margin: 8px 0 4px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+  .swatch { width: 16px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,.25); flex: none; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .panel a { color: var(--accent); }
+  label.toggle { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 8px; cursor: pointer; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 10px; }
+  details p { font-size: 12px; margin-top: 6px; }
+  .maplibregl-popup-content { background: var(--bg); color: var(--fg); font: inherit; }
+  .maplibregl-popup-tip { border-top-color: var(--bg) !important; border-bottom-color: var(--bg) !important; }
+  .popup-sub { margin-top: 6px; font-weight: 600; }
+  .info-btn { font: 600 16px/29px Georgia, serif !important; color: #333; }
+  dialog#info { max-width: 600px; width: calc(100vw - 48px); box-sizing: border-box;
+                border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+                color: var(--fg); padding: 18px 20px; }
+  dialog#info::backdrop { background: rgba(0, 0, 0, .35); }
+  dialog#info h2 { font-size: 16px; margin: 0 0 10px; }
+  dialog#info h3 { font-size: 13px; margin: 14px 0 4px; }
+  dialog#info table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  dialog#info td, dialog#info th { text-align: left; vertical-align: top; padding: 4px 6px;
+                                   border-bottom: 1px solid var(--border); }
+  dialog#info p { font-size: 13px; margin: 6px 0; }
+  dialog#info a { color: inherit; }
+  dialog#info .close { float: right; border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+                       border-radius: 6px; padding: 3px 10px; cursor: pointer; font: inherit; }
+  @media (max-width: 600px) {
+    .panel { top: auto; bottom: 24px; padding: 10px 12px; max-height: 45vh; }
+    .panel p.intro, details { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="panel">
+  <h1 id="title">3-30-300</h1>
+  <div class="tabs" role="group" aria-label="Onderdeel van de regel">
+    <button type="button" data-theme="3">3</button>
+    <button type="button" data-theme="30">30</button>
+    <button type="button" data-theme="300">300</button>
+  </div>
+  <p class="intro" id="intro"></p>
+
+  <form class="search" id="search">
+    <input id="q" type="search" placeholder="Zoek adres of plaats" aria-label="Zoek adres of plaats">
+    <button type="submit">Zoek</button>
+  </form>
+
+  <div id="legend"></div>
+  <label class="toggle" id="iso-toggle"><input type="checkbox" id="iso"> Looptijdzones en ingangen van groen tonen</label>
+  <div class="hint" id="hint"></div>
+
+  <details>
+    <summary>Hoe is dit berekend?</summary>
+    <p id="method"></p>
+  </details>
+  <p class="hint">Uitleg en keuzes: <a href="uitleg/">overzicht</a> ·
+     <a href="uitleg/3.html">3</a> · <a href="uitleg/30.html">30</a> · <a href="uitleg/300.html">300</a> ·
+     <a href="uitleg/konijnendijk.html">het artikel</a></p>
+</div>
+
+<dialog id="info">
+  <button class="close" id="info-close" type="button">Sluiten</button>
+  <h2>Bronnen en actualiteit</h2>
+  <table id="sources"><tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr></table>
+  <h3>Kanttekeningen</h3>
+  <p id="caveats"></p>
+  <h3>Methode en code</h3>
+  <p>Hoe elke indicator is berekend en waarom, staat op de uitlegpagina's:
+     <a href="uitleg/3.html">3</a>, <a href="uitleg/30.html">30</a> en <a href="uitleg/300.html">300</a>.
+     De code van de 3 en van deze kaart staat in de
+     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub-repository</a>; de 30 en de 300 zijn (nog) met FME berekend.</p>
+</dialog>
+
+<script>
+// ---------------------------------------------------------------------------
+// Settings — edit colours and texts here
+// ---------------------------------------------------------------------------
+const PROVINCE = "Zuid-Holland";                  // as in PDOK (also filters the address search)
+const REPO = "https://github.com/RobertoTjesse/3-30-300-regel";
+const TILES_3 = "data/3.pmtiles";                 // web/build_tiles.py
+const TILES_30_300 = "data/30-300.pmtiles";       // web/build_tiles_30_300.py
+// The map opens on the extent of the tile files, so no coordinates to set per province.
+
+// --- 3: visible trees per home (same colours as the 3-regel map) ---
+const CLASSES_3 = [
+  ["0",   "#d7191c", "0 bomen"],
+  ["1-2", "#fd8d3c", "1-2 bomen"],
+  ["3-5", "#74c476", "3-5 bomen"],
+  ["6-7", "#31a354", "6-7 bomen"],
+  ["8+",  "#006d2c", "8 of meer bomen"],
+];
+const NO_RING = ["#bdbdbd", "geen vrije gevel"];
+const STEPS_3 = [
+  [0,  "#d7301f", "< 80%"],
+  [80, "#fdae6b", "80-90%"],
+  [90, "#c7e9c0", "90-95%"],
+  [95, "#74c476", "95-98%"],
+  [98, "#238b45", "≥ 98%"],
+];
+// Areas: the same gemeenten / wijken / buurten and zooms for 3, 30 and 300
+const LEVELS = [
+  { layer: "gemeenten", name: "gemeente", from: 0,    to: 10 },
+  { layer: "wijken",    name: "wijk",     from: 10,   to: 11.5 },
+  { layer: "buurten",   name: "buurt",    from: 11.5, to: 13 },
+];
+
+// --- 30: tree canopy cover per wijk / buurt (%) ---
+const STEPS_30 = [
+  [0,  "#d7301f", "< 10%"],
+  [10, "#fdae6b", "10-20%"],
+  [20, "#c7e9c0", "20-30%"],
+  [30, "#238b45", "≥ 30% (voldoet)"],
+];
+
+// --- 300: homes within a 5-minute walk of a park or wood ---
+const CLASSES_300 = [
+  ["5",   "#238b45", "binnen 5 min lopen (≈ 300 m)"],
+  ["15",  "#fdae6b", "binnen 15 min lopen"],
+  ["ver", "#d7301f", "verder dan 15 min lopen"],
+];
+const STEPS_300 = [
+  [0,  "#d7301f", "< 50%"],
+  [50, "#fdae6b", "50-70%"],
+  [70, "#c7e9c0", "70-85%"],
+  [85, "#74c476", "85-95%"],
+  [95, "#238b45", "≥ 95%"],
+];
+const MIN_HOMES = 10;                        // fewer homes: no percentage shown
+const NO_DATA = "#d9d9d9";
+const BUILDINGS_FROM_ZOOM = 13;
+
+const THEMES = {
+  "3": {
+    intro: "Ziet elke woning minstens 3 bomen? Aantal zichtbare bomen per woning, en het aandeel woningen met ≥ 3 zichtbare bomen per gebied.",
+    method: "Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin (AHN4, 0,5 m). " +
+            "Een woning krijgt het hoogste aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte) gezien wordt.",
+  },
+  "30": {
+    intro: "Heeft elke buurt minstens 30% bedekking met boomkronen? Kroonoppervlak als aandeel van het landoppervlak, per gemeente, wijk en buurt.",
+    method: "Per CBS-buurt (2023) is het kroonoppervlak van de NEO-bomen opgeteld en gedeeld door het landoppervlak. " +
+            "Voor deze kaart zijn kroon- en landoppervlak naar de gemeenten, wijken en buurten van de 3 omgerekend, naar rato van overlappend oppervlak. " +
+            "Grijs: geen gegevens (Voorne aan Zee zit niet in de kroondata) of alleen water.",
+  },
+  "300": {
+    intro: "Woont iedereen binnen 300 m van een park of bos? Looptijd over het wegennet van elke woning tot de dichtstbijzijnde ingang van groen.",
+    method: "Rond elke ingang van een park of bos (OSM- en TOP10NL-groen van minstens 300 m², waar een voetpad het groen in gaat) " +
+            "is met Valhalla berekend wat binnen 5 en binnen 15 minuten lopen bereikbaar is. 5 minuten lopen is ongeveer 300 m hemelsbreed. " +
+            "Een pand (BAG, met woonfunctie) valt in de klasse van de zone waarin het ligt. Per gebied: het aandeel woningen binnen 5 minuten.",
+  },
+};
+
+const SOURCES = {
+  "3": [
+    ["Hoogtemodel", '<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0,5 m', "2020–2022"],
+    ["Bomen", "NEO boomdata (aangekocht)", "2020–2022"],
+    ["Woningen", "BAG via PDOK", "27 september 2026"],
+    ["Gebieden", "Bestuurlijke gebieden; CBS wijken en buurten 2025", "2025–2026"],
+  ],
+  "30": [
+    ["Boomkronen", "NEO boomkronen (aangekocht)", "2020–2022"],
+    ["Landoppervlak", '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2023" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2023</a>', "2023"],
+    ["Gebieden", "Zelfde als de 3", "2025–2026"],
+  ],
+  "300": [
+    ["Groen en ingangen", "OpenStreetMap (parken, bossen, paden) en TOP10NL-groen", "2024–2025"],
+    ["Looptijd", '<a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> (voetganger) over het OSM-wegennet', "2025"],
+    ["Woningen", "BAG-panden met een woonfunctie", "2025"],
+    ["Gebieden", "Zelfde als de 3", "2025–2026"],
+  ],
+};
+const CAVEATS = "Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 is berekend op de buurten van 2023 " +
+  "en omgerekend: waar een buurt sinds 2023 is gesplitst of samengevoegd, is de kroonbedekking een benadering. Een boom telt mee in elke " +
+  "buurt die zijn kroon raakt. De woningen van de 3 (BAG 2026) en de 300 (BAG 2025) zijn apart geteld; het aantal woningen per gebied kan " +
+  "daardoor iets verschillen. De 300 meet looptijd tot een ingang, niet hemelsbreed tot de rand van het groen.";
+const BASE_SOURCES = [["Achtergrondkaart", "BRT-achtergrondkaart grijs (Kadaster) via PDOK", "actueel"]];
+// ---------------------------------------------------------------------------
+
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol("pmtiles", protocol.tile);
+const tiles3 = new pmtiles.PMTiles(new URL(TILES_3, location.href).href);
+protocol.add(tiles3);
+
+document.getElementById("title").textContent = `3-30-300 in ${PROVINCE}`;
+document.title = `3-30-300-regel ${PROVINCE}`;
+document.getElementById("repo-link").href = REPO;
+
+const stepColour = (field, steps) => ["case",
+  ["<", ["coalesce", ["get", "woningen"], 0], MIN_HOMES], NO_DATA,
+  ["step", ["coalesce", ["get", field], 0], ...steps.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]];
+const matchColour = (classes, fallback) =>
+  ["match", ["coalesce", ["get", "klasse"], ""], ...classes.flatMap(([k, c]) => [k, c]), fallback];
+
+// Layers per theme: [layer, ...] ids get shown/hidden together
+const layers = { "3": [], "30": [], "300": [] };
+function add(theme, def) { def.layout = { ...(def.layout || {}), visibility: "none" }; layers[theme].push(def); }
+
+for (const lv of LEVELS) {
+  add("3", { id: `3-${lv.layer}-fill`, type: "fill", source: "t3", "source-layer": lv.layer,
+             minzoom: lv.from, maxzoom: lv.to,
+             paint: { "fill-color": stepColour("pct_3_of_meer", STEPS_3), "fill-opacity": 0.75 } });
+  add("3", { id: `3-${lv.layer}-line`, type: "line", source: "t3", "source-layer": lv.layer,
+             minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
+}
+add("3", { id: "3-woningen", type: "fill", source: "t3", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+           paint: { "fill-color": matchColour(CLASSES_3, NO_RING[0]), "fill-opacity": 0.9,
+                    "fill-outline-color": "rgba(40,40,40,0.5)" } });
+
+// 30: buurten stay on beyond zoom 13 (there is nothing per building)
+const groenColour = ["case", ["!", ["has", "groen"]], NO_DATA,
+  ["step", ["get", "groen"], ...STEPS_30.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]];
+for (const lv of LEVELS) {
+  const to = lv.layer === "buurten" ? 24 : lv.to;
+  add("30", { id: `30-${lv.layer}-fill`, type: "fill", source: "t30", "source-layer": lv.layer,
+              minzoom: lv.from, maxzoom: to, paint: { "fill-color": groenColour, "fill-opacity": 0.7 } });
+  add("30", { id: `30-${lv.layer}-line`, type: "line", source: "t30", "source-layer": lv.layer,
+              minzoom: lv.from, maxzoom: to, paint: { "line-color": "#555", "line-width": 0.5 } });
+  add("300", { id: `300-${lv.layer}-fill`, type: "fill", source: "t30", "source-layer": lv.layer,
+               minzoom: lv.from, maxzoom: lv.to, paint: { "fill-color": stepColour("pct_5", STEPS_300), "fill-opacity": 0.75 } });
+  add("300", { id: `300-${lv.layer}-line`, type: "line", source: "t30", "source-layer": lv.layer,
+               minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
+}
+add("300", { id: "300-woningen", type: "fill", source: "t30", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+             paint: { "fill-color": matchColour(CLASSES_300, NO_DATA), "fill-opacity": 0.9,
+                      "fill-outline-color": "rgba(40,40,40,0.5)" } });
+// Optional: the walking zones and entrances (checkbox)
+const ISO_LAYERS = ["300-iso15", "300-iso5", "300-ingangen"];
+add("300", { id: "300-iso15", type: "line", source: "t30", "source-layer": "iso15", minzoom: 9,
+             paint: { "line-color": "#e6550d", "line-width": 1.2, "line-dasharray": [2, 2] } });
+add("300", { id: "300-iso5", type: "line", source: "t30", "source-layer": "iso5", minzoom: 9,
+             paint: { "line-color": "#006d2c", "line-width": 1.5 } });
+add("300", { id: "300-ingangen", type: "circle", source: "t30", "source-layer": "ingangen", minzoom: 13,
+             paint: { "circle-radius": 3.5, "circle-color": "#006d2c", "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: [5.3, 52.2],     // the Netherlands until the tile extent is known (below)
+  zoom: 7,
+  minZoom: 6,
+  hash: true,              // position in the URL, so a link opens the same view
+  style: {
+    version: 8,
+    sources: {
+      brt: {
+        type: "raster", tileSize: 256, maxzoom: 19,
+        tiles: ["https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png"],
+        attribution: 'Achtergrond: <a href="https://www.pdok.nl">PDOK</a> BRT-achtergrondkaart (Kadaster)',
+      },
+      t3: { type: "vector", url: "pmtiles://" + new URL(TILES_3, location.href).href,
+            attribution: "AHN4, BAG, CBS, bomen: NEO" },
+      t30: { type: "vector", url: "pmtiles://" + new URL(TILES_30_300, location.href).href,
+             attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
+    },
+    layers: [{ id: "brt", type: "raster", source: "brt" }, ...layers["3"], ...layers["30"], ...layers["300"]],
+  },
+});
+
+// (i) button: sources and dates
+const info = document.getElementById("info");
+class InfoControl {
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "info-btn";
+    btn.title = btn.ariaLabel = "Bronnen en actualiteit";
+    btn.textContent = "i";
+    btn.onclick = () => info.showModal();
+    div.appendChild(btn);
+    return div;
+  }
+  onRemove() {}
+}
+map.addControl(new InfoControl(), "top-right");
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+const table = document.getElementById("sources");
+for (const [theme, rows] of [...Object.entries(SOURCES), ["", BASE_SOURCES]]) {
+  for (const [what, src, when] of rows) {
+    const tr = table.insertRow();
+    tr.insertCell().textContent = theme ? `${theme} · ${what}` : what;
+    tr.insertCell().innerHTML = src;
+    tr.insertCell().textContent = when;
+  }
+}
+document.getElementById("caveats").textContent = CAVEATS;
+document.getElementById("info-close").onclick = () => info.close();
+
+// Theme switch (3 / 30 / 300), remembered in the URL as ?t=
+let theme = new URLSearchParams(location.search).get("t");
+if (!THEMES[theme]) theme = "3";
+const isoBox = document.getElementById("iso");
+
+function setTheme(t) {
+  theme = t;
+  for (const [k, defs] of Object.entries(layers)) {
+    for (const d of defs) {
+      const on = k === t && (!ISO_LAYERS.includes(d.id) || isoBox.checked);
+      map.setLayoutProperty(d.id, "visibility", on ? "visible" : "none");
+    }
+  }
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.theme === t));
+  document.getElementById("intro").textContent = THEMES[t].intro;
+  document.getElementById("method").textContent = THEMES[t].method;
+  document.getElementById("iso-toggle").style.display = t === "300" ? "" : "none";
+  const url = new URL(location.href);
+  url.searchParams.set("t", t);
+  history.replaceState(null, "", url);
+  updateLegend();
+}
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => setTheme(b.dataset.theme));
+isoBox.onchange = () => setTheme(theme);
+
+// Legend: depends on theme and zoom
+function legendRow(colour, label, line) {
+  const row = document.createElement("div");
+  row.className = "legend-row";
+  const sw = document.createElement("span");
+  sw.className = "swatch";
+  if (line) Object.assign(sw.style, { background: "none", border: 0, borderTop: `2px ${line} ${colour}`, height: 0 });
+  else sw.style.background = colour;
+  const text = document.createElement("span");
+  text.textContent = label;
+  row.append(sw, text);
+  return row;
+}
+function legendBlock(title, rows) {
+  const div = document.createElement("div");
+  const h = document.createElement("div");
+  h.className = "legend-title";
+  h.textContent = title;
+  div.appendChild(h);
+  rows.forEach((r) => div.appendChild(legendRow(...r)));
+  return div;
+}
+function updateLegend() {
+  const legend = document.getElementById("legend");
+  const hint = document.getElementById("hint");
+  legend.replaceChildren();
+  hint.textContent = "";
+  const few = [NO_DATA, `minder dan ${MIN_HOMES} woningen`];
+  const z = map.getZoom();
+  let i = LEVELS.findIndex((lv) => z >= lv.from && z < lv.to);
+  if (theme === "30" && i < 0) i = LEVELS.length - 1;       // the 30 stays on buurten
+  const next = i + 1 < LEVELS.length ? "de " + LEVELS[i + 1].layer : "de afzonderlijke woningen";
+  if (i >= 0 && !(theme === "30" && i === LEVELS.length - 1)) hint.textContent = `Zoom in voor ${next}.`;
+  if (theme === "3") {
+    if (i < 0) {
+      legend.appendChild(legendBlock("Zichtbare bomen per woning", [...CLASSES_3.map(([, c, l]) => [c, l]), NO_RING]));
+    } else {
+      legend.appendChild(legendBlock(`Woningen met ≥ 3 zichtbare bomen, per ${LEVELS[i].name}`,
+                                     [...STEPS_3.map(([, c, l]) => [c, l]), few]));
+    }
+  } else if (theme === "30") {
+    legend.appendChild(legendBlock(`Kroonbedekking per ${LEVELS[i].name}`,
+                                   [...STEPS_30.map(([, c, l]) => [c, l]), [NO_DATA, "geen gegevens"]]));
+  } else {
+    if (i < 0) {
+      legend.appendChild(legendBlock("Looptijd naar park of bos", [...CLASSES_300.map(([, c, l]) => [c, l])]));
+    } else {
+      legend.appendChild(legendBlock(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`,
+                                     [...STEPS_300.map(([, c, l]) => [c, l]), few]));
+    }
+    if (isoBox.checked) {
+      legend.appendChild(legendBlock("Looptijdzones", [["#006d2c", "5 minuten", "solid"], ["#e6550d", "15 minuten", "dashed"]]));
+    }
+  }
+}
+map.on("zoom", updateLegend);
+map.on("load", () => setTheme(theme));
+
+// Open on the extent of the data (unless the URL already holds a position),
+// and keep the view near it
+tiles3.getHeader().then((h) => {
+  const bounds = [[h.minLon, h.minLat], [h.maxLon, h.maxLat]];
+  const pad = 0.6;   // degrees
+  map.setMaxBounds([[h.minLon - pad, h.minLat - pad / 2], [h.maxLon + pad, h.maxLat + pad / 2]]);
+  if (!location.hash) map.fitBounds(bounds, { padding: 20, animate: false });
+});
+
+// Popups
+const fmt = (n) => n == null ? "–" : Number(n).toLocaleString("nl-NL");
+const pct = (n) => n == null ? "–" : `${fmt(n)}%`;
+function popup(lngLat, rows) {
+  const div = document.createElement("div");
+  rows.forEach(([k, v], i) => {
+    const line = document.createElement(i === 0 ? "strong" : "div");
+    line.textContent = k === null ? v : `${k}: ${v}`;
+    div.appendChild(line);
+  });
+  new maplibregl.Popup({ maxWidth: "280px" }).setLngLat(lngLat).setDOMContent(div).addTo(map);
+}
+map.on("click", "3-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, p.bomen == null ? "Geen vrije gevel" : `${fmt(p.bomen)} zichtbare bomen`],
+    ["Woningen in dit pand", fmt(p.woningen)],
+    ["Gemeente", p.gemeente],
+  ]);
+});
+const areaTitle = (p, lv) => lv.layer === "gemeenten" ? p.naam : `${p.naam} (${lv.name}, ${p.gemeente})`;
+for (const lv of LEVELS) {
+  map.on("click", `3-${lv.layer}-fill`, (e) => {
+    const p = e.features[0].properties;
+    const few = (p.woningen ?? 0) < MIN_HOMES;
+    popup(e.lngLat, [
+      [null, areaTitle(p, lv)],
+      ["Woningen", fmt(p.woningen)],
+      ["Met ≥ 3 zichtbare bomen", few ? "–" : pct(p.pct_3_of_meer)],
+      ["Met 0 zichtbare bomen", few ? "–" : pct(p.pct_0)],
+    ]);
+  });
+}
+const CLASS_300_LABEL = Object.fromEntries(CLASSES_300.map(([k, , l]) => [k, l]));
+map.on("click", "300-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, CLASS_300_LABEL[p.klasse] ?? "onbekend"],
+    ["Woningen in dit pand", fmt(p.woningen)],
+    ["Bouwjaar", p.bouwjaar ?? "–"],
+  ]);
+});
+for (const lv of LEVELS) {
+  for (const t of ["30", "300"]) {
+    map.on("click", `${t}-${lv.layer}-fill`, (e) => {
+      const p = e.features[0].properties;
+      const few = (p.woningen ?? 0) < MIN_HOMES;
+      popup(e.lngLat, [
+        [null, areaTitle(p, lv)],
+        ["Kroonbedekking (30)", pct(p.groen)],
+        ["Kroonoppervlak", p.kroon_m2 == null ? "–" : `${fmt(p.kroon_m2)} m²`],
+        ["Woningen", fmt(p.woningen)],
+        ["Binnen 5 min lopen van groen (300)", few ? "–" : pct(p.pct_5)],
+        ["Binnen 15 min lopen", few ? "–" : pct(p.pct_15)],
+      ]);
+    });
+  }
+}
+const clickable = [...layers["3"], ...layers["30"], ...layers["300"]]
+  .filter((d) => d.type === "fill").map((d) => d.id);
+for (const id of clickable) {
+  map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
+}
+
+// Address search: PDOK Locatieserver
+document.getElementById("search").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const q = document.getElementById("q").value.trim();
+  if (!q) return;
+  const url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?rows=1&fl=weergavenaam,centroide_ll,type"
+            + `&fq=provincienaam:"${PROVINCE}"&q=` + encodeURIComponent(q);
+  try {
+    const doc = (await (await fetch(url)).json()).response.docs[0];
+    if (!doc) { alert("Niets gevonden voor: " + q); return; }
+    const [lon, lat] = doc.centroide_ll.match(/POINT\(([^ ]+) ([^)]+)\)/).slice(1).map(Number);
+    const zoom = { adres: 18, weg: 16, postcode: 16, woonplaats: 13, gemeente: 11 }[doc.type] ?? 15;
+    map.flyTo({ center: [lon, lat], zoom });
+  } catch (err) {
+    alert("Zoeken lukt niet: " + err.message);
+  }
+});
+</script>
+</body>
+</html>
