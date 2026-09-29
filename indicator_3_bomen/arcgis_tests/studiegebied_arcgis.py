@@ -22,8 +22,8 @@ D:\Repositories\3-regel (digit + hyphen), so the inputs are copied to a
 plain work folder (WORK) and the result is copied back.
 
 HOW TO RUN — ArcGIS Pro Python Command Prompt (Start menu -> ArcGIS ->
-Python Command Prompt), from the repository folder:
-    python indicator_3_bomen/arcgis_tests/studiegebied_arcgis.py
+Python Command Prompt; it opens in Pro's own folder, so give the full path):
+    python D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\studiegebied_arcgis.py
 Takes about a minute. Then, in OSGeo4W Python:
     python indicator_3_bomen/arcgis_tests/studiegebied.py gdal
     python indicator_3_bomen/arcgis_tests/studiegebied.py compare
