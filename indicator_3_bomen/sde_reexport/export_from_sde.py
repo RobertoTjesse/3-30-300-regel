@@ -28,7 +28,7 @@ replace the originals on the share by hand and rebuild province_dem.vrt
 
 HOW TO RUN (either works):
   - ArcGIS Pro → Analysis → Python window: paste this file's contents, or
-    exec(open(r"D:\Repositories\3-regel\sde_reexport\export_from_sde.py", encoding="utf-8").read())
+    exec(open(r"D:\Repositories\330300regel\indicator_3_bomen\sde_reexport\export_from_sde.py", encoding="utf-8").read())
   - Standalone, with Pro's own interpreter:
     "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" sde_reexport\export_from_sde.py
 
@@ -48,7 +48,7 @@ import arcpy
 SDE_CONNECTION = r"R:\ESRI\BEHEER\Database_verbindingen\Geodatabase\Productie\Geo_raster\Geodatabase@Geo_raster@topografie.sde"
 SDE_RASTER_DATASET = "Geo_raster.TOPOGRAFIE.AHN4_05M_RUW"  # AHN4, 0.5m, raw/unfiltered surface model
 
-REEXPORT_DIR = r"D:\Repositories\3-regel\sde_reexport"
+REEXPORT_DIR = r"D:\Repositories\330300regel\indicator_3_bomen\sde_reexport"
 OSGEO4W_ROOT = r"C:\Users\bethrt\AppData\Local\Programs\OSGeo4W"
 
 # Restrict to these names (as spelled in municipality_extents.csv);

@@ -42,15 +42,15 @@ back.
 
 HOW TO RUN — from the ArcGIS Pro Python Command Prompt (Start menu →
 ArcGIS → Python Command Prompt), all cases:
-    python D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py
+    python D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\one_tree_arcgis.py
   or one case:
-    python D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py group_5
+    python D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\one_tree_arcgis.py group_5
   Every tool runs in its own child process: a tool that crashes only loses
   its own result. Results that already exist are skipped (delete the .tif
   to redo one).
 Or in ArcGIS Pro → Analysis → Python window (all in one process — a crash
 takes Pro down):
-    exec(open(r"D:\Repositories\3-regel\arcgis_tests\one_tree_arcgis.py", encoding="utf-8").read())
+    exec(open(r"D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\one_tree_arcgis.py", encoding="utf-8").read())
 Then, in OSGeo4W Python:  python arcgis_tests\one_tree.py compare
 """
 
@@ -63,7 +63,7 @@ import sys
 import arcpy
 from arcpy.sa import Viewshed, Viewshed2, Visibility
 
-ROOT = r"D:\Repositories\3-regel\arcgis_tests\one_tree"
+ROOT = r"D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\one_tree"
 WORK = r"D:\Temp\onetree"     # plain path for the old GRID-engine tools; None = work in ROOT
 CASES = ["tree_68418", "group_5", "tree_58448"]
 RUN = ["arc_bench", "arc_bench_offset", "arc_bench_both", "arc_bench_fixed", "arc_v2_2d", "arc_v2_3d", "arc_vs_2d", "arc_vs_3d", "arc_vis_2d", "arc_vis_3d"]

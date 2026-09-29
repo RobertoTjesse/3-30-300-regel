@@ -124,7 +124,7 @@ def main():
         )
         lines.append("")
 
-    out_path = config.BASE_DIR / "BENCHMARKS.md"
+    out_path = config.BASE_DIR / "indicator_3_bomen" / "BENCHMARKS.md"
     out_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {out_path}")
 

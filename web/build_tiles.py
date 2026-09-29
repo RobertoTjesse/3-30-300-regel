@@ -21,7 +21,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "etl"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "indicator_3_bomen" / "etl"))
 import config  # noqa: E402
 
 from osgeo import gdal, ogr  # noqa: E402
@@ -95,7 +95,7 @@ def main():
                          datasetCreationOptions=[f"MINZOOM={min(z for z, _ in ZOOMS.values())}",
                                                  f"MAXZOOM={max(z for _, z in ZOOMS.values())}",
                                                  f"CONF={json.dumps(conf)}",
-                                                 f"NAME=3-regel {config.PROVINCE}"],
+                                                 f"NAME=330300regel 3 {config.PROVINCE}"],
                          callback=gdal.TermProgress_nocb)
     tmp.replace(OUT)
     staging.unlink()

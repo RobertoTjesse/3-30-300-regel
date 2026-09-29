@@ -38,7 +38,7 @@ import time
 import arcpy
 from arcpy.sa import Visibility
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # repo root
 ROOT = os.path.join(REPO, "data", "studiegebied")
 WORK = r"D:\Temp\studiegebied"      # plain path for the old GRID engine
 

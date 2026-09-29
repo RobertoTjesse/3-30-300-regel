@@ -19,8 +19,8 @@ logs/*
 
 # One-off SDE re-export staging — large rasters, never committed. Keep the
 # script and extent metadata (tracked), not the multi-GB clipped outputs.
-sde_reexport/raw_clips/
-sde_reexport/finished/
+indicator_3_bomen/sde_reexport/raw_clips/
+indicator_3_bomen/sde_reexport/finished/
 
 # Python
 __pycache__/
@@ -29,7 +29,7 @@ __pycache__/
 venv/
 
 # Machine-specific settings (real paths, never shared) — see config_local.example.py
-etl/config_local.py
+indicator_3_bomen/etl/config_local.py
 
 # OS / editor
 .DS_Store
@@ -44,13 +44,16 @@ qgis_validation/*.qgz~
 qgis_validation/*.qgd
 
 # ArcGIS test runs (arcgis_tests/visibility_variants.py) — outputs only
-arcgis_tests/*.gdb/
-arcgis_tests/*.csv
+indicator_3_bomen/arcgis_tests/*.gdb/
+indicator_3_bomen/arcgis_tests/*.csv
 
 # Web map data — built by web/build_tiles.py, published on the gh-pages branch only
 web/data/
 
 # One-tree comparison inputs/outputs (arcgis_tests/one_tree.py prepare regenerates them)
-arcgis_tests/one_tree/
+indicator_3_bomen/arcgis_tests/one_tree/
 # Study area runs (arcgis_tests/studiegebied.py prepare regenerates them)
 data/studiegebied/
+# Copies of the FME results and inputs for the 30 and 300 (from R:)
+data/fme_output/
+data/fme_input/

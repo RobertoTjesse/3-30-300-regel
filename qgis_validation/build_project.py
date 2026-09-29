@@ -1,6 +1,6 @@
 """
 build_project.py — Create / update the QGIS validation project
-(qgis_validation/3-regel_validation.qgz) with every layer the pipeline has
+(qgis_validation/330300regel_validatie.qgz) with every layer the pipeline has
 produced.
 
 First run creates the project with:
@@ -31,7 +31,7 @@ visibility, extra layers) — is kept. Delete the .qgz to rebuild it from
 scratch.
 
 Layer paths are stored relative to the project, so the folder can be moved
-together with the repo. etl/run_all_municipalities.sh calls this after
+together with the repo. indicator_3_bomen/etl/run_all_municipalities.sh calls this after
 every municipality.
 
 Usage (needs QGIS's Python, not plain OSGeo4W Python):
@@ -64,12 +64,12 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QColor
 
 REPO = Path(__file__).resolve().parent.parent
-PROJECT_PATH = REPO / "qgis_validation" / "3-regel_validation.qgz"
+PROJECT_PATH = REPO / "qgis_validation" / "330300regel_validatie.qgz"
 PROCESSED_DIR = REPO / "data" / "processed"
 PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
 PROVINCE_DEM = REPO / "data" / "interim" / "province_dem.vrt"
 EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
-ONE_TREE_DIR = REPO / "arcgis_tests" / "one_tree"
+ONE_TREE_DIR = REPO / "indicator_3_bomen" / "arcgis_tests" / "one_tree"
 STUDY_DIR = REPO / "data" / "studiegebied"
 # The original ArcGIS benchmark (observer 2 x RASTERVALU, see ARCHITECTURE.md §14)
 BENCHMARK = ('OpenFileGDB:"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/data.gdb"'
@@ -345,7 +345,7 @@ def main():
         is_new = not PROJECT_PATH.exists()
         if is_new:
             project.setCrs(QgsCoordinateReferenceSystem("EPSG:28992"))
-            project.setTitle("3-regel — validatie zichtbare bomen (3-30-300)")
+            project.setTitle("330300regel — validatie 3-30-300")
         elif not project.read(str(PROJECT_PATH)):
             sys.exit(f"ERROR: could not read {PROJECT_PATH}")
         project.writeEntryBool("Paths", "/Absolute", False)   # store relative paths

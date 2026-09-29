@@ -4,7 +4,7 @@ build_tiles_30_300.py — Build the web map's vector tiles for the 30 and the 30
 (web/build_tiles.py -> web/data/3.pmtiles).
 
 Layers:
-  gemeenten   zoom 6-9    } the same areas as the 3-regel map, with canopy
+  gemeenten   zoom 6-9    } the same areas as the 3 map, with canopy
   wijken      zoom 9-11   } cover (the 30) and the share of homes within 5 / 15
   buurten     zoom 11-12  } minutes' walk of green (the 300)
   iso5, iso15 zoom 9-16   5- and 15-minute walking isochrones from the entrances
@@ -13,8 +13,8 @@ Layers:
 
 Inputs:
   data/processed/<Province>_gebieden.gpkg   gemeenten, wijken 2025, buurten 2025
-                                            (etl/06_area_summaries.py)
-  config.FME_OUTPUT_DIR (set in etl/config_local.py):
+                                            (indicator_3_bomen/etl/06_area_summaries.py)
+  config.FME_OUTPUT_DIR (set in indicator_3_bomen/etl/config_local.py):
   30_regel_v2.gdb   FeatureClass_buurt: crown area (sum of NEO crowns touching
                     the buurt) and land area per CBS buurt 2023. Carried over to
                     the areas above in proportion to overlapping area.
@@ -25,7 +25,7 @@ Inputs:
 
 Usage:
     python web/build_tiles_30_300.py [--fme DIR] [--gebieden GPKG]
-(both default to the paths in etl/config.py / config_local.py)
+(both default to the paths in indicator_3_bomen/etl/config.py / config_local.py)
 """
 
 import argparse
@@ -33,7 +33,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "etl"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "indicator_3_bomen" / "etl"))
 import config  # noqa: E402
 
 from osgeo import gdal, ogr, osr  # noqa: E402
@@ -130,7 +130,7 @@ def buurten_2023(dst):
 
 
 def areas(dst, pts, b23):
-    """Gemeenten, wijken and buurten of the 3-regel map (same polygons):
+    """Gemeenten, wijken and buurten of the 3 map (same polygons):
     canopy cover apportioned from the 2023 buurten by overlapping area, and the
     share of homes by walking class."""
     src_ds = ogr.Open(str(GEBIEDEN))

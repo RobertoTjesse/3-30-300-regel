@@ -39,9 +39,9 @@ Compare with the old benchmark and the pipeline afterwards (OSGeo4W Python):
 HOW TO RUN — ArcGIS Pro Python Command Prompt (Start menu → ArcGIS →
 Python Command Prompt), with ArcGIS Pro itself CLOSED:
   the small test area (one tile, ~1-2 minutes):
-      python D:\Repositories\3-regel\arcgis_tests\benchmark_corrected.py test
+      python D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\benchmark_corrected.py test
   all of Delft, in tiles (prints progress and an estimate of the time left):
-      python D:\Repositories\3-regel\arcgis_tests\benchmark_corrected.py
+      python D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\benchmark_corrected.py
 """
 
 import glob
@@ -59,7 +59,7 @@ DEM = os.path.join(SOURCE_GDB, "AHN5ruw05m_Delft")
 TREES = os.path.join(SOURCE_GDB, "bomen_Delft_met_hoogte_uit_AHN05ruw")
 WORK = r"D:\Temp\benchmark_corrected"
 TILES_DIR = os.path.join(WORK, "tiles")
-EXPERIMENTS_DIR = r"D:\Repositories\3-regel\data\processed\experiments"
+EXPERIMENTS_DIR = r"D:\Repositories\330300regel\data\processed\experiments"
 OUT_NAME = "visibility_Delft_corrected"
 
 TILE_M = 500.0                 # tile size; the 85 s test area was 528 x 466 m

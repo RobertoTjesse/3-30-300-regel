@@ -16,7 +16,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-BASE_DIR             = Path(__file__).parent.parent
+BASE_DIR             = Path(__file__).resolve().parents[2]   # repo root (etl/ is in indicator_3_bomen/)
 DATA_DIR             = BASE_DIR / "data"
 RAW_DIR              = DATA_DIR / "raw"          # source data, never written to by the pipeline
 INTERIM_DIR          = DATA_DIR / "interim"      # tiled / intermediate artefacts
@@ -54,7 +54,7 @@ PROVINCE = "Zuid-Holland"
 
 # Where the FME results of the 30 and the 300 live (30_regel_v2.gdb, 300.gdb),
 # read by web/build_tiles_30_300.py. Placeholder; set it in config_local.py.
-FME_OUTPUT_DIR = Path(r"\\your-server\path\to\3-30-300\fme output")
+FME_OUTPUT_DIR = BASE_DIR / "data" / "fme_output"   # local copy of the FME results (30, 300) from R:
 
 try:
     from config_local import *  # noqa: F401,F403 — machine-specific overrides

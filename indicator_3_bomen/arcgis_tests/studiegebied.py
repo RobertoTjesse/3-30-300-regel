@@ -49,8 +49,8 @@ from pathlib import Path
 
 import numpy as np
 
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "etl"))
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "indicator_3_bomen" / "etl"))
 import config  # noqa: E402,F401  (GDAL environment)
 
 from osgeo import gdal, ogr, osr  # noqa: E402

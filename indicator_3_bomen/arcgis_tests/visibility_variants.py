@@ -27,7 +27,7 @@ The DEM and trees are clipped to the test area plus a 30 m margin (trees
 just outside still see into it); statistics use the test area only.
 
 HOW TO RUN — inside ArcGIS Pro (Analysis → Python window):
-    exec(open(r"D:\Repositories\3-regel\arcgis_tests\visibility_variants.py", encoding="utf-8").read())
+    exec(open(r"D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\visibility_variants.py", encoding="utf-8").read())
 On this machine (Pro 3.6.1) the legacy Visibility tool crashes ArcGIS —
 inside Pro and standalone, even on the reference run's own data — so
 RUN_TOOLS below runs only Viewshed2 by default. A variant that raises a
@@ -56,8 +56,8 @@ TREES = os.path.join(SOURCE_GDB, "bomen_Delft")
 XMIN, YMIN, XMAX, YMAX = 82982.0, 445985.5, 83510.5, 446451.0
 MARGIN = 30.0                 # = outer radius: trees this far outside still count
 
-REPO = r"D:\Repositories\3-regel"
-OUT_GDB = os.path.join(REPO, "arcgis_tests", "visibility_tests.gdb")
+REPO = r"D:\Repositories\330300regel"
+OUT_GDB = os.path.join(REPO, "indicator_3_bomen", "arcgis_tests", "visibility_tests.gdb")
 EXPERIMENTS_DIR = os.path.join(REPO, "data", "processed", "experiments")
 COPY_TO_EXPERIMENTS = True    # also write arc_<variant>.tif for the QGIS project
 
@@ -102,7 +102,7 @@ REUSE_EXISTING = True
 
 SURFACE_OFFSET = 1.8          # target (eye) height, same as the reference run
 OUTER_RADIUS = 30
-CSV_PATH = os.path.join(REPO, "arcgis_tests", "visibility_variants.csv")
+CSV_PATH = os.path.join(REPO, "indicator_3_bomen", "arcgis_tests", "visibility_variants.csv")
 
 
 def prepare_inputs():
