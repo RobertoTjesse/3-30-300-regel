@@ -88,7 +88,7 @@ def current():
 
 def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte, nodata=None):
     """Save a numpy array as a compressed GeoTIFF on the given grid."""
-    ds =gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
+    ds = gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
                                               options=["COMPRESS=DEFLATE"])
     ds.SetGeoTransform(gt)
     ds.SetProjection(wkt)
@@ -100,7 +100,7 @@ def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte, nodata=None):
 
 def read(path):
     """A raster as (array, geotransform, projection, NoData value)."""
-    ds =gdal.Open(str(path))
+    ds = gdal.Open(str(path))
     b = ds.GetRasterBand(1)
     return b.ReadAsArray(), ds.GetGeoTransform(), ds.GetProjection(), b.GetNoDataValue()
 

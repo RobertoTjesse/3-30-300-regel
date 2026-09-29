@@ -152,7 +152,7 @@ def main(test):
     print(f"\n{'':56s} {'r':>5s} {'same count':>11s} {'same >=3':>9s}")
     for (p, q), a in pair.items():
         # Pearson r from the running sums: cov(p, q) / (sd_p * sd_q)
-        r =(a["xy"] / n - mean[p] * mean[q]) / (sd[p] * sd[q]) if sd[p] and sd[q] else float("nan")
+        r = (a["xy"] / n - mean[p] * mean[q]) / (sd[p] * sd[q]) if sd[p] and sd[q] else float("nan")
         print(f"{p + ' vs ' + q:56s} {r:5.2f} {100 * a['same'] / n:10.1f}% {100 * a['same3'] / n:8.1f}%")
 
 

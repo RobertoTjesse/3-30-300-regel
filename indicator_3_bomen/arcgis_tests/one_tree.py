@@ -81,7 +81,7 @@ OBSERVER_OFFSET = 1.0                        # the Visibility tool's default, as
 
 def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte):
     """Save a numpy array as a compressed GeoTIFF on the given grid."""
-    ds =gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
+    ds = gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
                                               options=["COMPRESS=DEFLATE"])
     ds.SetGeoTransform(gt)
     ds.SetProjection(wkt)
@@ -91,7 +91,7 @@ def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte):
 
 def load_dem(folder):
     """The case's filled DEM: (heights as float64, geotransform, projection)."""
-    ds =gdal.Open(str(folder / "dem.tif"))
+    ds = gdal.Open(str(folder / "dem.tif"))
     return ds.GetRasterBand(1).ReadAsArray().astype(np.float64), ds.GetGeoTransform(), ds.GetProjection()
 
 

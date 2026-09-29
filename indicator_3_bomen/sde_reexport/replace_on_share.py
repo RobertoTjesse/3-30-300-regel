@@ -77,7 +77,7 @@ def replace(src: Path):
 
 def main():
     """Replace every finished DEM (skipping unfinished .partial files)."""
-    sources =sorted(p for p in FINISHED.glob("*.tif") if not p.name.endswith(".partial.tif"))
+    sources = sorted(p for p in FINISHED.glob("*.tif") if not p.name.endswith(".partial.tif"))
     print(f"{len(sources)} finished DEMs -> {TARGET}\nOriginals -> {BACKUP}", flush=True)
     for src in sources:
         print("  " + replace(src), flush=True)
