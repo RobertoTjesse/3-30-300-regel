@@ -47,14 +47,15 @@ dezelfde gebieden, zodat je ze direct kunt vergelijken:</p>
 <tr><td>straat</td><td>woningen (3 en 300); de 30 blijft op buurtniveau</td><td>BAG</td></tr>
 </table></div>
 <p>Groen is steeds "voldoet", oranje en rood "voldoet niet", grijs "geen gegevens" of minder dan 10 woningen. Achter de
-knop <b>i</b> op de kaart staan de bronnen en hun actualiteit.</p>
+knop <b>i</b> op de kaart staan de bronnen en hun actualiteit. Als achtergrond kies je de grijze topografische kaart of
+de luchtfoto (Beeldmateriaal Nederland, 8 cm, via de WMS van PDOK).</p>
 
 <h2>Wat is open, wat niet?</h2>
 <div class="table-wrap"><table>
 <tr><th>Indicator</th><th>Software</th><th>Gegevens</th></tr>
 <tr><td>3</td><td>Python + GDAL, volledig in de repository</td><td>AHN, BAG, CBS: open. Bomen: NEO (aangekocht)</td></tr>
 <tr><td>30</td><td>FME + SQL Server (nog niet in de repository)</td><td>CBS: open. Boomkronen: NEO (aangekocht)</td></tr>
-<tr><td>300</td><td>FME + PostGIS + Valhalla (open source)</td><td>OpenStreetMap, TOP10NL, BAG: open</td></tr>
+<tr><td>300</td><td>FME + PostGIS + isochronencalculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>, open source)</td><td>OpenStreetMap, TOP10NL, BAG: open</td></tr>
 </table></div>
 
 <h2 id="provincie">Zelf doen voor een andere provincie</h2>
@@ -91,7 +92,7 @@ Python met GDAL te doen, in dezelfde repository, zodat elke provincie de hele re
       landoppervlak uit de CBS-kaart, direct op de gebieden van de kaart. Dat lost ook de dubbeltelling op grenzen op.
       Een open alternatief voor de kroonvlakken: kronen afleiden uit het AHN (hoogte boven maaiveld) of de
       geclassificeerde AHN-puntenwolk.</li>
-  <li><b>300:</b> groen uit OpenStreetMap en TOP10NL filteren, ingangen bepalen met GDAL, loopzones met Valhalla (al
+  <li><b>300:</b> groen uit OpenStreetMap en TOP10NL filteren, ingangen bepalen met GDAL, loopzones met een isochronencalculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>, al
       open source), en panden indelen, allemaal in een script. Dan ook de WHO-grens van 1 ha als optie.</li>
   <li>Daarnaast: de 3 ook voor scholen en werkplekken (het artikel vraagt dat), en de 30 en de 300 op dezelfde jaargang
       BAG als de 3.</li>

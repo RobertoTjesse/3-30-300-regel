@@ -86,6 +86,7 @@
     <input id="q" type="search" placeholder="Zoek adres of plaats" aria-label="Zoek adres of plaats">
     <button type="submit">Zoek</button>
   </form>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="aerial"> Luchtfoto als achtergrond</label>
 
   <div id="legend"></div>
   <label class="toggle" id="iso-toggle"><input type="checkbox" id="iso"> Looptijdzones en ingangen van groen tonen</label>
@@ -157,9 +158,13 @@ const STEPS_30 = [
 // --- 300: homes within a 5-minute walk of a park or wood ---
 const CLASSES_300 = [
   ["5",   "#238b45", "binnen 5 min lopen (≈ 300 m)"],
-  ["15",  "#fdae6b", "binnen 15 min lopen"],
-  ["ver", "#d7301f", "verder dan 15 min lopen"],
+  ["ver", "#d7301f", "verder dan 5 min lopen"],
 ];
+// Colours follow the 5 minutes only; the tiles also hold 15 minutes (klasse "15",
+// pct_15), shown in the popups and as a zone line.
+const POPUP_300 = { "5": "Binnen 5 min lopen van groen", "15": "Verder dan 5 min lopen (wel binnen 15 min)",
+                    "ver": "Verder dan 15 min lopen van groen" };
+const VALHALLA = '(<a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a>)';
 const STEPS_300 = [
   [0,  "#d7301f", "< 50%"],
   [50, "#fdae6b", "50-70%"],
@@ -186,8 +191,9 @@ const THEMES = {
   "300": {
     intro: "Woont iedereen binnen 300 m van een park of bos? Looptijd over het wegennet van elke woning tot de dichtstbijzijnde ingang van groen.",
     method: "Rond elke ingang van een park of bos (OSM- en TOP10NL-groen van minstens 300 m², waar een voetpad het groen in gaat) " +
-            "is met Valhalla berekend wat binnen 5 en binnen 15 minuten lopen bereikbaar is. 5 minuten lopen is ongeveer 300 m hemelsbreed. " +
-            "Een pand (BAG, met woonfunctie) valt in de klasse van de zone waarin het ligt. Per gebied: het aandeel woningen binnen 5 minuten.",
+            `is met een netwerkanalyse ${VALHALLA} berekend wat binnen 5 en binnen 15 minuten lopen bereikbaar is. 5 minuten lopen is ongeveer 300 m hemelsbreed. ` +
+            "De kleuren gaan over de 5 minuten: een pand (BAG, met woonfunctie) in die zone is groen. Per gebied: het aandeel woningen binnen 5 minuten. " +
+            "De 15 minuten staan in de pop-ups en bij de looptijdzones.",
   },
 };
 
@@ -205,7 +211,7 @@ const SOURCES = {
   ],
   "300": [
     ["Groen en ingangen", "OpenStreetMap (parken, bossen, paden) en TOP10NL-groen", "2024–2025"],
-    ["Looptijd", '<a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> (voetganger) over het OSM-wegennet', "2025"],
+    ["Looptijd", `Isochronencalculator ${VALHALLA}, voetganger, over het OSM-wegennet`, "2025"],
     ["Woningen", "BAG-panden met een woonfunctie", "2025"],
     ["Gebieden", "Zelfde als de 3", "2025–2026"],
   ],
@@ -214,7 +220,12 @@ const CAVEATS = "Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en b
   "en omgerekend: waar een buurt sinds 2023 is gesplitst of samengevoegd, is de kroonbedekking een benadering. Een boom telt mee in elke " +
   "buurt die zijn kroon raakt. De woningen van de 3 (BAG 2026) en de 300 (BAG 2025) zijn apart geteld; het aantal woningen per gebied kan " +
   "daardoor iets verschillen. De 300 meet looptijd tot een ingang, niet hemelsbreed tot de rand van het groen.";
-const BASE_SOURCES = [["Achtergrondkaart", "BRT-achtergrondkaart grijs (Kadaster) via PDOK", "actueel"]];
+// Second background: aerial photo (WMS), highest resolution available nationwide
+const AERIAL_WMS = "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0";
+const AERIAL_LAYER = "Actueel_orthoHR";      // latest complete year, 8 cm
+const BASE_SOURCES = [["Achtergrondkaart", "BRT-achtergrondkaart grijs (Kadaster) via PDOK", "actueel"],
+                      ["Luchtfoto", "Beeldmateriaal Nederland, ortho 8 cm RGB (WMS) via PDOK", "meest recente jaar"]];
+let aerialOn = new URLSearchParams(location.search).get("bg") === "luchtfoto";
 // ---------------------------------------------------------------------------
 
 const protocol = new pmtiles.Protocol();
@@ -262,7 +273,8 @@ for (const lv of LEVELS) {
                minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
 }
 add("300", { id: "300-woningen", type: "fill", source: "t30", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
-             paint: { "fill-color": matchColour(CLASSES_300, NO_DATA), "fill-opacity": 0.9,
+             paint: { "fill-color": ["case", ["==", ["get", "klasse"], "5"], CLASSES_300[0][1], CLASSES_300[1][1]],
+                      "fill-opacity": 0.9,
                       "fill-outline-color": "rgba(40,40,40,0.5)" } });
 // Optional: the walking zones and entrances (checkbox)
 const ISO_LAYERS = ["300-iso15", "300-iso5", "300-ingangen"];
@@ -287,12 +299,21 @@ const map = new maplibregl.Map({
         tiles: ["https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png"],
         attribution: 'Achtergrond: <a href="https://www.pdok.nl">PDOK</a> BRT-achtergrondkaart (Kadaster)',
       },
+      luchtfoto: {
+        type: "raster", tileSize: 256, maxzoom: 21,
+        tiles: [AERIAL_WMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=" + AERIAL_LAYER +
+                "&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/jpeg"],
+        attribution: 'Luchtfoto: <a href="https://www.beeldmateriaal.nl">Beeldmateriaal Nederland</a> via PDOK',
+      },
       t3: { type: "vector", url: "pmtiles://" + new URL(TILES_3, location.href).href,
             attribution: "AHN4, BAG, CBS, bomen: NEO" },
       t30: { type: "vector", url: "pmtiles://" + new URL(TILES_30_300, location.href).href,
              attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
     },
-    layers: [{ id: "brt", type: "raster", source: "brt" }, ...layers["3"], ...layers["30"], ...layers["300"]],
+    layers: [{ id: "brt", type: "raster", source: "brt" },
+             { id: "luchtfoto", type: "raster", source: "luchtfoto",
+               layout: { visibility: aerialOn ? "visible" : "none" } },
+             ...layers["3"], ...layers["30"], ...layers["300"]],
   },
 });
 
@@ -344,7 +365,7 @@ function setTheme(t) {
   }
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.theme === t));
   document.getElementById("intro").textContent = THEMES[t].intro;
-  document.getElementById("method").textContent = THEMES[t].method;
+  document.getElementById("method").innerHTML = THEMES[t].method;   // fixed strings above (may hold a link)
   document.getElementById("iso-toggle").style.display = t === "300" ? "" : "none";
   const url = new URL(location.href);
   url.searchParams.set("t", t);
@@ -353,6 +374,17 @@ function setTheme(t) {
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => setTheme(b.dataset.theme));
 isoBox.onchange = () => setTheme(theme);
+
+// Background: grey map or aerial photo, remembered in the URL as ?bg=luchtfoto
+const aerialBox = document.getElementById("aerial");
+aerialBox.checked = aerialOn;
+aerialBox.onchange = () => {
+  aerialOn = aerialBox.checked;
+  map.setLayoutProperty("luchtfoto", "visibility", aerialOn ? "visible" : "none");
+  const url = new URL(location.href);
+  if (aerialOn) url.searchParams.set("bg", "luchtfoto"); else url.searchParams.delete("bg");
+  history.replaceState(null, "", url);
+};
 
 // Legend: depends on theme and zoom
 function legendRow(colour, label, line) {
@@ -454,11 +486,10 @@ for (const lv of LEVELS) {
     ]);
   });
 }
-const CLASS_300_LABEL = Object.fromEntries(CLASSES_300.map(([k, , l]) => [k, l]));
 map.on("click", "300-woningen", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [
-    [null, CLASS_300_LABEL[p.klasse] ?? "onbekend"],
+    [null, POPUP_300[p.klasse] ?? "onbekend"],
     ["Woningen in dit pand", fmt(p.woningen)],
     ["Bouwjaar", p.bouwjaar ?? "–"],
   ]);
