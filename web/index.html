@@ -51,6 +51,8 @@
   .maplibregl-popup-tip { border-top-color: var(--bg) !important; border-bottom-color: var(--bg) !important; }
   .popup-sub { margin-top: 6px; font-weight: 600; }
   .info-btn { font: 600 16px/29px Georgia, serif !important; color: #333; }
+  .maplibregl-ctrl-group button.bg-btn { width: auto; padding: 0 10px; font: 600 13px/29px system-ui, sans-serif;
+                                         color: #333; white-space: nowrap; }
   dialog#info { max-width: 600px; width: calc(100vw - 48px); box-sizing: border-box;
                 border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
                 color: var(--fg); padding: 18px 20px; }
@@ -376,15 +378,34 @@ document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => setTh
 isoBox.onchange = () => setTheme(theme);
 
 // Background: grey map or aerial photo, remembered in the URL as ?bg=luchtfoto
+// Two switches: the checkbox in the panel and a button on the map (top right).
 const aerialBox = document.getElementById("aerial");
-aerialBox.checked = aerialOn;
-aerialBox.onchange = () => {
-  aerialOn = aerialBox.checked;
-  map.setLayoutProperty("luchtfoto", "visibility", aerialOn ? "visible" : "none");
+const bgBtn = document.createElement("button");
+function setAerial(on) {
+  aerialOn = on;
+  aerialBox.checked = on;
+  bgBtn.textContent = on ? "Kaart" : "Luchtfoto";            // what a click switches to
+  bgBtn.title = bgBtn.ariaLabel = on ? "Achtergrond: grijze kaart" : "Achtergrond: luchtfoto";
+  if (map.getLayer("luchtfoto")) map.setLayoutProperty("luchtfoto", "visibility", on ? "visible" : "none");
   const url = new URL(location.href);
-  if (aerialOn) url.searchParams.set("bg", "luchtfoto"); else url.searchParams.delete("bg");
+  if (on) url.searchParams.set("bg", "luchtfoto"); else url.searchParams.delete("bg");
   history.replaceState(null, "", url);
-};
+}
+aerialBox.onchange = () => setAerial(aerialBox.checked);
+class BackgroundControl {
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    bgBtn.type = "button";
+    bgBtn.className = "bg-btn";
+    bgBtn.onclick = () => setAerial(!aerialOn);
+    div.appendChild(bgBtn);
+    return div;
+  }
+  onRemove() {}
+}
+map.addControl(new BackgroundControl(), "top-right");
+setAerial(aerialOn);
 
 // Legend: depends on theme and zoom
 function legendRow(colour, label, line) {
