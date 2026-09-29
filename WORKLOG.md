@@ -180,3 +180,7 @@ trees should be excluded, is still open.
   67.6%. With the intended observer Visibility is close to GDAL on the same
   area and observer (3.42 / 52.6%, ARCHITECTURE.md section 14). Pixel r:
   corrected vs original 0.78, corrected vs pipeline 0.67.
+- The full-Delft corrected run (one Visibility call, 86,488 trees) was
+  still busy after 2.5 h on one core and was stopped. benchmark_corrected.py
+  now runs in 500 m tiles (+30 m margin for the DEM and the trees, inner part
+  kept, mosaicked), 5 tiles at a time in separate processes; resumable.

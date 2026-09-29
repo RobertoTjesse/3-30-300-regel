@@ -16,9 +16,18 @@ ARCHITECTURE.md section 14). This run changes only that:
   treats it as 2D whatever the sign), flat earth.
 Trees without a RASTERVALU (349, on NoData/water) are left out.
 
+In tiles: one Visibility run over all of Delft took more than 2.5 hours
+on one core without finishing. Every tree sees at most 30 m, so Delft is
+cut into TILE_M x TILE_M tiles; each tile runs on its own DEM clip and the
+trees within 30 m of it (tile + 30 m on every side), only its inner part
+is kept, and the tiles are mosaicked. The result equals one run over the
+whole area. WORKERS tiles run at the same time, each in its own process
+and scratch folder; finished tiles are kept, so a rerun resumes.
+
 The old GRID engine behind Visibility dies on paths like
-D:\Repositories\3-regel (digit + hyphen), so the inputs are copied to a
-plain work folder first and the result is copied back afterwards.
+D:\Repositories\3-regel (digit + hyphen) and failed with inputs in a file
+geodatabase, so everything runs on .tif/.shp files in a plain work folder
+and the result is copied back afterwards.
 
 Output:
   WORK\visibility_Delft_corrected.tif  (or ..._test.tif for the test area)
@@ -28,36 +37,45 @@ Compare with the old benchmark and the pipeline afterwards (OSGeo4W Python):
   python arcgis_tests\compare_benchmark.py
 
 HOW TO RUN — ArcGIS Pro Python Command Prompt (Start menu → ArcGIS →
-Python Command Prompt):
-  1. the small test area first (~1-2 minutes):
-       python D:\Repositories\3-regel\arcgis_tests\benchmark_corrected.py test
-  2. then all of Delft (~87,000 trees; this takes a while):
-       python D:\Repositories\3-regel\arcgis_tests\benchmark_corrected.py
+Python Command Prompt), with ArcGIS Pro itself CLOSED:
+  the small test area (one tile, ~1-2 minutes):
+      python D:\Repositories\3-regel\arcgis_tests\benchmark_corrected.py test
+  all of Delft, in tiles (prints progress and an estimate of the time left):
+      python D:\Repositories\3-regel\arcgis_tests\benchmark_corrected.py
 """
 
 import glob
 import os
 import shutil
+import subprocess
 import sys
 import time
 
 import arcpy
-from arcpy.sa import Visibility
+from arcpy.sa import Int, Raster, Visibility
 
 SOURCE_GDB = r"R:\ESRI\DATA\RUIMTELIJKE ONTWIKKELING\PERSOONLIJK\Chris\test\data.gdb"
 DEM = os.path.join(SOURCE_GDB, "AHN5ruw05m_Delft")
 TREES = os.path.join(SOURCE_GDB, "bomen_Delft_met_hoogte_uit_AHN05ruw")
 WORK = r"D:\Temp\benchmark_corrected"
+TILES_DIR = os.path.join(WORK, "tiles")
 EXPERIMENTS_DIR = r"D:\Repositories\3-regel\data\processed\experiments"
 OUT_NAME = "visibility_Delft_corrected"
 
-# The "stukje" test area in Delft (as arcgis_tests/visibility_variants.py), + 30 m margin
+TILE_M = 500.0                 # tile size; the 85 s test area was 528 x 466 m
+MARGIN = 30.0                  # = outer radius: trees this far outside a tile see into it
+WORKERS = 5                    # tiles at the same time (this machine: 6 cores)
+CELL = 0.5
+
+# The "stukje" test area in Delft (as arcgis_tests/visibility_variants.py)
 TEST_AREA = (82982.0, 445985.5, 83510.5, 446451.0)
-MARGIN = 30.0
 
 OBSERVER_OFFSET = "1"          # metres; the fix
 SURFACE_OFFSET = "1.8"
 OUTER_RADIUS = "30"
+
+WORK_DEM = os.path.join(WORK, "dem.tif")
+WORK_TREES = os.path.join(WORK, "trees.shp")
 
 
 def copy_files(stem, src, dst):
@@ -65,48 +83,147 @@ def copy_files(stem, src, dst):
         shutil.copy2(f, dst)
 
 
-def main(test):
-    name = OUT_NAME + ("_test" if test else "")
+def box(x0, y0, x1, y1):
+    return f"{x0} {y0} {x1} {y1}"
+
+
+def run_tile(x0, y0, x1, y1, out_tif, folder):
+    """Visibility for the inner box (x0, y0)-(x1, y1): DEM and trees of the
+    box + MARGIN, result clipped to the inner box and saved as out_tif.
+    Returns the number of trees used."""
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.overwriteOutput = True
-    os.makedirs(WORK, exist_ok=True)
-    # Plain .tif / .shp files in a plain folder, as in one_tree_arcgis.py:
-    # the GRID engine failed on this run with its inputs in a file geodatabase
-    arcpy.env.workspace = arcpy.env.scratchWorkspace = WORK
-
-    t0 = time.time()
-    dem = os.path.join(WORK, "dem_test.tif" if test else "dem.tif")
-    trees = os.path.join(WORK, "trees_test.shp" if test else "trees.shp")
-    if test:
-        x0, y0, x1, y1 = (TEST_AREA[0] - MARGIN, TEST_AREA[1] - MARGIN,
-                          TEST_AREA[2] + MARGIN, TEST_AREA[3] + MARGIN)
-        arcpy.env.extent = arcpy.Extent(x0, y0, x1, y1)
-        arcpy.management.Clip(DEM, f"{x0} {y0} {x1} {y1}", dem, nodata_value="",
-                              clipping_geometry="NONE", maintain_clipping_extent="MAINTAIN_EXTENT")
-    elif not arcpy.Exists(dem):
-        print("Copying the DEM to the work folder ...", flush=True)
-        arcpy.management.CopyRaster(DEM, dem)
-    arcpy.analysis.Select(TREES, trees, "RASTERVALU IS NOT NULL")
-    arcpy.env.snapRaster = arcpy.env.cellSize = dem
-    arcpy.env.extent = dem
+    os.makedirs(folder, exist_ok=True)
+    arcpy.env.workspace = arcpy.env.scratchWorkspace = folder
+    ox0, oy0, ox1, oy1 = x0 - MARGIN, y0 - MARGIN, x1 + MARGIN, y1 + MARGIN
+    dem = os.path.join(folder, "dem.tif")
+    trees = os.path.join(folder, "trees.shp")
+    area = os.path.join(folder, "area.shp")
+    arcpy.env.snapRaster = WORK_DEM
+    arcpy.management.Clip(WORK_DEM, box(ox0, oy0, ox1, oy1), dem, nodata_value="",
+                          clipping_geometry="NONE", maintain_clipping_extent="MAINTAIN_EXTENT")
+    sr = arcpy.Describe(WORK_DEM).spatialReference
+    corners = [arcpy.Point(ox0, oy0), arcpy.Point(ox0, oy1), arcpy.Point(ox1, oy1), arcpy.Point(ox1, oy0)]
+    arcpy.management.CopyFeatures(arcpy.Polygon(arcpy.Array(corners), sr), area)
+    arcpy.analysis.Clip(WORK_TREES, area, trees)
     n = int(arcpy.management.GetCount(trees)[0])
-    print(f"{n:,} trees with a RASTERVALU; inputs ready in {time.time() - t0:.0f}s", flush=True)
+    arcpy.env.snapRaster = arcpy.env.cellSize = arcpy.env.extent = dem
+    if n:
+        result = Visibility(dem, trees, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO",
+                            z_factor=1, curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
+                            surface_offset=SURFACE_OFFSET, observer_elevation="RASTERVALU",
+                            observer_offset=OBSERVER_OFFSET, outer_radius=OUTER_RADIUS)
+    else:
+        result = Int(Raster(dem) * 0)          # no trees: 0 where the DEM has data
+    full = os.path.join(folder, "vis.tif")
+    result.save(full)
+    arcpy.env.extent = arcpy.Extent(x0, y0, x1, y1)
+    arcpy.management.Clip(full, box(x0, y0, x1, y1), out_tif, nodata_value="",
+                          clipping_geometry="NONE", maintain_clipping_extent="MAINTAIN_EXTENT")
+    return n
 
-    print(f"Visibility: observer_elevation RASTERVALU, observer_offset {OBSERVER_OFFSET} m, "
-          f"surface_offset {SURFACE_OFFSET} m, outer radius {OUTER_RADIUS} m ...", flush=True)
-    t1 = time.time()
-    result = Visibility(dem, trees, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO",
-                        z_factor=1, curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
-                        surface_offset=SURFACE_OFFSET, observer_elevation="RASTERVALU",
-                        observer_offset=OBSERVER_OFFSET, outer_radius=OUTER_RADIUS)
-    out = os.path.join(WORK, f"{name}.tif")
-    result.save(out)
-    print(f"Saved {out} in {(time.time() - t1) / 60:.1f} min", flush=True)
 
+def prepare_inputs(test):
+    arcpy.env.overwriteOutput = True
+    os.makedirs(TILES_DIR, exist_ok=True)
+    if not os.path.exists(WORK_DEM):
+        print("Copying the DEM to the work folder ...", flush=True)
+        arcpy.management.CopyRaster(DEM, WORK_DEM)
+    if not os.path.exists(WORK_TREES):
+        arcpy.analysis.Select(TREES, WORK_TREES, "RASTERVALU IS NOT NULL")
+    print(f"{int(arcpy.management.GetCount(WORK_TREES)[0]):,} trees with a RASTERVALU", flush=True)
+
+
+def tiles():
+    """Inner tile boxes over the DEM extent, on the DEM grid."""
+    ext = arcpy.Describe(WORK_DEM).extent
+    out = []
+    y = ext.YMin
+    j = 0
+    while y < ext.YMax - CELL / 2:
+        x, i = ext.XMin, 0
+        while x < ext.XMax - CELL / 2:
+            out.append((f"t_{j:03d}_{i:03d}", x, y, min(x + TILE_M, ext.XMax), min(y + TILE_M, ext.YMax)))
+            x += TILE_M
+            i += 1
+        y += TILE_M
+        j += 1
+    return out
+
+
+def main_all():
+    t_start = time.time()
+    prepare_inputs(False)
+    todo = [t for t in tiles() if not os.path.exists(os.path.join(TILES_DIR, t[0] + ".tif"))]
+    n_all = len(tiles())
+    print(f"{n_all} tiles of {TILE_M:.0f} m, {n_all - len(todo)} already done; running {len(todo)} "
+          f"with {WORKERS} at a time", flush=True)
+    running, failed, done, t0 = [], [], 0, time.time()
+    queue = list(todo)
+    while queue or running:
+        while queue and len(running) < WORKERS:
+            name, x0, y0, x1, y1 = queue.pop(0)
+            log = open(os.path.join(TILES_DIR, name + ".log"), "w")
+            p = subprocess.Popen([sys.executable, os.path.abspath(__file__), "tile", name,
+                                  str(x0), str(y0), str(x1), str(y1)], stdout=log, stderr=subprocess.STDOUT)
+            running.append((p, name, log))
+        time.sleep(2)
+        for item in list(running):
+            p, name, log = item
+            if p.poll() is None:
+                continue
+            running.remove(item)
+            log.close()
+            if p.returncode == 0 and os.path.exists(os.path.join(TILES_DIR, name + ".tif")):
+                done += 1
+                shutil.rmtree(os.path.join(TILES_DIR, name), ignore_errors=True)
+            else:
+                failed.append(name)
+                print(f"  {name} FAILED (code {p.returncode}) — see {TILES_DIR}\\{name}.log", flush=True)
+            per_tile = (time.time() - t0) / max(done + len(failed), 1)
+            left = (len(queue) + len(running)) * per_tile
+            print(f"  {done + n_all - len(todo)}/{n_all} tiles done, {len(failed)} failed; "
+                  f"about {left / 60:.0f} min left", flush=True)
+
+    if failed:
+        print(f"\n{len(failed)} tile(s) failed: {', '.join(failed)}. Run the same command again to "
+              f"retry them (finished tiles are kept); no mosaic yet.")
+        return
+    print("Mosaicking ...", flush=True)
+    finished = sorted(glob.glob(os.path.join(TILES_DIR, "t_*.tif")))
+    out = os.path.join(WORK, f"{OUT_NAME}.tif")
+    if os.path.exists(out):
+        arcpy.management.Delete(out)
+    arcpy.env.snapRaster = WORK_DEM
+    arcpy.management.MosaicToNewRaster(finished, WORK, f"{OUT_NAME}.tif", pixel_type="32_BIT_SIGNED",
+                                       cellsize=CELL, number_of_bands=1, mosaic_method="FIRST")
     os.makedirs(EXPERIMENTS_DIR, exist_ok=True)
-    copy_files(name, WORK, EXPERIMENTS_DIR)
-    print(f"Copied to {EXPERIMENTS_DIR}\\{name}.tif")
+    copy_files(OUT_NAME, WORK, EXPERIMENTS_DIR)
+    print(f"Saved {out} and copied it to {EXPERIMENTS_DIR} — {(time.time() - t_start) / 60:.0f} min in total")
     print("Next, in OSGeo4W Python:  python arcgis_tests\\compare_benchmark.py")
 
 
-main(test=len(sys.argv) > 1 and sys.argv[1] == "test")
+def main_test():
+    prepare_inputs(True)
+    t0 = time.time()
+    name = f"{OUT_NAME}_test"
+    out = os.path.join(WORK, f"{name}.tif")
+    n = run_tile(*TEST_AREA, out, os.path.join(TILES_DIR, "test"))
+    print(f"Test area: {n:,} trees, {time.time() - t0:.0f}s; saved {out}", flush=True)
+    os.makedirs(EXPERIMENTS_DIR, exist_ok=True)
+    copy_files(name, WORK, EXPERIMENTS_DIR)
+    print(f"Copied to {EXPERIMENTS_DIR}. Next, in OSGeo4W Python:  "
+          f"python arcgis_tests\\compare_benchmark.py test")
+
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    if args and args[0] == "tile":             # child process: one tile
+        name, x0, y0, x1, y1 = args[1], *map(float, args[2:6])
+        t0 = time.time()
+        n = run_tile(x0, y0, x1, y1, os.path.join(TILES_DIR, name + ".tif"), os.path.join(TILES_DIR, name))
+        print(f"{name}: {n} trees, {time.time() - t0:.0f}s")
+    elif args and args[0] == "test":
+        main_test()
+    else:
+        main_all()
