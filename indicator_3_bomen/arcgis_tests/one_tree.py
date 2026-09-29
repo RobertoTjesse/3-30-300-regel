@@ -65,7 +65,7 @@ REFERENCE_GDB = r"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/d
 BENCHMARK = f'OpenFileGDB:"{REFERENCE_GDB}":visibility_Delft'   # the reference Visibility run
 PIPELINE = REPO / "data" / "processed" / "Delft_viewshed.tif"   # this pipeline's Delft result
 BENCH_NODATA = -2147483647                   # visibility_Delft's undeclared NoData
-ROOT = REPO / "arcgis_tests" / "one_tree"
+ROOT = REPO / "indicator_3_bomen" / "arcgis_tests" / "one_tree"
 CASES = {
     "tree_68418": [68418],
     "group_5": [15689, 17046, 17707, 17708, 17717],

@@ -173,6 +173,19 @@ def _style_counts(layer, top=40):
         for v in range(1, top + 1)])
 
 
+# One-tree results shown in QGIS (and their diff_ maps): the exact test, GDAL,
+# the pipeline's own logic on AHN5, classic ArcGIS Visibility, Viewshed2, the
+# benchmark as it was run (arc_bench_both), the corrected settings
+# (arc_bench_fixed) and the benchmark cut-out
+ONE_TREE_KEEP = {"exact_bilinear", "gdal", "pipeline_ahn5", "arc_vis_2d", "arc_v2_2d",
+                 "arc_bench_both", "arc_bench_fixed", "bench_visibility_Delft"}
+
+
+def _one_tree_kept(path):
+    stem = path.stem.removeprefix("diff_")
+    return path.suffix != ".tif" or path.stem in ("dem", "others") or stem in ONE_TREE_KEEP
+
+
 def _add_one_tree(project, root, have):
     """The one-tree / tree-group viewshed comparison (arcgis_tests/one_tree.py),
     one subgroup per case folder: every result (number of the case's trees
@@ -180,12 +193,22 @@ def _add_one_tree(project, root, have):
     line-of-sight test, the benchmark and pipeline cut-outs, the cells
     within 30 m of other trees, the trees with their 30 m circles and the
     DEM. All off by default except the trees and circles."""
-    cases = sorted(p for p in ONE_TREE_DIR.glob("*") if (p / "dem.tif").exists())         if ONE_TREE_DIR.exists() else []
+    cases = sorted(p for p in ONE_TREE_DIR.glob("*") if (p / "dem.tif").exists()) \
+        if ONE_TREE_DIR.exists() else []
     old = root.findGroup(GROUP_ONE_TREE_OLD)     # the single-tree group of the first version
     if old is not None and not old.findLayers():
         old.parent().removeChildNode(old)
     if not cases:
         return 0
+    # Only the results that tell the story; the rest (duplicates such as the
+    # "3D" variants, dead ends, the production-DEM cut-out) is left out and
+    # removed if an earlier run added it
+    one_tree = str(ONE_TREE_DIR.resolve()).lower()
+    drop = [l for l in project.mapLayers().values()
+            if l.providerType() in ("gdal", "ogr")
+            and str(Path(l.source().split("|")[0]).resolve()).lower().startswith(one_tree)
+            and not _one_tree_kept(Path(l.source().split("|")[0]))]
+    project.removeMapLayers([l.id() for l in drop])
     top = _group(root, GROUP_ONE_TREE, 0)
     added = 0
     for case_dir in cases:
@@ -205,7 +228,7 @@ def _add_one_tree(project, root, have):
         diffs = _group(group, "Verschil met exact (oranje = telt meer bomen, blauw = minder)")
         results = _group(group, "Resultaten (aantal bomen dat de cel ziet)")
         for tif in sorted(case_dir.glob("*.tif")):
-            if tif.resolve() in have or tif.stem == "dem":
+            if tif.resolve() in have or tif.stem == "dem" or not _one_tree_kept(tif):
                 continue
             if tif.stem.startswith("diff_"):
                 tool = tif.stem.removeprefix("diff_")
