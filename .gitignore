@@ -43,15 +43,13 @@ qgis_validation/*.qgz
 qgis_validation/*.qgz~
 qgis_validation/*.qgd
 
-# ArcGIS test runs (arcgis_tests/visibility_variants.py) — outputs only
-indicator_3_bomen/arcgis_tests/*.gdb/
-indicator_3_bomen/arcgis_tests/*.csv
+# Experiments (ArcGIS comparisons, one-tree and study-area tests, NEO export):
+# scripts and outputs stay local, never on GitHub
+indicator_3_bomen/arcgis_tests/
 
 # Web map data — built by web/build_tiles.py, published on the gh-pages branch only
 web/data/
 
-# One-tree comparison inputs/outputs (arcgis_tests/one_tree.py prepare regenerates them)
-indicator_3_bomen/arcgis_tests/one_tree/
 # Study area runs (arcgis_tests/studiegebied.py prepare regenerates them)
 data/studiegebied/
 # Copies of the FME results and inputs for the 30 and 300 (from R:)

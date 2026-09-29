@@ -24,7 +24,7 @@ planned (`indicator_3_bomen/IMPROVEMENTS.md`).
 ├── WORKLOG.md                    what was done and found, step by step
 ├── indicator_3_bomen/            the 3 — full pipeline, see its README
 │   ├── etl/                      stages 01-06, config.py, config_local.py (gitignored)
-│   ├── arcgis_tests/             comparisons with ArcGIS and an exact test; corrected benchmark
+│   ├── arcgis_tests/             experiments: ArcGIS comparisons, exact test (local only, not on GitHub)
 │   ├── sde_reexport/             one-off re-export of corrupted DEMs
 │   ├── fme/                      the original FME workbenches for the 3
 │   └── README.md, ARCHITECTURE.md, BENCHMARKS.md, IMPROVEMENTS.md

@@ -24,7 +24,7 @@ municipality.
 | Path | What |
 |---|---|
 | `etl/` | the pipeline: `config.py` (all settings), `config_local.py` (this machine, gitignored), stages `01`-`06`, helpers |
-| `arcgis_tests/` | comparisons with ArcGIS and an exact line-of-sight test, and the corrected ArcGIS benchmark (see [Validation](#validation-against-arcgis)) |
+| `arcgis_tests/` | experiments, kept locally and not published on GitHub: comparisons with ArcGIS and an exact line-of-sight test, and the corrected ArcGIS benchmark (see [Validation](#validation-against-arcgis)) |
 | `sde_reexport/` | one-off re-export of 12 corrupted municipality DEMs from the SDE (`ARCHITECTURE.md` §11) |
 | `fme/` | the original FME workbenches for the 3 (`3_2024.fmw`, `bomen_extract.fmw`), kept for reference |
 
