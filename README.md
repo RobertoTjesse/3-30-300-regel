@@ -172,8 +172,9 @@ Everything province-specific is a setting or an input file; no code changes.
 
 ## History
 
-This repository combines `RobertoTjesse/3-regel` (the 3 pipeline, full
-history kept) and the web map work published from
-`RobertoTjesse/3-30-300-regel`, restructured into one folder per indicator on
-2026-09-29. Open issues are still tracked in
-[`3-regel`](https://github.com/RobertoTjesse/3-regel/issues).
+This repository combines the former repositories `RobertoTjesse/3-regel`
+(the 3 pipeline) and `RobertoTjesse/3-30-300-regel` (the web map), full
+history kept, restructured into one folder per indicator on 2026-09-29; both
+old repositories were then deleted. Their issues were transferred here
+([issues](https://github.com/RobertoTjesse/330300regel/issues)); the first
+published 3-only site is kept in the branch `archief/3-regel-gh-pages`.

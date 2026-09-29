@@ -174,10 +174,10 @@ plain work folder under `D:\Temp` first.
 - **[OPEN]** Tree status: 21% of the counted trees are marked "disappeared,
   small tree" in the source registry (`current_st`), 3% "not seen once";
   whether to exclude them is open —
-  [issue #1](https://github.com/RobertoTjesse/3-regel/issues/1).
+  [issue #1](https://github.com/RobertoTjesse/330300regel/issues/1).
 - **[RESOLVED 2026-09-29]** ArcGIS comparison: the benchmark's observer
   height was wrong (see above) —
-  [issue #2](https://github.com/RobertoTjesse/3-regel/issues/2).
+  [issue #2](https://github.com/RobertoTjesse/330300regel/issues/2).
 - DEMs must be **floating point** (AHN: Float32). `01_tile_dem.py` stops on
   integer DEMs (heights truncated to whole metres, which happened once in an
   AHN5 export) or ones with a scale/offset.
