@@ -70,6 +70,7 @@ PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
 PROVINCE_DEM = REPO / "data" / "interim" / "province_dem.vrt"
 EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
 ONE_TREE_DIR = REPO / "arcgis_tests" / "one_tree"
+STUDY_DIR = REPO / "data" / "studiegebied"
 # The original ArcGIS benchmark (observer 2 x RASTERVALU, see ARCHITECTURE.md §14)
 BENCHMARK = ('OpenFileGDB:"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/data.gdb"'
              ':visibility_Delft')
@@ -85,6 +86,7 @@ GROUP_BACKGROUND = "Achtergrond"
 GROUP_EXPERIMENTS = "Experimenten"
 GROUP_ONE_TREE = "Eén boom / boomgroep: GDAL vs ArcGIS vs benchmark (arcgis_tests/one_tree)"
 GROUP_ONE_TREE_OLD = "Eén boom: GDAL vs ArcGIS vs exact (arcgis_tests/one_tree)"
+GROUP_STUDY = "Studiegebied: benchmark vs ArcGIS vs GDAL (arcgis_tests/studiegebied.py)"
 
 # (upper bound inclusive, colour, label) — discrete classes on integer counts
 VIEWSHED_CLASSES = [
@@ -238,6 +240,65 @@ def _add_one_tree(project, root, have):
     return added
 
 
+def _add_study_areas(project, root, have):
+    """The study areas (arcgis_tests/studiegebied.py), one subgroup per buurt:
+    the buurt and its 30 m buffer, the trees, the benchmark cut-out and the
+    ArcGIS and GDAL results (trees seeing a cell, same colours as the
+    viewshed layers), the difference maps vs the benchmark and the DSM."""
+    areas = sorted(p for p in STUDY_DIR.glob("BU*") if (p / "studiegebied.gpkg").exists()) \
+        if STUDY_DIR.exists() else []
+    if not areas:
+        return 0
+    top = _group(root, GROUP_STUDY, 0)
+    added = 0
+    labels = {"benchmark": "benchmark (visibility_Delft, uitgesneden)",
+              "arcgis": "ArcGIS Visibility, instellingen benchmark",
+              "gdal": "GDAL, instellingen benchmark"}
+    for area in areas:
+        group = _group(top, area.name)
+        gpkg = area / "studiegebied.gpkg"
+        if gpkg.resolve() not in have:
+            styles = {
+                "buurt": QgsFillSymbol.createSimple({"color": "0,0,0,0", "outline_color": "#e31a1c",
+                                                     "outline_width": "0.8"}),
+                "buffer30": QgsFillSymbol.createSimple({"color": "0,0,0,0", "outline_color": "#e31a1c",
+                                                        "outline_width": "0.4", "outline_style": "dash"}),
+                "bomen": QgsMarkerSymbol.createSimple({"name": "circle", "color": "#1a9850",
+                                                       "outline_color": "#ffffff", "size": "1.8"}),
+            }
+            for name, label in (("buurt", "buurt (vergeleken cellen)"), ("buffer30", "buffer 30 m"),
+                                ("bomen", "bomen (benchmark)")):
+                layer = QgsVectorLayer(f"{gpkg}|layername={name}", label, "ogr")
+                if _add(project, group, layer):
+                    layer.setRenderer(QgsSingleSymbolRenderer(styles[name]))
+                    added += 1
+        diffs = _group(group, "Verschil met benchmark (oranje = telt meer bomen, blauw = minder)")
+        results = _group(group, "Resultaten (aantal bomen dat de cel ziet)")
+        for stem in ("benchmark", "arcgis", "gdal"):
+            tif = area / f"{stem}.tif"
+            if tif.exists() and tif.resolve() not in have:
+                layer = QgsRasterLayer(str(tif), labels[stem], "gdal")
+                if _add(project, results, layer, visible=stem == "benchmark"):
+                    _style_viewshed(layer)
+                    added += 1
+        for tif in sorted(area.glob("verschil_*.tif")):
+            if tif.resolve() in have:
+                continue
+            tool = tif.stem.removeprefix("verschil_")
+            layer = QgsRasterLayer(str(tif), f"verschil {tool} vs benchmark", "gdal")
+            if _add(project, diffs, layer, visible=False):
+                _style_paletted(layer, [(0, None, "zelfde"), (1, "#ff7f00", f"{tool} telt meer"),
+                                        (2, "#1f78b4", f"{tool} telt minder")])
+                added += 1
+        dem = area / "dem_raw.tif"
+        if dem.exists() and dem.resolve() not in have:
+            layer = QgsRasterLayer(str(dem), "DSM (AHN5 ruw, zoals de benchmark)", "gdal")
+            if _add(project, group, layer, visible=False):
+                layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
+                added += 1
+    return added
+
+
 def _add(project, group, layer, visible=True):
     if not layer.isValid():
         print(f"  WARNING: could not load '{layer.name()}' — skipped")
@@ -364,6 +425,7 @@ def main():
                 print(f"  NOTE: {BENCHMARK} not readable (R: drive?) — benchmark layer skipped")
 
         added += _add_one_tree(project, root, have)
+        added += _add_study_areas(project, root, have)
 
         PROJECT_PATH.parent.mkdir(parents=True, exist_ok=True)
         if not project.write(str(PROJECT_PATH)):

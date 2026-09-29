@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
+<title>De 3: zichtbare bomen</title>
+<meta name="description" content="Hoe is berekend hoeveel bomen zichtbaar zijn vanaf elke woning, en waarom zo?">
+<link rel="stylesheet" href="uitleg.css">
+</head>
+<body>
+<header class="top"><nav>
+  <a class="home" href="../">← Kaart 3-30-300</a>
+  <a href="./">Overzicht</a>
+  <a href="konijnendijk.html">Artikel</a>
+  <a href="3.html" aria-current="page">3</a>
+  <a href="30.html">30</a>
+  <a href="300.html">300</a>
+  <a class="repo" href="https://github.com/RobertoTjesse/3-30-300-regel">Code</a>
+</nav></header>
+
+<main>
+<h1>De 3: drie bomen zien vanuit je woning</h1>
+<p class="lead">Ziet elke woning minstens drie bomen? Voor elke boom in de provincie is berekend welke plekken
+binnen 30 meter hem kunnen zien, rekening houdend met gebouwen, heggen en het terrein. Daarna krijgt elke woning het
+aantal bomen dat je direct voor de gevel kunt zien.</p>
+
+<div class="facts">
+  <div class="fact"><b>94,7%</b><span>van de woningen ziet ≥ 3 bomen</span></div>
+  <div class="fact"><b>2,0%</b><span>van de woningen ziet geen enkele boom</span></div>
+  <div class="fact"><b>1,8 mln</b><span>woningen in 978.428 panden</span></div>
+  <div class="fact"><b>5,2 mln</b><span>bomen doorgerekend</span></div>
+</div>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, run van 27–28 september 2026.</p>
+
+<h2>Wat wordt er gemeten?</h2>
+<p>De 3-30-300-regel (<a href="konijnendijk.html">Konijnendijk, 2023</a>) vraagt dat iedereen vanuit zijn woning,
+school en werkplek minstens drie goed ontwikkelde bomen ziet. Het artikel zegt niet vanaf welke afstand of vanuit welk
+raam. Wij hebben dat voor woningen zo concreet gemaakt:</p>
+<ul>
+  <li>Een boom telt als <b>zichtbaar</b> als er een vrije zichtlijn is van de top van zijn kruin naar een punt op
+      <b>1,8 m hoogte</b> (ooghoogte) dat <b>binnen 30 m</b> van de boom ligt.</li>
+  <li>Een woning ziet <b>N bomen</b> als er ergens <b>direct voor de gevel</b> (binnen 1,5 m buiten het pand) een plek is
+      die N bomen ziet.</li>
+</ul>
+
+<h2>Stappen</h2>
+<ol class="steps">
+  <li><strong>Hoogtemodel en bomen per gemeente verzamelen.</strong>
+    Het hoogtemodel is AHN4, 0,5 m, de <i>ruwe</i> versie: een oppervlaktemodel waarin gebouwen, heggen en
+    boomkronen zitten, niet alleen de grond. De bomen zijn punten uit de NEO-boomdata. Per provincie worden alle
+    gemeenten samengevoegd tot één hoogtemozaïek en één bomenbestand.</li>
+  <li><strong>Het hoogtemodel in tegels knippen.</strong>
+    Tegels van 500 × 500 m met een rand van 35 m extra. Bomen en hoogtes in die rand worden meegenomen, maar alleen
+    het binnendeel wordt bewaard. Zo passen de tegels naadloos op elkaar en telt een boom net over een tegel- of
+    gemeentegrens gewoon mee. Gaten in het hoogtemodel (water, onder bruggen) worden eerst gevuld (zie keuzes).</li>
+  <li><strong>Per boom: waar is hij te zien?</strong>
+    De waarnemer staat op de top van de kruin. Met <code>ViewshedGenerate</code> van GDAL wordt voor elke cel van
+    0,5 m binnen 30 m bepaald of er een vrije zichtlijn is naar 1,8 m boven het oppervlak. Elke zichtbare cel krijgt
+    +1. Het resultaat is een kaart waarin elke cel het aantal bomen telt dat daar te zien is.</li>
+  <li><strong>Woningen bepalen.</strong>
+    Een pand uit de BAG is een woonpand als minstens één adres (verblijfsobject) erin een woonfunctie heeft en in
+    gebruik is. Het aantal woningen in een pand is het aantal van die adressen.</li>
+  <li><strong>Score per woning.</strong>
+    Rond elk woonpand ligt een ring van 1,5 m buiten de gevel, zonder de panden zelf. De score van het pand is de
+    hoogste waarde in die ring. Panden zonder vrije gevel (helemaal ingebouwd) krijgen geen score.</li>
+  <li><strong>Samenvatten per gemeente, wijk en buurt.</strong>
+    Elk pand gaat naar zijn huidige gemeente en CBS-buurt (2025), op basis van het middelpunt. Per gebied: het
+    aandeel woningen met ≥ 3 zichtbare bomen, gewogen naar het aantal woningen per pand.</li>
+</ol>
+
+<h2>Keuzes en waarom</h2>
+<div class="table-wrap"><table>
+<tr><th>Keuze</th><th>Waarom</th><th>Alternatief dat we niet kozen</th></tr>
+<tr><td>Straal van 30 m</td>
+    <td>De regel noemt geen afstand. 30 m is de straal van de eerdere 3-analyse (QGIS/ArcGIS), zodat de uitkomsten
+        vergelijkbaar blijven. Op die afstand is een boom nog duidelijk als boom te herkennen.</td>
+    <td>Een grotere straal telt verre bomen mee die je nauwelijks nog als "uitzicht op een boom" ervaart en maakt de
+        berekening veel zwaarder.</td></tr>
+<tr><td>Ruw oppervlaktemodel (AHN4 DSM)</td>
+    <td>Gebouwen, heggen en kronen moeten het zicht kunnen blokkeren. In een maaiveldmodel is alles open.</td>
+    <td>AHN-maaiveld (DTM): te optimistisch. De AHN-puntenwolk met klassen zou beter zijn, maar is veel zwaarder om
+        te verwerken.</td></tr>
+<tr><td>Waarnemer op de top van de kruin</td>
+    <td>Een boom is zichtbaar als je zijn kruin ziet. De kruintop is het hoogste punt van het oppervlak binnen 1,5 m
+        van de boom (daken tellen niet mee). Staat de waarnemer op het boompunt zelf, dan zit hij ín zijn eigen kruin
+        en blokkeert die het zicht: in Delft zag 35,5% van de bomen dan vrijwel niets.</td>
+    <td>Het boompunt + 1 m (ArcGIS-standaard). Een vaste boomhoogte voor alle bomen.</td></tr>
+<tr><td>Hoogtecontrole: 0–35 m boven de grond</td>
+    <td>Het hoogtemodel weet niet wat een boom is. Een hoogspanningslijn of dakrand naast een boom kan als
+        "kruin" worden gemeten. Is de gemeten hoogte boven de lokale grond (laagste punt binnen 5 m) niet
+        positief of hoger dan 35 m, dan geldt een vaste 1,7 m. Dat gebeurt bij minder dan 1 op de 80.000 bomen.
+        De controle is op hoogte boven de grond, niet op NAP, omdat de provincie van −6 m tot +40 m NAP loopt.</td>
+    <td>Een controle op NAP-hoogte (eerder gebruikt): die wees 3% van de Delftse bomen ten onrechte af.</td></tr>
+<tr><td>Doelhoogte 1,8 m</td>
+    <td>Ooghoogte van een staand mens. Dezelfde waarde als de <i>surface offset</i> in de ArcGIS-methode.</td>
+    <td>Per verdieping rekenen: kan niet met één oppervlaktemodel (zie beperkingen).</td></tr>
+<tr><td>Score = hoogste waarde in een ring van 1,5 m rond de gevel</td>
+    <td>Binnen de omtrek van een pand is het oppervlaktemodel het dak: "1,8 m boven het dak" is niet wat een bewoner
+        ziet. Direct voor de gevel is 1,8 m wél ooghoogte. De hoogste waarde, omdat de regel vraagt óf je vanuit je
+        woning bomen ziet, niet vanuit elk raam.</td>
+    <td>Het gemiddelde langs de gevel (straft woningen met één blinde gevel). Alleen de voorgevel (niet te bepalen uit
+        de BAG).</td></tr>
+<tr><td>Woning = adres in gebruik met woonfunctie</td>
+    <td>Ook woningen boven winkels tellen mee. Adressen die nog gebouwd moeten worden ("gevormd") of buiten gebruik
+        zijn tellen niet: die zitten meestal niet in het hoogtemodel.</td>
+    <td>Panden met woonfunctie in de BAG-pandgegevens: te grof voor gemengde panden.</td></tr>
+<tr><td>Klassen 0, 1–2, 3–5, 6–7, 8+</td>
+    <td>De grens van 3 is de regel zelf; 0 en 1–2 laten zien hoe ver een woning eronder zit, 6–7 en 8+ hoe ruim.
+        Dezelfde klassen als het QGIS-validatieproject.</td>
+    <td>Alleen voldoet/voldoet niet: verbergt het verschil tussen 0 en 2 bomen.</td></tr>
+<tr><td>Rand van 35 m rond elke tegel</td>
+    <td>Moet minstens de straal van 30 m zijn, anders missen cellen aan de rand bomen van de buurtegel. Zonder rand
+        ontstonden zichtbare naden in 10–12% van het oppervlak.</td>
+    <td>Grotere tegels zonder rand: kost te veel geheugen voor de grote gemeenten.</td></tr>
+<tr><td>Gaten vullen: klein interpoleren, groot op laagste waarde</td>
+    <td>GDAL behandelt een NoData-waarde als echte hoogte: een gat van −9999 wordt een klif. Kleine gaten (≤ 25 m) worden
+        uit de omgeving ingevuld, groot open water krijgt het laagste punt van de tegel, zodat het nooit zicht blokkeert.</td>
+    <td>Alles interpoleren: correct maar uren rekentijd bij kustgemeenten.</td></tr>
+<tr><td>GDAL in plaats van ArcGIS</td>
+    <td>Open source, scriptbaar en herhaalbaar voor elke provincie. Getoetst tegen een exacte zichtlijntest per cel:
+        95,5–99,7% van de cellen gelijk. Met dezelfde waarnemer geven ArcGIS Visibility, GDAL en de exacte test
+        vrijwel hetzelfde.</td>
+    <td>ArcGIS Pro (licentie, niet goed te automatiseren; de Visibility-tool liep hier vast).</td></tr>
+<tr><td>Minder dan 10 woningen: geen percentage</td>
+    <td>Bij heel kleine aantallen zegt een percentage weinig en is het te herleiden tot individuele adressen.</td>
+    <td>—</td></tr>
+</table></div>
+
+<h2 id="mijn-woning">Klopt dit voor mijn woning?</h2>
+<p>De kaart laat voor bijna 1,8 miljoen woningen zien hoeveel bomen er in de buurt zichtbaar zijn. Per buurt, wijk en
+gemeente geeft dat een betrouwbaar beeld: kleine afwijkingen middelen daar uit. Per woning is de uitkomst een goede
+<b>indicatie</b>, maar geen meting ter plekke. Staat jouw woning op rood of oranje terwijl je vanuit huis wel bomen ziet?
+Dan zit het verschil meestal in een van deze punten:</p>
+<ul>
+  <li><b>De boom staat verder dan 30 meter weg.</b> Alleen bomen binnen 30 m van de gevel tellen mee. Een rij bomen aan
+      de overkant van een breed water of een groot plein zie je wel, maar valt buiten de regel zoals wij die meten.</li>
+  <li><b>Je kijkt vanaf een hogere verdieping.</b> We rekenen op ooghoogte (1,8 m) vlak voor de gevel, dus op straat- of
+      tuinniveau. Vanaf een balkon of bovenverdieping kijk je over heggen, schuttingen en auto's heen en zie je vaak
+      meer bomen dan de kaart aangeeft.</li>
+  <li><b>De boom is nieuw of staat niet in het bomenbestand.</b> Het bomenbestand en het hoogtemodel zijn van 2020–2022.
+      Bomen die later zijn geplant ontbreken, en heel jonge of kleine bomen staan er soms niet in.</li>
+  <li><b>De situatie is veranderd.</b> Is er sinds 2020–2022 een gebouw gesloopt, een schutting weggehaald of een
+      nieuwe wijk gebouwd, dan rekent het model nog met de oude situatie. Dat geldt ook andersom.</li>
+  <li><b>Iets blokkeert het zicht in het model.</b> Het hoogtemodel ziet heggen, schuttingen, bushokjes en de kronen van
+      andere bomen als obstakel. Een dichte heg van twee meter voor je raam telt dus als muur, ook als je er in het echt
+      tussendoor kijkt, bijvoorbeeld in de winter.</li>
+  <li><b>De woning heeft weinig vrije gevel.</b> We kijken rondom het hele pand, maar bij ingebouwde woningen,
+      hoekjes en binnenplaatsen is er weinig ruimte direct voor de gevel waar de berekening kan "staan".</li>
+</ul>
+<div class="note ok">Het omgekeerde kan ook: een woning is groen, maar de bomen zijn vanuit de woonkamer niet te zien,
+bijvoorbeeld omdat ze aan de achterkant staan en de woonkamer aan de voorkant ligt. De kaart zegt of er ergens rond de
+woning drie bomen te zien zijn, niet vanuit welk raam.</div>
+<p>Zie je een fout die niet door deze punten verklaard wordt? Meld het via de
+<a href="https://github.com/RobertoTjesse/3-regel/issues">open punten</a> in de repository; zo wordt de kaart beter.</p>
+
+<h2>Beperkingen en open punten</h2>
+<ul>
+  <li><b>Ooghoogte alleen op straatniveau.</b> Het uitzicht vanaf hogere verdiepingen is niet berekend; bewoners
+      van flats zien in werkelijkheid vaak meer (of andere) bomen.</li>
+  <li><b>Boomstatus.</b> 21% van de getelde bomen staat in de bron als "verdwenen, kleine boom", 3% als "één keer niet
+      gezien". Alle statussen tellen nu mee
+      (<a href="https://github.com/RobertoTjesse/3-regel/issues/1">open punt #1</a>).</li>
+  <li><b>Actualiteit.</b> Hoogtemodel en bomen komen uit 2020–2022, de woningen uit 2026. Nieuwbouw staat op de
+      kaart met de omgeving van toen (3 à 5% van de woningen).</li>
+  <li><b>Geen puntclassificatie.</b> Het hoogtemodel onderscheidt boom, gebouw en hoogspanningsleiding niet. De
+      hoogtecontrole vangt het grootste deel af; de geclassificeerde AHN-puntenwolk zou het oplossen.</li>
+  <li><b>Vergelijking met ArcGIS.</b> Het eerdere ArcGIS-resultaat voor Delft zag meer bomen. Dat bleek te komen
+      door een fout in de waarnemershoogte van die run, niet door de rekenmethode
+      (<a href="https://github.com/RobertoTjesse/3-regel/issues/2">open punt #2</a>).</li>
+</ul>
+
+<h2>Code en bronnen</h2>
+<div class="table-wrap"><table class="plain">
+<tr><th>Stap</th><th>Script</th></tr>
+<tr><td>Instellingen (straal, hoogtes, tegels)</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/config.py"><code>etl/config.py</code></a></td></tr>
+<tr><td>BAG downloaden (PDOK)</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/download_bag_pdok.py"><code>etl/download_bag_pdok.py</code></a></td></tr>
+<tr><td>1. Tegels knippen, gaten vullen</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/01_tile_dem.py"><code>etl/01_tile_dem.py</code></a></td></tr>
+<tr><td>2. Zichtbaarheid per boom</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/02_compute_viewsheds.py"><code>etl/02_compute_viewsheds.py</code></a></td></tr>
+<tr><td>3. Tegels samenvoegen</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/03_merge_tiles.py"><code>etl/03_merge_tiles.py</code></a></td></tr>
+<tr><td>4. Score per woning</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/04_score_buildings.py"><code>etl/04_score_buildings.py</code></a></td></tr>
+<tr><td>5. Provincie samenvoegen</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/05_merge_province.py"><code>etl/05_merge_province.py</code></a></td></tr>
+<tr><td>6. Per gemeente, wijk, buurt</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/etl/06_area_summaries.py"><code>etl/06_area_summaries.py</code></a></td></tr>
+<tr><td>Technische achtergrond (Engels)</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/ARCHITECTURE.md"><code>ARCHITECTURE.md</code></a></td></tr>
+</table></div>
+<div class="table-wrap"><table class="plain">
+<tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr>
+<tr><td>Hoogtemodel</td><td>AHN4, oppervlaktemodel 0,5 m, ruw</td><td>ingewonnen 2020–2022</td></tr>
+<tr><td>Bomen</td><td>NEO boomdata (aangekocht, niet openbaar)</td><td>2020–2022</td></tr>
+<tr><td>Panden en adressen</td><td>BAG via PDOK</td><td>27 september 2026</td></tr>
+<tr><td>Gemeentegrenzen</td><td>Bestuurlijke gebieden (Kadaster) via PDOK</td><td>28 september 2026</td></tr>
+<tr><td>Wijken en buurten</td><td>CBS Wijk- en Buurtkaart 2025 via PDOK</td><td>2025</td></tr>
+</table></div>
+</main>
+<footer>3-30-300-regel · <a href="https://github.com/RobertoTjesse/3-30-300-regel">broncode op GitHub</a> ·
+  Konijnendijk, C.C. (2023). <i>Evidence-based guidelines for greener, healthier, more resilient neighbourhoods:
+  Introducing the 3–30–300 rule.</i> Journal of Forestry Research 34, 821–830.</footer>
+</body>
+</html>

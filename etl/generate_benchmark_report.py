@@ -113,7 +113,7 @@ def main():
     )
     lines.append("")
 
-    province_path = config.BASE_DIR / "data" / "processed" / "ZuidHolland_viewshed.tif"
+    province_path = config.BASE_DIR / "data" / "processed" / f"{config.PROVINCE_SLUG}_viewshed.tif"
     if province_path.exists():
         lines.append("## Final output")
         lines.append("")

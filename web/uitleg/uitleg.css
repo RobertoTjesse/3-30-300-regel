@@ -1,0 +1,69 @@
+/* Uitlegpagina's van de 3-30-300-kaart. Kleuren als op de kaart (web/index.html). */
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0; --soft: #f6f8fa;
+  --accent: #238b45; --accent-soft: #e8f5ec; --warn: #9a6700; --warn-soft: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c2128; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --soft: #22272e;
+    --accent: #3fb950; --accent-soft: #1b3326; --warn: #d29922; --warn-soft: #3a2f12;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c2128; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --soft: #22272e;
+  --accent: #3fb950; --accent-soft: #1b3326; --warn: #d29922; --warn-soft: #3a2f12;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+       font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+header.top { border-bottom: 1px solid var(--border); background: var(--soft); }
+nav { max-width: 860px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 4px 16px;
+      align-items: center; font-size: 15px; }
+nav .home { font-weight: 700; color: var(--fg); text-decoration: none; margin-right: auto; }
+nav a { text-decoration: none; }
+nav a[aria-current="page"] { color: var(--fg); font-weight: 600; border-bottom: 2px solid var(--accent); }
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 8px 0 8px; }
+.lead { font-size: 18px; color: var(--muted); margin: 0 0 24px; }
+h2 { font-size: 22px; margin: 40px 0 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+h3 { font-size: 17px; margin: 24px 0 6px; }
+p, li { max-width: 72ch; }
+ol.steps { padding-left: 0; list-style: none; counter-reset: step; }
+ol.steps > li { counter-increment: step; position: relative; padding-left: 44px; margin: 0 0 18px; }
+ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; }
+ol.steps > li > strong:first-child { display: block; }
+.table-wrap { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+th { background: var(--soft); font-weight: 600; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+table.plain td:first-child { font-weight: 400; white-space: normal; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 16px 0 8px; }
+.fact { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--soft); }
+.fact b { display: block; font-size: 26px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 14px; color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 16px 0; }
+.card { display: block; border: 1px solid var(--border); border-radius: 8px; padding: 16px; color: var(--fg);
+        text-decoration: none; }
+.card:hover { border-color: var(--accent); }
+.card .num { font-size: 34px; font-weight: 800; color: var(--accent); line-height: 1; }
+.card h3 { margin: 8px 0 4px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+.note { border-left: 4px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 6px 6px 0;
+        margin: 16px 0; }
+.note.ok { border-color: var(--accent); background: var(--accent-soft); }
+code { font: 14px ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--soft);
+       border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+pre { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px;
+      overflow-x: auto; font-size: 14px; }
+pre code { border: 0; padding: 0; background: none; }
+footer { max-width: 860px; margin: 0 auto; padding: 16px; border-top: 1px solid var(--border); color: var(--muted);
+         font-size: 14px; }
+@media (max-width: 600px) {
+  h1 { font-size: 25px; }
+  td:first-child { white-space: normal; }
+}
