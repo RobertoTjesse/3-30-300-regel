@@ -220,7 +220,20 @@ trees should be excluded, is still open.
   issues transferred here; the site is published from this repository's
   `gh-pages` branch.
 
-**12. Consistency check, QGIS, comments, wiki**
+**12. The benchmark reproduced exactly on a study area (AHN5)**
+- Molenbuurt, Delft (BU05031407), the colleague's own AHN5 DSM and tree
+  layer, Visibility with the benchmark's settings
+  (`arcgis_tests/studiegebied.py` + `studiegebied_arcgis.py`): the same
+  count as `visibility_Delft` on 100.0% of the 515,056 land cells. GDAL with
+  the same observers: same >= 3 verdict on 98.3%, same count on 79.2%.
+- Trees without RASTERVALU (349 of Delft's 87,837) do count in the
+  benchmark. Left out, one tree (41652) was missing (99.2% equal); written
+  as 0 in a shapefile, ArcGIS treats them differently (98.9%). Only the
+  benchmark's own layer, with the value still NULL, gives 100%; the ArcGIS
+  script now copies the trees from there. `benchmark_corrected.py` still
+  leaves these trees out (its figures are for 99.6% of the trees).
+
+**13. Consistency check, QGIS, comments, wiki**
 - The QGIS validation project now also holds the 3 per gemeente / wijk /
   buurt and the FME results of the 30 and the 300.
 - Every Python script got docstrings and comments (no code changes;
