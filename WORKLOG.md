@@ -166,3 +166,10 @@ trees should be excluded, is still open.
   for tree_68418 and for group_5. The benchmark's observers were at
   2 x RASTERVALU m NAP. (`arc_bench_offset`, surface + RASTERVALU: 99.4% /
   71.4%; the documented settings, `arc_bench`: 8.5% / 24.4%.)
+- Corrected benchmark: `arcgis_tests/benchmark_corrected.py` reruns
+  visibility_Delft with observer_elevation = RASTERVALU and an explicit
+  observer_offset of 1 m (everything else as the original; trees without
+  RASTERVALU left out). `compare_benchmark.py` compares it with the
+  original and with Delft_viewshed.tif (mean, 0 / >= 3 trees, pixel r).
+  `one_tree_arcgis.py` got the same settings as `arc_bench_fixed`, to check
+  them against the exact test on the three cases.
