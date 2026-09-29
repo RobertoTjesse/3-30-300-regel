@@ -49,6 +49,7 @@ arcgis_tests/*.csv
 
 # Web map data — built by web/build_tiles.py, published on the gh-pages branch only
 web/data/
+web/3-30-300/data/
 
 # One-tree comparison inputs/outputs (arcgis_tests/one_tree.py prepare regenerates them)
 arcgis_tests/one_tree/

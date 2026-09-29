@@ -218,6 +218,22 @@ branch (a single commit, force-pushed, so old tile files don't pile up in
 its history). Colours, class labels and texts are at the top of the
 `<script>` in `web/index.html`.
 
+### 3-30-300 web map
+
+https://robertotjesse.github.io/3-regel/3-30-300/ — the same map with a
+3 / 30 / 300 switch. The 3 reads the tile file above; the 30 (canopy cover
+per CBS wijk/buurt 2023) and the 300 (homes within a 5 / 15 minute walk of
+a park or wood entrance, per building and per wijk/buurt) come from the FME
+results on the share (`...\Tijdelijk_Roberto\3-30-300\fme output`), built
+into `web/3-30-300/data/30-300.pmtiles`:
+
+```
+python web\3-30-300\build_tiles.py
+python web\serve.py              # preview at http://localhost:8000/3-30-300/
+```
+
+then put `index.html` and `data/30-300.pmtiles` in `3-30-300/` on `gh-pages`.
+
 ## Data layout
 
 ```
