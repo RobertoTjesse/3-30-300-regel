@@ -1,4 +1,4 @@
-# 3-30-300regel — the 3-30-300 rule per home, buurt, wijk and gemeente
+# 3-30-300-regel — the 3-30-300 rule per home, buurt, wijk and gemeente
 
 The **3-30-300 rule** (Konijnendijk, 2023) asks for green in three ways:
 
@@ -10,7 +10,7 @@ The **3-30-300 rule** (Konijnendijk, 2023) asks for green in three ways:
 
 All three are computed for the province of **Zuid-Holland** and published
 together as one web map with a 3 / 30 / 300 switch, per gemeente, wijk,
-buurt and home: **https://robertotjesse.github.io/3-30-300regel/**, with
+buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**, with
 explanation pages in Dutch (`/uitleg/`). The 3 can be run for another
 province without code changes ([Another province](#another-province)); the
 30 and 300 still depend on FME, and moving them to open-source Python is
@@ -40,7 +40,7 @@ Folder names start with a letter and contain no hyphens on purpose: the old
 GRID engine behind ArcGIS's Viewshed and Visibility tools fails on paths like
 `D:\Repositories\3-regel`. For the same reason the local clone is called
 `330300regel` (without hyphens) although the GitHub repository is
-`3-30-300regel`. The folder name still starts with a digit, so the ArcGIS
+`3-30-300-regel`. The folder name still starts with a digit, so the ArcGIS
 scripts copy their inputs to a plain work folder under `D:\Temp` before
 running.
 
@@ -52,7 +52,7 @@ source data (see [Data](#data)), and for the ArcGIS comparisons ArcGIS Pro
 with Spatial Analyst.
 
 1. Clone into a folder without hyphens or spaces:
-   `git clone https://github.com/RobertoTjesse/3-30-300regel.git 330300regel`
+   `git clone https://github.com/RobertoTjesse/3-30-300-regel.git 330300regel`
 2. Copy `indicator_3_bomen/etl/config_local.example.py` to
    `indicator_3_bomen/etl/config_local.py` and fill in `OSGEO4W_ROOT` and
    `VIEWANALYSE_DIR`. This file is gitignored; all shared settings are in
@@ -118,8 +118,7 @@ buildings' walking class.
 
 **Publishing:** copy `web/` without the `.py` files to the `gh-pages` branch
 (plus an empty `.nojekyll`); GitHub Pages serves that branch at
-https://robertotjesse.github.io/3-30-300regel/. (Until 2026-09-29 the site was
-published from `RobertoTjesse/3-30-300-regel`.)
+https://robertotjesse.github.io/3-30-300-regel/.
 
 ## Validation
 
@@ -174,9 +173,11 @@ Everything province-specific is a setting or an input file; no code changes.
 
 ## History
 
-This repository combines the former repositories `RobertoTjesse/3-regel`
-(the 3 pipeline) and `RobertoTjesse/3-30-300-regel` (the web map), full
-history kept, restructured into one folder per indicator on 2026-09-29; both
-old repositories were then deleted. Their issues were transferred here
-([issues](https://github.com/RobertoTjesse/3-30-300regel/issues)); the first
-published 3-only site is kept in the branch `archief/3-regel-gh-pages`.
+The project started as `RobertoTjesse/3-regel` (the 3 pipeline); the web map
+was then built in an earlier repository with this same name,
+`3-30-300-regel`. On 2026-09-29 both were combined into this repository,
+full history kept, and restructured into one folder per indicator; the two
+older repositories were deleted afterwards. Their issues were transferred
+here ([issues](https://github.com/RobertoTjesse/3-30-300-regel/issues)), and
+the first published 3-only site is kept in the branch
+`archief/3-regel-gh-pages`.
