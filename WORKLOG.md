@@ -160,3 +160,9 @@ trees should be excluded, is still open.
   the production DEM, where that tree point is 10.8 m below its canopy.
 - Next: `arc_bench_offset` (Visibility with observer_offset = RASTERVALU)
   to confirm in ArcGIS itself.
+- **Confirmed in ArcGIS:** `arc_bench_both` — Visibility with
+  observer_elevation = RASTERVALU AND observer_offset = RASTERVALU —
+  reproduces visibility_Delft exactly: the same count on 100.0% of cells
+  for tree_68418 and for group_5. The benchmark's observers were at
+  2 x RASTERVALU m NAP. (`arc_bench_offset`, surface + RASTERVALU: 99.4% /
+  71.4%; the documented settings, `arc_bench`: 8.5% / 24.4%.)
