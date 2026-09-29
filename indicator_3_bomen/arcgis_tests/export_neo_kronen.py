@@ -9,7 +9,8 @@ areas from, does have per-crown fields height, height_dataset, height_date,
 height_method, height_quality and crown_diameter.
 
 What it does:
-  1. Finds the BOMEN_KRONEN feature class through the Bodem SDE connection.
+  1. Finds the BOMEN_KRONEN feature class, trying the Bodem SDE connection of
+     each production database (Geo_afgeschermd first).
   2. Selects every crown that intersects the municipality (its boundary from
      data\interim\gemeenten.gpkg) and copies them, with all fields, to
      D:\Temp\neo_kronen\kronen.gdb\kronen_<municipality>.
@@ -30,7 +31,13 @@ import time
 
 import arcpy
 
-SDE = r"R:\ESRI\BEHEER\Database_verbindingen\Geodatabase\Productie\Geo\Geodatabase@Geo@bodem.sde"
+# The Bodem connections of the production databases, tried in this order: NEO
+# is purchased data, so most likely in the protected database. (The 30's
+# workbench reads it through an FME connection called "bomen", which does not
+# say which database it is.)
+CONNECTIONS = r"R:\ESRI\BEHEER\Database_verbindingen\Geodatabase\Productie"
+SDE_FILES = [os.path.join(CONNECTIONS, db, f"Geodatabase@{db}@bodem.sde")
+             for db in ("Geo_afgeschermd", "Geo", "Geo_pub", "Geo_archief")]
 TABLE = "BOMEN_KRONEN"                  # BODEM.BOMEN_KRONEN, as in the 30's workbench
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # repo root
 MUNICIPALITIES = os.path.join(REPO, "data", "interim", "gemeenten.gpkg")
@@ -38,19 +45,35 @@ WORK = r"D:\Temp\neo_kronen"
 GDB = os.path.join(WORK, "kronen.gdb")
 
 
-def find_crowns():
-    """The full path of the BOMEN_KRONEN feature class in the SDE database
-    (its name there carries the database and schema, e.g. Geo.BODEM.BOMEN_KRONEN)."""
-    arcpy.env.workspace = SDE
+def find_in(sde):
+    """Names of the BOMEN_KRONEN feature classes in one SDE database (their
+    names there carry database and schema, e.g. Geo_afgeschermd.BODEM.BOMEN_KRONEN)."""
+    arcpy.env.workspace = sde
     names = [n for n in (arcpy.ListFeatureClasses(f"*{TABLE}") or []) if n.upper().endswith(TABLE)]
     for ds in arcpy.ListDatasets(feature_type="Feature") or []:   # also inside feature datasets
         names += [os.path.join(ds, n) for n in (arcpy.ListFeatureClasses(f"*{TABLE}", feature_dataset=ds) or [])
                   if n.upper().endswith(TABLE)]
-    if not names:
-        raise SystemExit(f"No feature class *{TABLE} found in {SDE}")
-    if len(names) > 1:
-        print(f"Several matches, using the first: {names}")
-    return os.path.join(SDE, names[0])
+    return names
+
+
+def find_crowns():
+    """The full path of the first BOMEN_KRONEN found, trying SDE_FILES in order."""
+    for sde in SDE_FILES:
+        if not os.path.exists(sde):
+            print(f"  {sde}: connection file not found")
+            continue
+        try:
+            names = find_in(sde)
+        except Exception as exc:              # no access to this database
+            print(f"  {os.path.basename(sde)}: cannot open ({str(exc).strip()[:120]})")
+            continue
+        if names:
+            if len(names) > 1:
+                print(f"  several matches, using the first: {names}")
+            return os.path.join(sde, names[0])
+        print(f"  {os.path.basename(sde)}: no {TABLE}")
+    raise SystemExit(f"{TABLE} not found in any of the Bodem connections. Ask which database the FME "
+                     "connection 'bomen' points to, and add its .sde file to SDE_FILES.")
 
 
 def municipality_layer(name):
