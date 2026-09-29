@@ -1,7 +1,18 @@
-# 3-regel — South Holland "3-30-300" tree-viewshed ETL
+# 3-30-300-regel — the 3-30-300 rule per home, buurt, wijk and gemeente
 
-Implements the **"3"** of the Dutch 3-30-300 greenery rule: for every pixel of
-a municipality's DEM, how many trees is it visible from within a 30 m radius.
+The 3-30-300 rule (Konijnendijk 2023): 3 trees visible from every home, 30%
+tree canopy in every neighbourhood, 300 m to the nearest park. This repository
+computes the **3** for a whole province (Zuid-Holland first) and publishes it
+with the **30** and the **300** as one web map:
+**https://robertotjesse.github.io/3-30-300-regel/** — with explanation pages in
+Dutch (`/uitleg/`). To run it for another province, see
+[Another province](#another-province). The 30 and 300 are still made with FME
+(inputs to `web/build_tiles_30_300.py`); moving them into this repository as
+open-source Python is planned (`IMPROVEMENTS.md`).
+
+The 3: for every pixel of a municipality's DEM, how many trees is it visible
+from within a 30 m radius; every home gets the maximum just outside its facade.
+(History: this repository started as `RobertoTjesse/3-regel`.)
 
 This replaces an earlier QGIS/PyQGIS prototype which wrote one output raster
 **per individual tree** — infeasible at province scale (millions of trees).
@@ -197,45 +208,72 @@ script is tracked.
 
 ## Web map
 
-Public map of the results: https://robertotjesse.github.io/3-regel/ —
-the share of homes with >= 3 visible trees per gemeente, wijk or buurt
-(by zoom level, one colour scale), every residential building in its class
-from zoom 13, sources and data dates behind the (i) button, on the PDOK grey
-basemap, with address search.
+Public map: https://robertotjesse.github.io/3-30-300-regel/ — the 3, the 30
+and the 300 behind a 3 / 30 / 300 switch, all on the same areas: gemeenten
+(zoom < 10), CBS wijken 2025 (< 11.5), CBS buurten 2025 (< 13), then every
+residential building (3 and 300; the 30 stays on buurten). Sources and data
+dates behind the (i) button, PDOK grey basemap, address search (PDOK
+Locatieserver, filtered to the province). Explanation pages in Dutch — method,
+every choice and why, the Konijnendijk (2023) paper, and how to repeat it for
+another province — are under `web/uitleg/` (site: `/uitleg/`).
 
-It is one static page (`web/index.html`, MapLibre) plus one vector-tile
-file (`web/data/zuid-holland.pmtiles`, ~85 MB — GitHub's per-file limit is
-100 MB), served by GitHub Pages from the `gh-pages` branch. The tile file
-is never committed to `master`. To update after new results:
+`web/` is the site as published:
+
+| File | What |
+|---|---|
+| `index.html` | the map (MapLibre + PMTiles); settings (`PROVINCE`, `REPO`, colours, texts) at the top of the `<script>` |
+| `uitleg/*.html`, `uitleg/uitleg.css` | explanation pages |
+| `data/3.pmtiles` | the 3 — `python web\build_tiles.py` (after `06_area_summaries.py`) |
+| `data/30-300.pmtiles` | the 30 and the 300 — `python web\build_tiles_30_300.py` |
+| `build_tiles*.py`, `serve.py` | build scripts and a local preview server (not published) |
+
+`web/data/` is gitignored; each tile file must stay under GitHub's 100 MB
+file limit (now ~85 and ~94 MB).
+
+`build_tiles_30_300.py` reads the FME results (`config.FME_OUTPUT_DIR`:
+`30_regel_v2.gdb`, `300.gdb`) and the areas of the 3
+(`<Province>_gebieden.gpkg`). The 30 was computed per CBS buurt 2023 (sum of
+the NEO crowns touching the buurt / land area); crown and land area are carried
+over to the 2025 areas in proportion to overlapping area. Buurten without crown
+data (all of Voorne aan Zee) are left out, so such areas show "geen gegevens".
+The 300 is recounted per area from the buildings' walking class.
+
+Preview and publish:
 
 ```
-python web\build_tiles.py        # after 06_area_summaries.py
-python web\serve.py              # optional: preview at http://localhost:8000
+python web\serve.py              # http://localhost:8000 (supports Range requests, as PMTiles needs)
 ```
 
-then replace `index.html` and `data/zuid-holland.pmtiles` on the `gh-pages`
-branch (a single commit, force-pushed, so old tile files don't pile up in
-its history). Colours, class labels and texts are at the top of the
-`<script>` in `web/index.html`.
+then copy `web/` without the `.py` files to the `gh-pages` branch (plus an
+empty `.nojekyll`). GitHub Pages serves that branch.
 
-### 3-30-300 web map
+## Another province
 
-https://robertotjesse.github.io/3-30-300-regel/ — the same map with a
-3 / 30 / 300 switch, on the same gemeenten, wijken and buurten as the 3. The 30
-(canopy cover) and the 300 (homes within a 5 / 15 minute walk of a park or
-wood entrance) come from the FME results on the share
-(`...\Tijdelijk_Roberto\3-30-300\fme output`), built into
-`web/3-30-300/data/30-300.pmtiles`. The 30 was computed per CBS buurt 2023;
-its crown and land area are carried over to the 2025 areas in proportion to
-overlapping area (no crown data for Voorne aan Zee).
+Everything province-specific is a setting or an input file; no code changes.
 
-```
-python web\3-30-300\build_tiles.py   # after 06_area_summaries.py
-```
+1. **Inputs per municipality** in one folder (`VIEWANALYSE_DIR`): `<name>.tif`
+   (AHN4 DSM 0.5 m, *ruw*, Float32, RD New) and `<name>.gpkg` (tree points,
+   RD New). Build `province_dem.vrt` and `province_trees.gpkg` (see "Setup").
+2. **`etl/config_local.py`**: `PROVINCE` (exactly as in PDOK's bestuurlijke
+   gebieden, e.g. `"Utrecht"`), `VIEWANALYSE_DIR`, `OSGEO4W_ROOT`,
+   `MUNICIPALITIES = []`, and `FME_OUTPUT_DIR` if you have 30/300 results.
+   Output files are named after the province (`config.PROVINCE_SLUG`, e.g.
+   `Utrecht_woningen.gpkg`).
+3. **BAG**: `python etl\download_bag_pdok.py` (blocks follow the extents of
+   your DEMs). **Gemeenten/provincies**: command in `05_merge_province.py`.
+   **CBS wijken/buurten**: command in `06_area_summaries.py` — replace its
+   `spatFilter` with your province's extent.
+4. **Run** `etl/01` … `06`, then `web\build_tiles.py`.
+5. **The 30 and 300** still need FME results for that province (the future
+   open-source version is sketched in `IMPROVEMENTS.md`); without them, publish
+   the 3 only.
+6. **Map**: set `PROVINCE` and `REPO` at the top of the script in
+   `web/index.html` (and the texts/sources if your data differ). The map opens
+   on the extent of `data/3.pmtiles` by itself.
+7. **Publish** `web/` as described above.
 
-The site is the `gh-pages` branch of the 3-30-300-regel repository: `index.html`
-(= `web/3-30-300/index.html`), `data/zuid-holland.pmtiles` (the 3) and
-`data/30-300.pmtiles`.
+The explanation pages describe Zuid-Holland's run (figures, data dates); adapt
+the numbers there.
 
 ## Data layout
 

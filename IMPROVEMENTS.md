@@ -206,3 +206,26 @@ by re-exporting the affected extents from the authoritative source
 kind of error that no amount of pipeline-code correctness would have
 caught on its own; it required deliberately checking the *input* data,
 not just verifying the pipeline ran without errors.
+
+## Planned: the 30 and the 300 as open source (future work)
+
+The 3 is fully in this repository (Python + GDAL). The 30 and the 300 are
+still FME workbenches on the network share (`30_2025.fmw`,
+`300_2025 regel.fmw`) reading a SQL Server tree-crown table and a PostGIS
+road network; only their results enter this repository
+(`web/build_tiles_30_300.py`). The goal is the same pipeline shape for all
+three, so any province can repeat the whole rule:
+
+- **30** (`etl/30_canopy.py`): clip the crown polygons to each area instead
+  of counting every crown that touches it (removes the double counting on
+  boundaries; one buurt now reaches 282%), sum, divide by the CBS land area,
+  directly on the map's gemeenten/wijken/buurten 2025. Open alternative for
+  the purchased NEO crowns: derive crowns from AHN (height above ground) or
+  the classified AHN point cloud.
+- **300** (`etl/300_walk.py`): green from OSM + TOP10NL with the same filters
+  (>= 300 m2, perimeter/area <= 0.35) and an option for the WHO's 1 ha;
+  entrances = walkable OSM ways crossing the green edge (GDAL); 5 / 15 minute
+  pedestrian isochrones from a local Valhalla (already open source; its
+  matrix API could replace one request per entrance); classify BAG homes
+  from the same BAG download as the 3.
+- The 3 also for schools and workplaces, as the paper asks.

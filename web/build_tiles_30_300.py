@@ -1,7 +1,7 @@
 """
-build_tiles.py — Build the 3-30-300 web map's vector tiles
-(web/3-30-300/data/30-300.pmtiles) from the FME results for the 30 and the 300.
-The 3 comes from the 3-regel map's own tile file (web/build_tiles.py).
+build_tiles_30_300.py — Build the web map's vector tiles for the 30 and the 300
+(web/data/30-300.pmtiles) from the FME results. The 3 has its own tile file
+(web/build_tiles.py -> web/data/3.pmtiles).
 
 Layers:
   gemeenten   zoom 6-9    } the same areas as the 3-regel map, with canopy
@@ -12,8 +12,9 @@ Layers:
   woningen    zoom 13-16  every BAG pand with a woonfunctie and its walking class
 
 Inputs:
-  ZuidHolland_gebieden.gpkg   gemeenten, wijken 2025, buurten 2025 (06_area_summaries.py)
-  FME output on the share (SRC):
+  data/processed/<Province>_gebieden.gpkg   gemeenten, wijken 2025, buurten 2025
+                                            (etl/06_area_summaries.py)
+  config.FME_OUTPUT_DIR (set in etl/config_local.py):
   30_regel_v2.gdb   FeatureClass_buurt: crown area (sum of NEO crowns touching
                     the buurt) and land area per CBS buurt 2023. Carried over to
                     the areas above in proportion to overlapping area.
@@ -22,21 +23,31 @@ Inputs:
                     (Valhalla) from an entrance of a park or wood >= 300 m2;
                     isochrones_dissolved(_15); ingang_parken
 
-Usage (OSGeo4W Python, reads R:):
-    python web/3-30-300/build_tiles.py [path\\to\\ZuidHolland_gebieden.gpkg]
+Usage:
+    python web/build_tiles_30_300.py [--fme DIR] [--gebieden GPKG]
+(both default to the paths in etl/config.py / config_local.py)
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
 
-from osgeo import gdal, ogr, osr
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "etl"))
+import config  # noqa: E402
+
+from osgeo import gdal, ogr, osr  # noqa: E402
 gdal.UseExceptions()
 ogr.UseExceptions()
 
-SRC = Path(r"R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\fme output")
-GEBIEDEN = Path(sys.argv[1]) if len(sys.argv) > 1 else \
-    Path(__file__).resolve().parents[2] / "data" / "processed" / "ZuidHolland_gebieden.gpkg"
+_args = argparse.ArgumentParser(description=__doc__.splitlines()[1])
+_args.add_argument("--fme", type=Path, default=config.FME_OUTPUT_DIR,
+                   help="folder with 30_regel_v2.gdb and 300.gdb")
+_args.add_argument("--gebieden", type=Path,
+                   default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_gebieden.gpkg")
+ARGS = _args.parse_args()
+SRC = ARGS.fme
+GEBIEDEN = ARGS.gebieden
 OUT = Path(__file__).resolve().parent / "data" / "30-300.pmtiles"
 ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12),
          "iso15": (9, 16), "iso5": (9, 16), "ingangen": (13, 16), "woningen": (13, 16)}
@@ -101,15 +112,16 @@ def buurten_2023(dst):
     out = dst.CreateLayer("buurten_2023", RD, ogr.wkbMultiPolygon)
     for fname in ("kroon", "land"):
         out.CreateField(ogr.FieldDefn(fname, ogr.OFTReal))
+    out.CreateField(ogr.FieldDefn("data", ogr.OFTInteger))
     dst.StartTransaction()
     for f in src:
         kroon = f.GetField("totaal_kroonoppervlak_m2")
-        if kroon in (None, ""):              # no crown data (all of Voorne aan Zee): leave out
-            continue
+        has_data = kroon not in (None, "")   # no crown data: all of Voorne aan Zee
         land = f.GetField("oppervlakte_land_in_ha") or 0
         nf = ogr.Feature(out.GetLayerDefn())
-        nf.SetField("kroon", float(kroon))
-        nf.SetField("land", max(land, 0) * 1e4)          # -99997 = no land
+        nf.SetField("data", int(has_data))
+        nf.SetField("kroon", float(kroon) if has_data else 0.0)
+        nf.SetField("land", max(land, 0) * 1e4 if has_data else 0.0)   # -99997 = no land
         g = f.GetGeometryRef().Clone()
         nf.SetGeometry(g if g.IsValid() else g.MakeValid())
         out.CreateFeature(nf)
@@ -139,17 +151,22 @@ def areas(dst, pts, b23):
             for p in pts:
                 counts[p.GetField("klasse")] += p.GetField("woningen")
             total = sum(counts.values())
-            kroon = land = 0.0
+            kroon = land = overlap = overlap_data = 0.0
             b23.SetSpatialFilter(g)
             for b in b23:
                 bg = b.GetGeometryRef()
-                share = valid.Intersection(bg).GetArea() / bg.GetArea() if bg.GetArea() else 0
+                inter = valid.Intersection(bg).GetArea()
+                share = inter / bg.GetArea() if bg.GetArea() else 0
                 kroon += share * b.GetField("kroon")
                 land += share * b.GetField("land")
+                overlap += inter
+                overlap_data += inter * b.GetField("data")
             nf = ogr.Feature(out.GetLayerDefn())
             nf.SetField("naam", f.GetField("naam"))
             nf.SetField("gemeente", f.GetField("gemeente"))
-            if land > 0:
+            # a value only when most of the area is covered by buurten with crown
+            # data (otherwise edge slivers of a neighbour would stand for the whole)
+            if land > 0 and overlap_data >= 0.5 * overlap:
                 nf.SetField("groen", num(100 * kroon / land))
                 nf.SetField("kroon_m2", round(kroon))
             nf.SetField("woningen", total)
@@ -209,7 +226,7 @@ def main():
                          datasetCreationOptions=[f"MINZOOM={min(z for z, _ in ZOOMS.values())}",
                                                  f"MAXZOOM={max(z for _, z in ZOOMS.values())}",
                                                  f"CONF={json.dumps(conf)}",
-                                                 "NAME=3-30-300 Zuid-Holland: 30 en 300"],
+                                                 f"NAME=3-30-300 {config.PROVINCE}: 30 en 300"],
                          callback=gdal.TermProgress_nocb)
     tmp.replace(OUT)
     staging.unlink()

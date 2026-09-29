@@ -1,5 +1,5 @@
 """
-build_tiles.py — Build the web map's vector tiles (web/data/zuid-holland.pmtiles)
+build_tiles.py — Build the web map's vector tiles (web/data/3.pmtiles)
 from the pipeline results.
 
 Layers (the map shows one area level at a time, by zoom):
@@ -10,8 +10,8 @@ Layers (the map shows one area level at a time, by zoom):
               building with its class and number of visible trees
 
 Inputs:
-  data/processed/ZuidHolland_woningen.gpkg        (05_merge_province.py)
-  data/processed/ZuidHolland_gebieden.gpkg        (06_area_summaries.py)
+  data/processed/<Province>_woningen.gpkg        (05_merge_province.py)
+  data/processed/<Province>_gebieden.gpkg        (06_area_summaries.py)
 
 Usage:
     python web/build_tiles.py
@@ -28,13 +28,13 @@ from osgeo import gdal, ogr  # noqa: E402
 gdal.UseExceptions()
 ogr.UseExceptions()
 
-OUT = Path(__file__).resolve().parent / "data" / "zuid-holland.pmtiles"
+OUT = Path(__file__).resolve().parent / "data" / "3.pmtiles"
 ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12), "woningen": (13, 16)}
 
 
 def areas(dst):
     """Copy the gemeenten, wijken and buurten with the fields the map shows."""
-    src_ds = ogr.Open(str(config.PROCESSED_DIR / "ZuidHolland_gebieden.gpkg"))
+    src_ds = ogr.Open(str(config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_gebieden.gpkg"))
     for level in ("gemeenten", "wijken", "buurten"):
         src = src_ds.GetLayerByName(level)
         out = dst.CreateLayer(level, src.GetSpatialRef(), ogr.wkbMultiPolygon)
@@ -58,7 +58,7 @@ def areas(dst):
 
 def buildings(dst):
     """Copy the scored buildings into dst, keeping only the fields the map shows."""
-    src_ds = ogr.Open(str(config.PROCESSED_DIR / "ZuidHolland_woningen.gpkg"))
+    src_ds = ogr.Open(str(config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_woningen.gpkg"))
     src = src_ds.GetLayer(0)
     out = dst.CreateLayer("woningen", src.GetSpatialRef(), ogr.wkbMultiPolygon)
     for name, ftype in (("klasse", ogr.OFTString), ("bomen", ogr.OFTInteger),
@@ -95,7 +95,7 @@ def main():
                          datasetCreationOptions=[f"MINZOOM={min(z for z, _ in ZOOMS.values())}",
                                                  f"MAXZOOM={max(z for _, z in ZOOMS.values())}",
                                                  f"CONF={json.dumps(conf)}",
-                                                 "NAME=3-regel Zuid-Holland"],
+                                                 f"NAME=3-regel {config.PROVINCE}"],
                          callback=gdal.TermProgress_nocb)
     tmp.replace(OUT)
     staging.unlink()

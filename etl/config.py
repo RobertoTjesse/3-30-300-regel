@@ -46,10 +46,22 @@ MUNICIPALITIES = ["Papendrecht"]
 # source DEM confirmed corrupted/empty. Override in config_local.py.
 CORRUPTED_DEM_MUNICIPALITIES = []
 
+# The province, exactly as named in PDOK's bestuurlijke gebieden (provincies.gpkg,
+# field "naam"). Stage 5 keeps the buildings inside it; the output files are
+# named after it (PROVINCE_SLUG, e.g. ZuidHolland_woningen.gpkg). To run another
+# province, set this in config_local.py — see README "Another province".
+PROVINCE = "Zuid-Holland"
+
+# Where the FME results of the 30 and the 300 live (30_regel_v2.gdb, 300.gdb),
+# read by web/build_tiles_30_300.py. Placeholder; set it in config_local.py.
+FME_OUTPUT_DIR = Path(r"\\your-server\path\to\3-30-300\fme output")
+
 try:
     from config_local import *  # noqa: F401,F403 — machine-specific overrides
 except ImportError:
     pass
+
+PROVINCE_SLUG = "".join(ch for ch in PROVINCE.title() if ch.isalnum())   # "ZuidHolland"
 
 # Scripted per-municipality runs (see etl/run_all_municipalities.sh) set
 # this to process exactly one municipality per invocation, overriding

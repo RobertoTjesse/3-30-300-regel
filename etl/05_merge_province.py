@@ -19,10 +19,10 @@ Inputs:
         bestuurlijkegebieden:Gemeentegebied -t_srs EPSG:28992 -nln gemeenten
 
 Outputs:
-  data/processed/ZuidHolland_woningen.gpkg   every residential building in
+  data/processed/<Province>_woningen.gpkg   every residential building in
       the province once, with its current municipality (by footprint
       centroid, looked up on a 5 m raster of the boundaries)
-  data/processed/ZuidHolland_samenvatting.csv   per municipality: buildings,
+  data/processed/<Province>_samenvatting.csv   per municipality: buildings,
       homes, and share of homes per class / with >= 3 trees visible
 
 Usage:
@@ -41,7 +41,6 @@ from osgeo import gdal, ogr
 gdal.UseExceptions()
 ogr.UseExceptions()
 
-PROVINCE = "Zuid-Holland"
 LOOKUP_RES = 5.0      # metres
 CLASSES = ["0", "1-2", "3-5", "6-7", "8+"]
 
@@ -50,7 +49,7 @@ def municipality_lookup():
     """Rasterise the province's current municipalities: (array, gt, names)."""
     prov_ds = ogr.Open(str(config.INTERIM_DIR / "provincies.gpkg"))
     prov_layer = prov_ds.GetLayer(0)
-    prov_layer.SetAttributeFilter(f"naam = '{PROVINCE}'")
+    prov_layer.SetAttributeFilter(f"naam = '{config.PROVINCE}'")
     prov_feat = next(iter(prov_layer))            # keep the feature alive while cloning
     prov = prov_feat.GetGeometryRef().Clone()
     xmin, xmax, ymin, ymax = prov.GetEnvelope()
@@ -84,13 +83,13 @@ def municipality_lookup():
 
 def main():
     inputs = sorted(p for p in config.PROCESSED_DIR.glob("*_woningen.gpkg")
-                    if not p.name.startswith("ZuidHolland"))
+                    if not p.name.startswith(config.PROVINCE_SLUG))
     if not inputs:
         sys.exit("ERROR: no *_woningen.gpkg found — run 04_score_buildings.py first")
     lookup, gt, names = municipality_lookup()
-    print(f"{len(names) - 1} municipalities in {PROVINCE}; merging {len(inputs)} files", flush=True)
+    print(f"{len(names) - 1} municipalities in {config.PROVINCE}; merging {len(inputs)} files", flush=True)
 
-    out_path = config.PROCESSED_DIR / "ZuidHolland_woningen.gpkg"
+    out_path = config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_woningen.gpkg"
     tmp_path = out_path.with_suffix(".partial.gpkg")
     tmp_path.unlink(missing_ok=True)
     out_ds = ogr.GetDriverByName("GPKG").CreateDataSource(str(tmp_path))
@@ -133,7 +132,7 @@ def main():
     out_ds = None
     tmp_path.replace(out_path)
 
-    csv_path = config.PROCESSED_DIR / "ZuidHolland_samenvatting.csv"
+    csv_path = config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_samenvatting.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["gemeente", "gebouwen", "woningen", *[f"pct_woningen_{c}" for c in CLASSES],
@@ -142,7 +141,7 @@ def main():
         for s in stats.values():
             for k, v in s.items():
                 total[k] += v
-        for gem, s in [*sorted(stats.items()), (PROVINCE, total)]:
+        for gem, s in [*sorted(stats.items()), (config.PROVINCE, total)]:
             pct = lambda n: round(100 * n / s["woningen"], 1) if s["woningen"] else 0.0
             w.writerow([gem, s["gebouwen"], s["woningen"], *[pct(s[f"w_{c}"]) for c in CLASSES],
                         pct(s["w_geen_ring"]), pct(sum(s[f"w_{c}"] for c in CLASSES[2:]))])
