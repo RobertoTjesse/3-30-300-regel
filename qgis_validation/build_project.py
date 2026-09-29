@@ -16,10 +16,18 @@ First run creates the project with:
                     the pixel source of stage 1), hillshaded, switched off
                     by default — for checking the input surface model
   - Bomen           all trees (data/interim/province_trees.gpkg, only drawn
-                    when zoomed in — 13M points) + every
+                    when zoomed in — 5.2M points) + every
                     data/processed/<name>_tree_heights.gpkg
   - 3D BAG          LoD2.2 buildings: WMS (2D map) + 3D Tiles (3D map view)
   - Achtergrond     PDOK BRT grijs (WMTS) and PDOK luchtfoto (WMS)
+  - De 3 per gemeente / wijk / buurt
+                    <Province>_gebieden.gpkg (06_area_summaries.py): share of
+                    homes with >= 3 visible trees, web map colours
+  - De 30           the FME result (data/fme_output/30_regel_v2.gdb): canopy
+                    cover per CBS wijk and buurt 2023, grey = no crown data
+  - De 300          the FME result (data/fme_output/300.gdb): home buildings
+                    within / beyond 5 and 15 minutes' walk of green, the
+                    walking isochrones and the park entrances
   - Experimenten    anything in data/processed/experiments/: rasters get the
                     viewshed styling, vectors (e.g. BAG footprints) a plain
                     outline; all switched off by default
@@ -47,6 +55,7 @@ from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsCoordinateReferenceSystem,
     QgsRendererCategory,
+    QgsRuleBasedRenderer,
     QgsFillSymbol,
     QgsHillshadeRenderer,
     QgsLayerTreeGroup,
@@ -87,6 +96,25 @@ GROUP_EXPERIMENTS = "Experimenten"
 GROUP_ONE_TREE = "Eén boom / boomgroep: GDAL vs ArcGIS vs benchmark (arcgis_tests/one_tree)"
 GROUP_ONE_TREE_OLD = "Eén boom: GDAL vs ArcGIS vs exact (arcgis_tests/one_tree)"
 GROUP_STUDY = "Studiegebied: benchmark vs ArcGIS vs GDAL (arcgis_tests/studiegebied.py)"
+GROUP_AREAS_3 = "De 3 per gemeente / wijk / buurt (% woningen met >= 3 bomen)"
+GROUP_30 = "De 30: kroonbedekking per wijk / buurt 2023 (FME)"
+GROUP_300 = "De 300: groen op loopafstand (FME)"
+
+# The FME results of the 30 and the 300 (config.FME_OUTPUT_DIR's default)
+FME_OUTPUT_DIR = REPO / "data" / "fme_output"
+FME_30 = FME_OUTPUT_DIR / "30_regel_v2.gdb"
+FME_300 = FME_OUTPUT_DIR / "300.gdb"
+# BAG panden that no longer / never existed, left out as in web/build_tiles_30_300.py
+PAND_GONE = ("Pand gesloopt", "Niet gerealiseerd pand", "Pand buiten gebruik")
+
+# Area colours as on the web map (web/index.html STEPS_3 / STEPS_30):
+# (lower bound, colour, label)
+STEPS_3 = [(0, "#d7301f", "< 80%"), (80, "#fdae6b", "80-90%"), (90, "#c7e9c0", "90-95%"),
+           (95, "#74c476", "95-98%"), (98, "#238b45", ">= 98%")]
+STEPS_30 = [(0, "#d7301f", "< 10%"), (10, "#fdae6b", "10-20%"), (20, "#c7e9c0", "20-30%"),
+            (30, "#238b45", ">= 30% (voldoet)")]
+MIN_HOMES = 10          # fewer homes: no percentage (grey), as on the web map
+NO_DATA = "#d9d9d9"
 
 # (upper bound inclusive, colour, label) — discrete classes on integer counts
 VIEWSHED_CLASSES = [
@@ -322,6 +350,106 @@ def _add_study_areas(project, root, have):
     return added
 
 
+def _style_rules(layer, rules, outline="#404040"):
+    """rules: [(expression, colour, label)] — the first matching rule wins."""
+    root_rule = QgsRuleBasedRenderer.Rule(None)
+    for expr, colour, label in rules:
+        symbol = QgsFillSymbol.createSimple({"color": colour, "outline_color": outline,
+                                             "outline_width": "0.1"})
+        root_rule.appendChild(QgsRuleBasedRenderer.Rule(symbol, filterExp=expr, label=label))
+    layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+
+
+def _step_rules(field, steps, no_data_expr, no_data_label):
+    """Rules for steps [(lower bound, colour, label)] on a percentage field."""
+    rules = [(no_data_expr, NO_DATA, no_data_label)]
+    for i, (lo, colour, label) in enumerate(steps):
+        hi = steps[i + 1][0] if i + 1 < len(steps) else None
+        expr = f'"{field}" >= {lo}' + (f' AND "{field}" < {hi}' if hi is not None else "")
+        rules.append((f"NOT ({no_data_expr}) AND {expr}", colour, label))
+    return rules
+
+
+def _add_areas_3(project, root, have):
+    """The 3 summarised per gemeente, wijk and buurt (06_area_summaries.py):
+    share of homes with >= 3 visible trees, in the web map's colours."""
+    added = 0
+    for gpkg in sorted(PROCESSED_DIR.glob("*_gebieden.gpkg")):
+        if gpkg.resolve() in have:
+            continue
+        group = _group(root, GROUP_AREAS_3, 0)
+        rules = _step_rules("pct_woningen_3_of_meer", STEPS_3,
+                            f'"woningen" < {MIN_HOMES} OR "pct_woningen_3_of_meer" IS NULL',
+                            f"< {MIN_HOMES} woningen")
+        for level in ("gemeenten", "wijken", "buurten"):
+            layer = QgsVectorLayer(f"{gpkg}|layername={level}", level, "ogr")
+            if _add(project, group, layer, visible=False):
+                _style_rules(layer, rules)
+                added += 1
+    return added
+
+
+def _add_30(project, root, have):
+    """The 30 as FME computed it (indicator_30_kroonbedekking): canopy cover
+    per CBS wijk and buurt 2023 (Percentage_groen = crown m2 / land area).
+    Grey = no crown data (the FME bug: codes new in 2023 not found)."""
+    if not FME_30.exists() or FME_30.resolve() in have:
+        return 0
+    group = _group(root, GROUP_30, 0)
+    rules = _step_rules("Percentage_groen", STEPS_30,
+                        "\"totaal_kroonoppervlak_m2\" IS NULL OR \"totaal_kroonoppervlak_m2\" = ''",
+                        "geen kroondata")
+    added = 0
+    for name, label in (("FeatureClass1", "wijken 2023"), ("FeatureClass_buurt", "buurten 2023")):
+        layer = QgsVectorLayer(f"{FME_30}|layername={name}", label, "ogr")
+        if _add(project, group, layer, visible=False):
+            _style_rules(layer, rules)
+            added += 1
+    return added
+
+
+def _add_300(project, root, have):
+    """The 300 as FME computed it (indicator_300_park): BAG panden with a
+    woonfunctie inside / outside the 5- and 15-minute walking isochrones from
+    the entrances of parks and woods, the isochrones and the entrances."""
+    if not FME_300.exists() or FME_300.resolve() in have:
+        return 0
+    group = _group(root, GROUP_300, 0)
+    added = 0
+
+    entrances = QgsVectorLayer(f"{FME_300}|layername=ingang_parken", "ingangen parken en bossen", "ogr")
+    if _add(project, group, entrances, visible=False):
+        entrances.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(
+            {"name": "circle", "color": "#006d2c", "outline_color": "#ffffff", "size": "2"})))
+        entrances.setScaleBasedVisibility(True)
+        entrances.setMinimumScale(50000)
+        entrances.setMaximumScale(0)
+        added += 1
+
+    for name, label, colour, style in (("isochrones_dissolved", "5 min lopen", "#238b45", "solid"),
+                                       ("isochrones_dissolved_15", "15 min lopen", "#238b45", "dash")):
+        layer = QgsVectorLayer(f"{FME_300}|layername={name}", f"looptijdzone {label}", "ogr")
+        if _add(project, group, layer, visible=False):
+            layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
+                {"color": "0,0,0,0", "outline_color": colour, "outline_width": "0.5",
+                 "outline_style": style})))
+            added += 1
+
+    gone = ", ".join(f"'{s}'" for s in PAND_GONE)
+    homes_filter = f'"gebr_woonfunctie" > 0 AND ("status" IS NULL OR "status" NOT IN ({gone}))'
+    for name, label in (("_300regel", "5 min"), ("_300regel_15", "15 min")):
+        layer = QgsVectorLayer(f"{FME_300}|layername={name}", f"woonpanden binnen {label} lopen", "ogr")
+        if _add(project, group, layer, visible=False):
+            layer.setSubsetString(homes_filter)
+            _style_rules(layer, [('"_related_suppliers" >= 1', "#238b45", f"binnen {label} lopen"),
+                                 ("ELSE", "#d7301f", f"verder dan {label} lopen")])
+            layer.setScaleBasedVisibility(True)
+            layer.setMinimumScale(25000)    # 1.9 M panden: only draw when zoomed in
+            layer.setMaximumScale(0)
+            added += 1
+    return added
+
+
 def _add(project, group, layer, visible=True):
     if not layer.isValid():
         print(f"  WARNING: could not load '{layer.name()}' — skipped")
@@ -447,6 +575,9 @@ def main():
             else:
                 print(f"  NOTE: {BENCHMARK} not readable (R: drive?) — benchmark layer skipped")
 
+        added += _add_areas_3(project, root, have)
+        added += _add_30(project, root, have)
+        added += _add_300(project, root, have)
         added += _add_one_tree(project, root, have)
         added += _add_study_areas(project, root, have)
 
