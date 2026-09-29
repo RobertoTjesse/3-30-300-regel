@@ -162,6 +162,7 @@ Everything province-specific is a setting or an input file; no code changes.
 
 | Document | What |
 |---|---|
+| [Wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki) | overview for new readers: getting started, the three indicators, data, validation, known issues |
 | [`WORKLOG.md`](WORKLOG.md) | chronological log of the work and findings |
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup, pipeline, validation, known data issues |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | the 3: design decisions in depth |
