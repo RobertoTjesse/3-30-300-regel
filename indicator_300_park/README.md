@@ -11,9 +11,18 @@ from `R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\fme output`).
 | `fme/300_2025 regel.fmw` | latest version of the rule |
 | `fme/300 regel.fmw`, `fme/300_2024.fmw`, `fme/300_2025.fmw` | earlier versions |
 
-Inputs (copied to `data/fme_input/`): `groenvoorzieningen/` (green from OSM
-and TOP10NL), `localeversie_osm/` (OSM extracts), `gemeentes/`. The building
-input `panden` (8.8 GB) stays on R:.
+Inputs of `300_2025 regel.fmw` (the readers that are switched on):
+
+| Input | Dataset | Date |
+|---|---|---|
+| Parks and woods | `data/fme_input/groenvoorzieningen/groenkaart.gdb`, layer `groen_uit_osm_top10_2024` (OSM + TOP10NL) | 2024 |
+| Paths, for the entrances | `data/fme_input/localeversie_osm/gis_osm_roads_free_1.shp` (Geofabrik extract Zuid-Holland) | OSM as of 2025-08-26 |
+| Home buildings | SDE table `TOPOGRAFIE.BAG_PAND_PZH` (connection "Topografie"), read during the run | run of 2025-12-09 |
+| Walking isochrones | a local Valhalla, called over HTTP | network date not recorded |
+
+A PostGIS OSM reader (connection `osm_reader_20250509`, one test
+municipality) is switched off. The copied `gemeentes/` and the building
+input `panden` (8.8 GB, on R:) are not read by this version.
 
 Result used downstream:
 
