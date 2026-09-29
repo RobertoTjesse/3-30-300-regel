@@ -52,3 +52,5 @@ web/data/
 
 # One-tree comparison inputs/outputs (arcgis_tests/one_tree.py prepare regenerates them)
 arcgis_tests/one_tree/
+# Study area runs (arcgis_tests/studiegebied.py prepare regenerates them)
+data/studiegebied/
