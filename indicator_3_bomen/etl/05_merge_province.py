@@ -26,7 +26,7 @@ Outputs:
       homes, and share of homes per class / with >= 3 trees visible
 
 Usage:
-    python etl/05_merge_province.py
+    python indicator_3_bomen/etl/05_merge_province.py
 """
 
 import csv
@@ -46,7 +46,12 @@ CLASSES = ["0", "1-2", "3-5", "6-7", "8+"]
 
 
 def municipality_lookup():
-    """Rasterise the province's current municipalities: (array, gt, names)."""
+    """Rasterise the province's current municipalities: (array, gt, names).
+
+    Every 5 m cell holds the index of its municipality in names (0 = none),
+    so finding a building's municipality is one array lookup instead of a
+    polygon test per building."""
+    # The province outline, from PDOK's provincies layer
     prov_ds = ogr.Open(str(config.INTERIM_DIR / "provincies.gpkg"))
     prov_layer = prov_ds.GetLayer(0)
     prov_layer.SetAttributeFilter(f"naam = '{config.PROVINCE}'")
@@ -54,6 +59,8 @@ def municipality_lookup():
     prov = prov_feat.GetGeometryRef().Clone()
     xmin, xmax, ymin, ymax = prov.GetEnvelope()
 
+    # Copy the province's municipalities to a temporary layer, each with a
+    # number (idx) that points into names
     gem_ds = ogr.Open(str(config.INTERIM_DIR / "gemeenten.gpkg"))
     gem_layer = gem_ds.GetLayer(0)
     mem = ogr.GetDriverByName("Memory").CreateDataSource("")
@@ -72,6 +79,7 @@ def municipality_lookup():
         nf.SetGeometry(g.Clone())
         sel.CreateFeature(nf)
 
+    # Burn each municipality's idx into a grid over the province
     nx = int(np.ceil((xmax - xmin) / LOOKUP_RES))
     ny = int(np.ceil((ymax - ymin) / LOOKUP_RES))
     gt = (xmin, LOOKUP_RES, 0.0, ymax, 0.0, -LOOKUP_RES)
@@ -82,6 +90,9 @@ def municipality_lookup():
 
 
 def main():
+    """Merge all <name>_woningen.gpkg into one province layer (each building
+    once, with its current municipality) and write the summary CSV."""
+    # Every municipality's scored buildings, except an earlier province output
     inputs = sorted(p for p in config.PROCESSED_DIR.glob("*_woningen.gpkg")
                     if not p.name.startswith(config.PROVINCE_SLUG))
     if not inputs:
@@ -94,13 +105,15 @@ def main():
     tmp_path.unlink(missing_ok=True)
     out_ds = ogr.GetDriverByName("GPKG").CreateDataSource(str(tmp_path))
     out_layer = None
-    seen = set()
+    seen = set()          # building ids already written (outputs overlap)
+    # Per municipality: buildings, homes, and homes per class ("w_3-5" etc.)
     stats = defaultdict(lambda: {"gebouwen": 0, "woningen": 0, **{f"w_{c}": 0 for c in CLASSES},
                                  "w_geen_ring": 0})
     for path in inputs:
         src = ogr.Open(str(path))
         sl = src.GetLayer(0)
         if out_layer is None:
+            # First file: create the output with the same fields + "gemeente"
             out_layer = out_ds.CreateLayer("woningen", sl.GetSpatialRef(), ogr.wkbMultiPolygon)
             for i in range(sl.GetLayerDefn().GetFieldCount()):
                 out_layer.CreateField(sl.GetLayerDefn().GetFieldDefn(i))
@@ -110,6 +123,7 @@ def main():
             pid = f.GetField("pand_id")
             if pid in seen:
                 continue
+            # Look up the municipality at the building's centre
             c = f.GetGeometryRef().Centroid()
             col = int((c.GetX() - gt[0]) / gt[1])
             row = int((c.GetY() - gt[3]) / gt[5])
@@ -121,6 +135,8 @@ def main():
             nf.SetFrom(f)
             nf.SetField("gemeente", gem)
             out_layer.CreateFeature(nf)
+            # Add its homes to the municipality's totals (weighted by homes,
+            # not buildings); no class = no facade ring
             s = stats[gem]
             homes = f.GetField("n_woningen") or 0
             s["gebouwen"] += 1
@@ -132,6 +148,8 @@ def main():
     out_ds = None
     tmp_path.replace(out_path)
 
+    # Summary: one row per municipality plus a province total, as percentages
+    # of homes per class; "3_of_meer" = classes 3-5, 6-7 and 8+
     csv_path = config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_samenvatting.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)

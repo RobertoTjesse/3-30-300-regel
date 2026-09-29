@@ -35,7 +35,7 @@ Outputs (data/processed/):
    this script checks its own gemeente figures against it)
 
 Usage:
-    python etl/06_area_summaries.py
+    python indicator_3_bomen/etl/06_area_summaries.py
 """
 
 import csv
@@ -57,6 +57,7 @@ SUMMARY_FIELDS = (["gebouwen", "woningen"] + [f"pct_woningen_{c}" for c in CLASS
 
 
 def new_stats():
+    """Empty counters for one area: buildings, homes, and homes per class."""
     return {"gebouwen": 0, "woningen": 0, "geen_ring": 0, **{c: 0 for c in CLASSES}}
 
 
@@ -86,6 +87,7 @@ def load_areas(name, code_field, municipalities):
     layer = ds.GetLayer(0)
     areas = {}
     for f in layer:
+        # "Rijswijk (ZH.)" -> "Rijswijk"; skip water parts and other provinces
         gemeente = f.GetField("gemeentenaam").split(" (")[0]
         if f.GetField("water") == "JA" or gemeente not in municipalities:
             continue
@@ -96,7 +98,11 @@ def load_areas(name, code_field, municipalities):
 
 
 def buurt_lookup(buurten, srs, extent):
-    """Rasterise the buurten: (array of index into codes, gt, codes)."""
+    """Rasterise the buurten: (array of index into codes, gt, codes).
+
+    Same trick as 05_merge_province.municipality_lookup(): each 5 m cell
+    holds the number of its buurt (0 = none), so assigning a building is a
+    single array lookup."""
     xmin, xmax, ymin, ymax = extent
     mem = ogr.GetDriverByName("MEM").CreateDataSource("")
     layer = mem.CreateLayer("b", srs, ogr.wkbMultiPolygon)
@@ -118,6 +124,7 @@ def buurt_lookup(buurten, srs, extent):
 
 
 def write_csv(path, areas, stats, name_field):
+    """One row per area (sorted by gemeente, then name) with its summary."""
     with open(path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["code", "naam", "gemeente", *SUMMARY_FIELDS])
@@ -128,7 +135,8 @@ def write_csv(path, areas, stats, name_field):
 
 
 def write_layer(ds, name, srs, rows):
-    """rows: (geometry, code, naam, gemeente, counts)"""
+    """Write one polygon layer of areas with their summary columns.
+    rows: (geometry, code, naam, gemeente, counts)"""
     layer = ds.CreateLayer(name, srs, ogr.wkbMultiPolygon)
     for fname, ftype in [("code", ogr.OFTString), ("naam", ogr.OFTString),
                          ("gemeente", ogr.OFTString), ("gebouwen", ogr.OFTInteger),
@@ -151,6 +159,8 @@ def write_layer(ds, name, srs, rows):
 
 
 def main():
+    """Assign every building to its buurt / wijk, count per area, check the
+    gemeente totals against stage 5, and write the CSVs and the GeoPackage."""
     homes_path = config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_woningen.gpkg"
     for p in (homes_path, config.INTERIM_DIR / "wijken.gpkg", config.INTERIM_DIR / "buurten.gpkg"):
         if not p.exists():
@@ -165,15 +175,19 @@ def main():
     homes = homes_ds.GetLayer(0)
     lookup, gt, codes = buurt_lookup(buurten, srs, homes.GetExtent())
 
+    # Counters per gemeente, wijk and buurt (created on first use)
     by_gem, by_wijk, by_buurt = (defaultdict(new_stats) for _ in range(3))
     unassigned = 0
     for f in homes:
         n = f.GetField("n_woningen") or 0
         k = f.GetField("klasse") or "geen_ring"
+        # Which buurt holds the building's centre? (0 = none)
         c = f.GetGeometryRef().Centroid()
         col = int((c.GetX() - gt[0]) / gt[1])
         row = int((c.GetY() - gt[3]) / gt[5])
         idx = lookup[row, col] if 0 <= row < lookup.shape[0] and 0 <= col < lookup.shape[1] else 0
+        # The building always counts for its gemeente (from stage 5), and for
+        # its buurt and that buurt's wijk when it has one
         targets = [by_gem[f.GetField("gemeente")]]
         if idx:
             b = codes[idx]
@@ -203,6 +217,7 @@ def main():
     gem_ds = ogr.Open(str(config.INTERIM_DIR / "gemeenten.gpkg"))
     gem_rows = [(f.GetGeometryRef().Clone(), None, f.GetField("naam"), f.GetField("naam"), by_gem[f.GetField("naam")])
                 for f in gem_ds.GetLayer(0) if f.GetField("naam") in municipalities]
+    # Written to a .partial file and renamed at the end (no half-written output)
     out_path = config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_gebieden.gpkg"
     tmp = out_path.with_suffix(".partial.gpkg")
     tmp.unlink(missing_ok=True)

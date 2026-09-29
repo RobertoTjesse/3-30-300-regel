@@ -104,19 +104,25 @@ def require_municipality_pairs() -> list:
     return pairs
 
 
+# Where each stage reads and writes, per municipality — defined once here so
+# every script uses the same paths.
 def dem_tiles_dir(name: str) -> Path:
+    """Stage 1 output: the municipality's DEM tiles."""
     return DEM_TILES_DIR / name
 
 
 def tile_index_path(name: str) -> Path:
+    """Stage 1 output: the tile extents, read by stage 2."""
     return dem_tiles_dir(name) / "tile_index.json"
 
 
 def viewshed_tiles_dir(name: str) -> Path:
+    """Stage 2 output: one tree-count tile per DEM tile."""
     return VIEWSHED_TILES_DIR / name
 
 
 def final_output_path(name: str) -> Path:
+    """Stage 3 output: the municipality's merged tree-count raster."""
     return PROCESSED_DIR / f"{name}_viewshed.tif"
 
 
@@ -212,6 +218,8 @@ _BENCHMARK_FIELDS = ["timestamp", "municipality", "stage", "seconds", "tiles", "
 
 
 def log_benchmark(municipality: str, stage: str, seconds: float, **extra) -> None:
+    """Append one row (municipality, stage, run time, optional tiles / trees /
+    errors) to logs/benchmark.csv, writing the header if the file is new."""
     BENCHMARK_LOG.parent.mkdir(parents=True, exist_ok=True)
     is_new = not BENCHMARK_LOG.exists()
     with open(BENCHMARK_LOG, "a", newline="") as fh:

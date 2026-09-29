@@ -34,7 +34,7 @@ Output:
   data\processed\experiments\<same name>.tif  — picked up by the QGIS
       validation project (qgis_validation\build_project.py)
 Compare with the old benchmark and the pipeline afterwards (OSGeo4W Python):
-  python arcgis_tests\compare_benchmark.py
+  python indicator_3_bomen/arcgis_tests/compare_benchmark.py
 
 HOW TO RUN — ArcGIS Pro Python Command Prompt (Start menu → ArcGIS →
 Python Command Prompt), with ArcGIS Pro itself CLOSED:
@@ -71,20 +71,25 @@ NODATA = 2147483647           # of every tile and of the mosaic
 # The "stukje" test area in Delft (as arcgis_tests/visibility_variants.py)
 TEST_AREA = (82982.0, 445985.5, 83510.5, 446451.0)
 
+# Visibility settings: as the original benchmark, except the observer offset
 OBSERVER_OFFSET = "1"          # metres; the fix
-SURFACE_OFFSET = "1.8"
+SURFACE_OFFSET = "1.8"         # target (eye) height above the surface
 OUTER_RADIUS = "30"
 
+# Plain copies of the inputs in the work folder (the old GRID engine fails
+# on some paths, see the module docstring)
 WORK_DEM = os.path.join(WORK, "dem.tif")
 WORK_TREES = os.path.join(WORK, "trees.shp")
 
 
 def copy_files(stem, src, dst):
+    """Copy a raster and its side files (stem.tif, .tfw, .aux.xml, ...)."""
     for f in glob.glob(os.path.join(src, stem + ".*")):
         shutil.copy2(f, dst)
 
 
 def box(x0, y0, x1, y1):
+    """An extent as the "xmin ymin xmax ymax" string arcpy's Clip expects."""
     return f"{x0} {y0} {x1} {y1}"
 
 
@@ -96,6 +101,7 @@ def run_tile(x0, y0, x1, y1, out_tif, folder):
     arcpy.env.overwriteOutput = True
     os.makedirs(folder, exist_ok=True)
     arcpy.env.workspace = arcpy.env.scratchWorkspace = folder
+    # Cut the DEM and the trees to the tile plus MARGIN (the "outer" box)
     ox0, oy0, ox1, oy1 = x0 - MARGIN, y0 - MARGIN, x1 + MARGIN, y1 + MARGIN
     dem = os.path.join(folder, "dem.tif")
     trees = os.path.join(folder, "trees.shp")
@@ -116,6 +122,8 @@ def run_tile(x0, y0, x1, y1, out_tif, folder):
                             observer_offset=OBSERVER_OFFSET, outer_radius=OUTER_RADIUS)
     else:
         result = Int(Raster(dem) * 0)          # no trees: 0 where the DEM has data
+    # Keep only the inner box: the margin was context, the neighbouring tile
+    # computes those cells itself
     full = os.path.join(folder, "vis.tif")
     result.save(full)
     arcpy.env.extent = arcpy.Extent(x0, y0, x1, y1)
@@ -130,6 +138,8 @@ def run_tile(x0, y0, x1, y1, out_tif, folder):
 
 
 def prepare_inputs(test):
+    """Copy the DEM and the trees that have a RASTERVALU to the work folder
+    (once; later runs reuse them)."""
     arcpy.env.overwriteOutput = True
     os.makedirs(TILES_DIR, exist_ok=True)
     if not os.path.exists(WORK_DEM):
@@ -158,6 +168,8 @@ def tiles():
 
 
 def main_all():
+    """All of Delft: run the missing tiles, WORKERS at a time, each in its own
+    process (this script with "tile ..."); when all succeeded, mosaic them."""
     t_start = time.time()
     prepare_inputs(False)
     todo = [t for t in tiles() if not os.path.exists(os.path.join(TILES_DIR, t[0] + ".tif"))]
@@ -166,6 +178,8 @@ def main_all():
           f"with {WORKERS} at a time", flush=True)
     running, failed, done, t0 = [], [], 0, time.time()
     queue = list(todo)
+    # A simple process pool: keep WORKERS tiles running, check every 2 s which
+    # finished, and start the next ones
     while queue or running:
         while queue and len(running) < WORKERS:
             name, x0, y0, x1, y1 = queue.pop(0)
@@ -180,6 +194,7 @@ def main_all():
                 continue
             running.remove(item)
             log.close()
+            # Success = exit code 0 and a result file; then its scratch folder goes
             if p.returncode == 0 and os.path.exists(os.path.join(TILES_DIR, name + ".tif")):
                 done += 1
                 shutil.rmtree(os.path.join(TILES_DIR, name), ignore_errors=True)
@@ -206,10 +221,11 @@ def main_all():
     os.makedirs(EXPERIMENTS_DIR, exist_ok=True)
     copy_files(OUT_NAME, WORK, EXPERIMENTS_DIR)
     print(f"Saved {out} and copied it to {EXPERIMENTS_DIR} — {(time.time() - t_start) / 60:.0f} min in total")
-    print("Next, in OSGeo4W Python:  python arcgis_tests\\compare_benchmark.py")
+    print("Next, in OSGeo4W Python:  python indicator_3_bomen/arcgis_tests/compare_benchmark.py")
 
 
 def main_test():
+    """Only the small test area, as one tile in this process."""
     prepare_inputs(True)
     t0 = time.time()
     name = f"{OUT_NAME}_test"
@@ -219,7 +235,7 @@ def main_test():
     os.makedirs(EXPERIMENTS_DIR, exist_ok=True)
     copy_files(name, WORK, EXPERIMENTS_DIR)
     print(f"Copied to {EXPERIMENTS_DIR}. Next, in OSGeo4W Python:  "
-          f"python arcgis_tests\\compare_benchmark.py test")
+          f"python indicator_3_bomen/arcgis_tests/compare_benchmark.py test")
 
 
 if __name__ == "__main__":

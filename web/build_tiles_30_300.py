@@ -53,12 +53,14 @@ ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12),
          "iso15": (9, 16), "iso5": (9, 16), "ingangen": (13, 16), "woningen": (13, 16)}
 GONE = {"Pand gesloopt", "Niet gerealiseerd pand", "Pand buiten gebruik"}
 
+# RD New (the Dutch grid, metres), with x = easting first
 RD = osr.SpatialReference()
 RD.ImportFromEPSG(28992)
 RD.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
 
 def num(v, digits=1):
+    """Round to one decimal for the tiles; None (no value) stays None."""
     return None if v is None else round(float(v), digits)
 
 
@@ -66,6 +68,7 @@ def woningen(dst):
     """Homes with their class ('5', '15' or 'ver'); also returns the point layer
     of their centroids for the area shares."""
     gdb = ogr.Open(str(SRC / "300.gdb"))
+    # Ids of the panden within 15 minutes (a separate FME layer)
     in15 = {f.GetField("identificatie") for f in gdb.GetLayerByName("_300regel_15")
             if (f.GetField("_related_suppliers") or 0) >= 1}
     src = gdb.GetLayerByName("_300regel")
@@ -77,17 +80,20 @@ def woningen(dst):
     out.CreateField(ogr.FieldDefn("bouwjaar", ogr.OFTInteger))
     dst.StartTransaction()                  # GPKG: one transaction for both layers
     for f in src:
+        # Only existing panden with at least one home (n = number of homes)
         n = f.GetField("gebr_woonfunctie") or 0
         if n <= 0 or f.GetField("status") in GONE:
             continue
         g = f.GetGeometryRef().Clone()
         g.FlattenTo2D()
+        # Walking class: within 5 minutes, else within 15, else further
         if (f.GetField("_related_suppliers") or 0) >= 1:
             klasse = "5"
         elif f.GetField("identificatie") in in15:
             klasse = "15"
         else:
             klasse = "ver"
+        # The pand for the map, and a point inside it for counting per area
         nf = ogr.Feature(out.GetLayerDefn())
         nf.SetField("klasse", klasse)
         nf.SetField("woningen", n)
@@ -146,11 +152,15 @@ def areas(dst, pts, b23):
         for f in src:
             g = f.GetGeometryRef()
             valid = g if g.IsValid() else g.MakeValid()
+            # The 300: homes per walking class among the pand points in the area
             counts = {"5": 0, "15": 0, "ver": 0}
             pts.SetSpatialFilter(g)
             for p in pts:
                 counts[p.GetField("klasse")] += p.GetField("woningen")
             total = sum(counts.values())
+            # The 30: every 2023 buurt that overlaps contributes the same share
+            # of its crown and land area as the share of its surface that
+            # overlaps; overlap_data tracks how much of that has crown data
             kroon = land = overlap = overlap_data = 0.0
             b23.SetSpatialFilter(g)
             for b in b23:
@@ -193,6 +203,7 @@ def copy(dst, src_layer, name, fields=()):
         out.CreateField(ogr.FieldDefn(fname, ogr.OFTString))
     out.StartTransaction()
     for f in src:
+        # Drop Z and reproject (the entrances are stored in lat/lon)
         g = f.GetGeometryRef().Clone()
         g.FlattenTo2D()
         g.Transform(ct)
@@ -206,6 +217,8 @@ def copy(dst, src_layer, name, fields=()):
 
 
 def main():
+    """Collect all layers in a temporary GeoPackage, then turn it into one
+    PMTiles file (each layer at its own zoom range, see ZOOMS)."""
     OUT.parent.mkdir(parents=True, exist_ok=True)
     staging = OUT.with_suffix(".staging.gpkg")
     staging.unlink(missing_ok=True)
@@ -217,6 +230,8 @@ def main():
     copy(dst, "ingang_parken", "ingangen", ("type", "name"))
     dst = None
 
+    # Vector tiles in web Mercator; only the layers in ZOOMS (not the helper
+    # layers "punten" and "buurten_2023"); written to .partial, then renamed
     conf = {layer: {"minzoom": z0, "maxzoom": z1} for layer, (z0, z1) in ZOOMS.items()}
     tmp = OUT.with_suffix(".partial.pmtiles")
     tmp.unlink(missing_ok=True)

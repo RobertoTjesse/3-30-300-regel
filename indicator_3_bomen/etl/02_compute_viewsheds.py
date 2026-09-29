@@ -28,7 +28,7 @@ Tiles with zero trees in their buffered extent are skipped.
 Tiles are processed in parallel (NUM_WORKERS processes).
 
 Usage:
-    python etl/02_compute_viewsheds.py [--workers N] [--resume]
+    python indicator_3_bomen/etl/02_compute_viewsheds.py [--workers N] [--resume]
 
     --workers N   override NUM_WORKERS from config
     --resume      skip tiles whose output file already exists
@@ -145,6 +145,8 @@ def _prepare_tree(dem, buildings, gt, x, y, nodata=None):
     if not (0 <= pc < nx and 0 <= pr < ny):
         return None
 
+    # Cut a square window of MAX_DISTANCE (+2 pixels margin) around the tree,
+    # clipped to the tile; window_gt is that window's own geotransform.
     half = int(np.ceil(config.MAX_DISTANCE / abs(gt[1]))) + 2
     c0, r0 = max(0, pc - half), max(0, pr - half)
     c1, r1 = min(nx, pc + half + 1), min(ny, pr + half + 1)
@@ -152,6 +154,8 @@ def _prepare_tree(dem, buildings, gt, x, y, nodata=None):
     bld = buildings[r0:r1, c0:c1]
     window_gt = (gt[0] + c0 * gt[1], gt[1], 0.0, gt[3] + r0 * gt[5], 0.0, gt[5])
 
+    # Distance (m) from the tree point to every pixel centre in the window,
+    # and which pixels hold real heights (not NaN / NoData)
     rows_idx, cols_idx = np.indices(window.shape)
     dist = np.hypot((cols_idx + c0 + 0.5) * gt[1] + gt[0] - x,
                     (rows_idx + r0 + 0.5) * gt[5] + gt[3] - y)
@@ -160,6 +164,8 @@ def _prepare_tree(dem, buildings, gt, x, y, nodata=None):
         valid &= window != nodata
 
     info = {"canopy_top": None, "ground": None, "plausible": False}
+    # crown: where to look for the canopy top (close to the tree, no roofs);
+    # around: where to look for the local ground (a wider circle)
     crown = valid & ~bld & (dist <= config.TREE_HEIGHT_BUFFER_RADIUS)
     around = valid & (dist <= config.TREE_GROUND_SEARCH_RADIUS)
     if crown.any() and around.any():
@@ -228,17 +234,21 @@ def _paste_into_accumulator(accumulator, arr, arr_gt, tile_gt):
     array) at the pixel offset implied by the two geotransforms, clipping to
     accumulator bounds in case the window straddles the tile edge.
     """
+    # Where the window's top-left corner falls in the tile, in pixels
     col_off = round((arr_gt[0] - tile_gt[0]) / tile_gt[1])
     row_off = round((arr_gt[3] - tile_gt[3]) / tile_gt[5])
 
     h, w = arr.shape
     H, W = accumulator.shape
 
+    # The part of the window that lies inside the tile (r/c: tile pixels)
     r0, c0 = max(0, row_off), max(0, col_off)
     r1, c1 = min(H, row_off + h), min(W, col_off + w)
     if r0 >= r1 or c0 >= c1:
-        return
+        return   # the window lies completely outside the tile
 
+    # The same part in the window's own pixels (ar/ac), then add it: every
+    # visible cell (1) raises that cell's tree count by one
     ar0, ac0 = r0 - row_off, c0 - col_off
     ar1, ac1 = ar0 + (r1 - r0), ac0 + (c1 - c0)
     accumulator[r0:r1, c0:c1] += arr[ar0:ar1, ac0:ac1].astype(np.uint32)
@@ -282,6 +292,7 @@ def process_tile(args):
     buildings = _building_mask(gt, nx, ny, proj)
     mem = gdal.GetDriverByName("MEM")
 
+    # One counter per pixel of the buffered tile: how many trees see it
     accumulator = np.zeros((ny, nx), dtype=np.uint32)
     n_trees = 0
 
@@ -422,6 +433,8 @@ def process_municipality(name: str, dem_path: Path, workers: int, resume: bool):
     log.info(f"[{name}] Workers: {workers}  |  Resume: {resume}")
     log.info(f"[{name}] Output: {viewshed_dir}")
 
+    # One work item per tile; plain strings/dicts only, since they are sent
+    # to the worker processes
     work_items = [
         (tile_id, tile_info, str(config.PROVINCE_TREES_GPKG), str(viewshed_dir), resume)
         for tile_id, tile_info in tile_index.items()
@@ -431,6 +444,8 @@ def process_municipality(name: str, dem_path: Path, workers: int, resume: bool):
     errors    = 0
     total_trees = 0
 
+    # Run the tiles in parallel and log each one as it finishes (in whatever
+    # order they complete). A crash in one tile is counted, not fatal.
     with ProcessPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(process_tile, item): item[0] for item in work_items}
 
@@ -475,6 +490,8 @@ def process_municipality(name: str, dem_path: Path, workers: int, resume: bool):
 # ---------------------------------------------------------------------------
 
 def main():
+    """Check the prerequisites, then compute the viewshed tiles of every
+    municipality in turn and log the run time per municipality."""
     parser = argparse.ArgumentParser(description="Run viewshed analysis on tree layers.")
     parser.add_argument("--workers", type=int, default=config.NUM_WORKERS,
                         help="Number of parallel worker processes")

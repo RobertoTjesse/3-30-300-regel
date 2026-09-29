@@ -3,7 +3,7 @@ print_municipality_summary.py — Print a one-line summary for one municipality
 from logs/benchmark.csv, for use by scripted per-municipality runs.
 
 Usage:
-    python etl/print_municipality_summary.py <municipality_name>
+    python indicator_3_bomen/etl/print_municipality_summary.py <municipality_name>
 """
 
 import csv
@@ -13,7 +13,10 @@ import config
 
 
 def main():
+    """Print MUNICIPALITY_DONE (with tiles, trees, errors, time) or
+    MUNICIPALITY_INCOMPLETE for the municipality named on the command line."""
     name = sys.argv[1]
+    # This municipality's rows from the benchmark log
     rows = []
     if config.BENCHMARK_LOG.exists():
         with open(config.BENCHMARK_LOG, newline="") as fh:
@@ -28,6 +31,8 @@ def main():
         print(f"MUNICIPALITY_INCOMPLETE name={name} — merge step never completed, check logs/full_run.log")
         return
 
+    # Total time of stages 1-3; tiles/trees/errors from stage 2 (tiles from
+    # stage 1 if stage 2 didn't log them)
     total = sum(float(by_stage[s]["seconds"]) for s in ("tile_dem", "compute_viewsheds", "merge_tiles") if s in by_stage)
     comp_r = by_stage.get("compute_viewsheds")
     trees = comp_r["trees"] if comp_r and comp_r["trees"] else "0"

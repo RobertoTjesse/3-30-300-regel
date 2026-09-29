@@ -11,7 +11,7 @@ Reads config.PROVINCE_DEM_VRT and config.PROVINCE_BUILDINGS_GPKG, block by
 block, so even the largest municipality never has to fit in memory at once.
 
 Usage:
-    python etl/add_tree_heights.py <municipality_name>
+    python indicator_3_bomen/etl/add_tree_heights.py <municipality_name>
 
 Output:
     data/processed/<municipality_name>_tree_heights.gpkg
@@ -54,7 +54,9 @@ MARGIN_M = 10.0      # > TREE_GROUND_SEARCH_RADIUS: context read around a block
 
 
 def add_heights_for_municipality(name: str) -> None:
-    pairs = {n: (dem, trees) for n, dem, trees in config.municipality_pairs()}
+    """Write <name>_tree_heights.gpkg: every tree of one municipality with the
+    heights stage 2 would use for it (see the module docstring)."""
+    pairs ={n: (dem, trees) for n, dem, trees in config.municipality_pairs()}
     if name not in pairs:
         sys.exit(f"ERROR: '{name}' not found (check spelling / config.CORRUPTED_DEM_MUNICIPALITIES)")
     _dem_path, trees_path = pairs[name]
@@ -63,6 +65,7 @@ def add_heights_for_municipality(name: str) -> None:
     print(f"[{name}] Trees: {trees_path}")
     print(f"[{name}] Buildings: {config.PROVINCE_BUILDINGS_GPKG}")
 
+    # The province DEM (pgt: its geotransform) and the municipality's trees
     dem_ds = gdal.Open(str(config.PROVINCE_DEM_VRT))
     dem_band = dem_ds.GetRasterBand(1)
     pgt = dem_ds.GetGeoTransform()
@@ -83,6 +86,7 @@ def add_heights_for_municipality(name: str) -> None:
         x, y = pt.GetX(), pt.GetY()
         blocks[(int(x // BLOCK_M), int(y // BLOCK_M))].append((x, y))
 
+    # Output: a new point layer (the source trees are never modified)
     out_path = config.PROCESSED_DIR / f"{name}_tree_heights.gpkg"
     config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     if out_path.exists():
@@ -112,6 +116,8 @@ def add_heights_for_municipality(name: str) -> None:
         gt = (pgt[0] + c0 * pgt[1], pgt[1], 0.0, pgt[3] + r0 * pgt[5], 0.0, pgt[5])
         buildings = _building_mask(gt, c1 - c0, r1 - r0, proj)
 
+        # Every tree in the block: run stage 2's own height logic and store
+        # what it found; a tree outside the DEM gets a point without heights
         for x, y in points:
             prepared = _prepare_tree(dem, buildings, gt, x, y, nodata)
             out_feat = ogr.Feature(out_defn)
@@ -145,5 +151,5 @@ def add_heights_for_municipality(name: str) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Usage: python etl/add_tree_heights.py <municipality_name>")
+        sys.exit("Usage: python indicator_3_bomen/etl/add_tree_heights.py <municipality_name>")
     add_heights_for_municipality(sys.argv[1])

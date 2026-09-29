@@ -36,10 +36,10 @@ Written to data/studiegebied/<buurtcode>/ (gitignored):
                      2 = fewer, 0 = the same (inside the buurt only)
 
 Usage (OSGeo4W Python), in this order:
-    python arcgis_tests/studiegebied.py prepare [buurtcode]   # default Molenbuurt
-    (ArcGIS Pro Python Command Prompt:  python arcgis_tests\\studiegebied_arcgis.py)
-    python arcgis_tests/studiegebied.py gdal
-    python arcgis_tests/studiegebied.py compare
+    python indicator_3_bomen/arcgis_tests/studiegebied.py prepare [buurtcode]   # default Molenbuurt
+    (ArcGIS Pro Python Command Prompt:  python indicator_3_bomen/arcgis_tests/studiegebied_arcgis.py)
+    python indicator_3_bomen/arcgis_tests/studiegebied.py gdal
+    python indicator_3_bomen/arcgis_tests/studiegebied.py compare
 """
 
 import json
@@ -74,6 +74,7 @@ TARGET_HEIGHT = 1.8                          # the benchmark's surface_offset
 
 
 def folder_for(code):
+    """data/studiegebied/<buurtcode>/"""
     return ROOT / code
 
 
@@ -81,12 +82,13 @@ def current():
     """The study area prepared last (data/studiegebied/current.json)."""
     info = ROOT / "current.json"
     if not info.exists():
-        sys.exit("No study area yet — run `python arcgis_tests/studiegebied.py prepare` first")
+        sys.exit("No study area yet — run `python indicator_3_bomen/arcgis_tests/studiegebied.py prepare` first")
     return folder_for(json.loads(info.read_text())["buurtcode"])
 
 
 def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte, nodata=None):
-    ds = gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
+    """Save a numpy array as a compressed GeoTIFF on the given grid."""
+    ds =gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
                                               options=["COMPRESS=DEFLATE"])
     ds.SetGeoTransform(gt)
     ds.SetProjection(wkt)
@@ -97,7 +99,8 @@ def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte, nodata=None):
 
 
 def read(path):
-    ds = gdal.Open(str(path))
+    """A raster as (array, geotransform, projection, NoData value)."""
+    ds =gdal.Open(str(path))
     b = ds.GetRasterBand(1)
     return b.ReadAsArray(), ds.GetGeoTransform(), ds.GetProjection(), b.GetNoDataValue()
 
@@ -121,6 +124,9 @@ def fetch_buurt(code):
 
 
 def prepare(code):
+    """Write the inputs for one buurt: DEM (filled and raw), the benchmark
+    cut-out, the buurt mask, the trees (shapefile for ArcGIS, JSON for GDAL)
+    and a GeoPackage for QGIS; remember it as the current study area."""
     folder = folder_for(code)
     folder.mkdir(parents=True, exist_ok=True)
     name, buurt, rd = fetch_buurt(code)
@@ -193,6 +199,7 @@ def prepare(code):
     tds = None
     print(f"{len(trees)} trees in buurt + buffer ({skipped} without RASTERVALU left out, as in the benchmark)")
 
+    # The trees as a shapefile for ArcGIS's Visibility tool
     drv = ogr.GetDriverByName("ESRI Shapefile")
     shp = folder / "bomen.shp"
     if shp.exists():
@@ -259,6 +266,7 @@ def gdal_run():
                                     targetHeight=TARGET_HEIGHT, visibleVal=1, invisibleVal=0,
                                     outOfRangeVal=0, noDataVal=0, dfCurvCoeff=0, mode=gdal.GVM_Edge,
                                     maxDistance=RADIUS)
+        # Add the tree's result window (clipped to the study area) to the count
         v = out.GetRasterBand(1).ReadAsArray()
         ogt = out.GetGeoTransform()
         co, ro = round((ogt[0] - gt[0]) / CELL), round((gt[3] - ogt[3]) / CELL)
@@ -270,6 +278,8 @@ def gdal_run():
 
 
 def compare():
+    """Compare the ArcGIS and GDAL results with the benchmark on the buurt's
+    land cells; print the table and write the verschil_*.tif maps."""
     folder = current()
     mask = read(folder / "buurt.tif")[0] == 1
     bench, gt, wkt, bnd = read(folder / "benchmark.tif")
@@ -292,6 +302,8 @@ def compare():
         v = v.astype(np.int64)
         if vnd is not None:
             v[v == vnd] = 0
+        # Columns: mean, share >= 3, same count as the benchmark, same verdict
+        # on >= 3, within one tree of the benchmark
         x = v[area]
         print(f"{name:10s} {x.mean():6.2f} {100 * (x >= 3).mean():5.1f}% {100 * (x == b).mean():6.1f}% "
               f"{100 * ((x >= 3) == (b >= 3)).mean():7.1f}% {100 * (np.abs(x - b) <= 1).mean():5.1f}%")

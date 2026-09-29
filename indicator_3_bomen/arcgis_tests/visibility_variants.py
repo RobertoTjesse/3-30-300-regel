@@ -189,6 +189,8 @@ def stats(raster_path, dem):
 
 
 def main():
+    """Run every variant on the test area, save the rasters to the test
+    geodatabase and write their statistics to the CSV."""
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.overwriteOutput = True
     if not arcpy.Exists(OUT_GDB):

@@ -6,7 +6,7 @@ config.VIEWANALYSE_DIR. This script only touches the DEM half; trees are
 read directly by 02_compute_viewsheds.py.
 
 Usage:
-    python etl/01_tile_dem.py
+    python indicator_3_bomen/etl/01_tile_dem.py
 
 Processes every municipality in config.MUNICIPALITIES (or all pairs found in
 VIEWANALYSE_DIR if that list is empty).

@@ -2,7 +2,7 @@
 generate_benchmark_report.py — Turn logs/benchmark.csv into BENCHMARKS.md.
 
 Usage:
-    python etl/generate_benchmark_report.py
+    python indicator_3_bomen/etl/generate_benchmark_report.py
 """
 
 import csv
@@ -11,6 +11,7 @@ from collections import defaultdict
 
 import config
 
+# Column heading per stage name as logged by config.log_benchmark()
 STAGE_LABELS = {
     "tile_dem": "Tile DEM (s)",
     "compute_viewsheds": "Compute viewsheds (s)",
@@ -19,6 +20,7 @@ STAGE_LABELS = {
 
 
 def load_rows():
+    """All rows of logs/benchmark.csv as dicts."""
     if not config.BENCHMARK_LOG.exists():
         sys.exit(f"ERROR: no benchmark log at {config.BENCHMARK_LOG} — run the pipeline first.")
     with open(config.BENCHMARK_LOG, newline="") as fh:
@@ -42,6 +44,7 @@ def aggregate(rows):
 
 
 def fmt_seconds(s):
+    """Seconds as e.g. "4m11.0s", or "45.3s" under a minute."""
     if s >= 60:
         m, rem = divmod(s, 60)
         return f"{int(m)}m{rem:04.1f}s"
@@ -49,9 +52,12 @@ def fmt_seconds(s):
 
 
 def main():
+    """Build BENCHMARKS.md: the current parameters from config.py, a timing
+    table per municipality, the totals, and the province output if present."""
     rows = load_rows()
     agg, meta = aggregate(rows)
 
+    # The report is built as a list of Markdown lines and written at the end
     lines = []
     lines.append("# Benchmarks & parameters — South Holland 3-30-300 viewshed pipeline")
     lines.append("")
@@ -79,6 +85,8 @@ def main():
     lines.append("| Municipality | Tiles | Trees | Tile DEM (s) | Compute viewsheds (s) | Merge (s) | Total | Trees/sec |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
 
+    # One row per municipality: seconds per stage, total, and trees per
+    # second of the viewshed stage (the one that scales with tree count)
     total_all = 0.0
     for name in sorted(agg.keys()):
         stages = agg[name]

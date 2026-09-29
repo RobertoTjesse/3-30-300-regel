@@ -16,11 +16,16 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 
 class RangeHandler(SimpleHTTPRequestHandler):
+    """The standard file server, plus answers to "Range: bytes=start-end"."""
+
     def send_head(self):
+        """Send the headers; for a Range request, a 206 with only that part."""
+        # No Range header (or not a file): the normal full response
         m = re.match(r"bytes=(\d+)-(\d*)$", self.headers.get("Range", ""))
         path = self.translate_path(self.path)
         if not m or not os.path.isfile(path):
             return super().send_head()
+        # "bytes=100-" means from byte 100 to the end
         size = os.path.getsize(path)
         start = int(m.group(1))
         end = min(int(m.group(2)) if m.group(2) else size - 1, size - 1)
@@ -35,10 +40,11 @@ class RangeHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(end - start + 1))
         self.send_header("Accept-Ranges", "bytes")
         self.end_headers()
-        self.range_left = end - start + 1
+        self.range_left = end - start + 1   # how much copyfile() may send
         return f
 
     def copyfile(self, source, outputfile):
+        """Send the file body; for a Range request, only range_left bytes."""
         left = getattr(self, "range_left", None)
         if left is None:
             return super().copyfile(source, outputfile)

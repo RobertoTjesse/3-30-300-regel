@@ -137,6 +137,7 @@ BAG3D_TILES = "url=https://data.3dbag.nl/v20250903/cesium3dtiles/lod22/tileset.j
 
 
 def _group(root, name, index=None):
+    """The layer group with this name; created (at index, default last) if missing."""
     group = root.findGroup(name)
     if group is None:
         group = QgsLayerTreeGroup(name)
@@ -155,11 +156,13 @@ def _prune_missing(project):
 
 
 def _existing_sources(project):
+    """The files already in the project, so a re-run doesn't add them twice."""
     return {Path(l.source().split("|")[0]).resolve()
             for l in project.mapLayers().values() if l.providerType() in ("gdal", "ogr")}
 
 
 def _style_viewshed(layer):
+    """Tree-count raster in the VIEWSHED_CLASSES colours (0 red ... 8+ dark green)."""
     ramp = QgsColorRampShader()
     ramp.setColorRampType(QgsColorRampShader.Discrete)
     ramp.setColorRampItemList([QgsColorRampShader.ColorRampItem(v, QColor(c), lbl)
@@ -174,6 +177,7 @@ def _style_viewshed(layer):
 
 
 def _style_homes(layer):
+    """Buildings coloured by their "klasse" field, grey when it is empty."""
     labels = ["0", "1-2", "3-5", "6-7", "8+"]
     cats = [QgsRendererCategory(lbl, QgsFillSymbol.createSimple(
                 {"color": colour, "outline_color": "#404040", "outline_width": "0.1"}),
@@ -210,6 +214,7 @@ ONE_TREE_KEEP = {"exact_bilinear", "gdal", "pipeline_ahn5", "arc_vis_2d", "arc_v
 
 
 def _one_tree_kept(path):
+    """Whether a file of the one-tree comparison belongs in the project."""
     stem = path.stem.removeprefix("diff_")
     return path.suffix != ".tif" or path.stem in ("dem", "others") or stem in ONE_TREE_KEEP
 
@@ -451,6 +456,8 @@ def _add_300(project, root, have):
 
 
 def _add(project, group, layer, visible=True):
+    """Add a layer to a group (collapsed, on or off); returns the layer, or
+    None with a warning when the source can't be loaded."""
     if not layer.isValid():
         print(f"  WARNING: could not load '{layer.name()}' — skipped")
         return None
@@ -489,6 +496,9 @@ def _create_static_layers(project, root):
 
 
 def main():
+    """Open (or create) the project, drop layers whose file is gone, add the
+    new ones group by group, and save."""
+    # QGIS without a window (False = no GUI)
     qgs = QgsApplication([], False)
     qgs.initQgis()
     try:

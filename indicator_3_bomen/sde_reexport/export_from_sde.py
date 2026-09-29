@@ -56,10 +56,13 @@ OSGEO4W_ROOT = r"C:\Users\bethrt\AppData\Local\Programs\OSGeo4W"
 ONLY = []
 # ---------------------------------------------------------------------------
 
-EXTENTS_CSV = os.path.join(REEXPORT_DIR, "municipality_extents.csv")
-RAW_DIR = os.path.join(REEXPORT_DIR, "raw_clips")
-FINISHED_DIR = os.path.join(REEXPORT_DIR, "finished")
-NODATA_FALLBACK = -9999
+EXTENTS_CSV = os.path.join(REEXPORT_DIR, "municipality_extents.csv")   # name, xmin, ymin, xmax, ymax
+RAW_DIR = os.path.join(REEXPORT_DIR, "raw_clips")         # ArcGIS clips, deleted once finished
+FINISHED_DIR = os.path.join(REEXPORT_DIR, "finished")     # the final DEMs
+NODATA_FALLBACK = -9999     # NoData value when the source declares none
+
+# The OSGeo4W GDAL tools for the finishing pass, and the pipeline's standard
+# TIFF layout: lossless float compression, 512 x 512 internal tiles
 
 GDAL_BIN = os.path.join(OSGEO4W_ROOT, "bin")
 GDAL_TRANSLATE = os.path.join(GDAL_BIN, "gdal_translate.exe")
@@ -84,6 +87,7 @@ def _gdal_env():
 
 
 def _run(cmd):
+    """Run an OSGeo4W command line tool; return its output, raise on failure."""
     result = subprocess.run(cmd, capture_output=True, text=True, env=_gdal_env())
     if result.returncode != 0:
         raise RuntimeError(f"{os.path.basename(cmd[0])} failed:\n{result.stderr.strip()}")
@@ -141,12 +145,16 @@ def finish(raw_path, final_path, nodata_value):
 
 
 def main():
+    """Clip and finish every municipality extent not finished yet; a failure
+    is reported at the end instead of stopping the run."""
     for tool in (GDAL_TRANSLATE, GDALINFO):
         if not os.path.exists(tool):
             raise SystemExit(f"Not found: {tool} — check OSGEO4W_ROOT")
     os.makedirs(RAW_DIR, exist_ok=True)
     os.makedirs(FINISHED_DIR, exist_ok=True)
 
+    # No pyramids or statistics on the raw clips: they are temporary, and the
+    # finishing pass rewrites them anyway
     arcpy.env.overwriteOutput = True
     arcpy.env.pyramid = "NONE"
     arcpy.env.rasterStatistics = "NONE"
@@ -168,6 +176,7 @@ def main():
             raise SystemExit(f"Not in {EXTENTS_CSV}: {sorted(unknown)}")
         rows = [r for r in rows if r["name"] in ONLY]
 
+    # Resumable: skip every municipality that already has a finished file
     todo = [r for r in rows
             if not os.path.exists(os.path.join(FINISHED_DIR, f"{r['name']}.tif"))]
     print(f"{len(rows) - len(todo)} already finished, {len(todo)} to export from {src_raster}\n")

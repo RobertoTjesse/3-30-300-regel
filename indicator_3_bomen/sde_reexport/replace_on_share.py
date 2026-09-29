@@ -15,7 +15,7 @@ Municipalities already replaced (backup present, target equals source size)
 are skipped, so this can be re-run once the last exports have finished.
 
 Usage:
-    python sde_reexport/replace_on_share.py
+    python indicator_3_bomen/sde_reexport/replace_on_share.py
 """
 
 import datetime
@@ -30,12 +30,13 @@ import config  # noqa: E402
 from osgeo import gdal  # noqa: E402
 gdal.UseExceptions()
 
-FINISHED = Path(__file__).resolve().parent / "finished"
-TARGET = config.VIEWANALYSE_DIR
-BACKUP = TARGET / f"_origineel_{datetime.date.today():%Y-%m-%d}"
+FINISHED = Path(__file__).resolve().parent / "finished"      # the re-exported DEMs
+TARGET = config.VIEWANALYSE_DIR                              # the share they replace
+BACKUP = TARGET / f"_origineel_{datetime.date.today():%Y-%m-%d}"   # originals go here
 
 
 def verify(src: Path, dst: Path):
+    """Raise if the copy differs in size from its source or has no NoData value."""
     if dst.stat().st_size != src.stat().st_size:
         raise RuntimeError(f"{src.stem}: size mismatch after copy")
     ds = gdal.Open(str(dst))          # keep ds referenced while using the band
@@ -44,12 +45,17 @@ def verify(src: Path, dst: Path):
 
 
 def replace(src: Path):
+    """Replace one municipality's DEM on the share with its re-export.
+    Safe to re-run: a DEM that was already replaced is only verified."""
     name = src.stem
     dst = TARGET / f"{name}.tif"
+    # Already done in an earlier run (backup exists, same size): just verify
     if (BACKUP / f"{name}.tif").exists() and dst.exists() and dst.stat().st_size == src.stat().st_size:
         verify(src, dst)
         return f"{name}: already replaced (verified)"
 
+    # Move the original .tif and its side files (.tfw, .ovr, .aux.xml, ...)
+    # into the backup folder — moved, never deleted
     BACKUP.mkdir(exist_ok=True)
     moved = []
     if not (BACKUP / f"{name}.tif").exists():
@@ -59,6 +65,8 @@ def replace(src: Path):
                 os.replace(f, BACKUP / f.name)
                 moved.append(f.name)
 
+    # Copy under a temporary name and rename when complete, so the share never
+    # holds a half-copied <name>.tif
     tmp = TARGET / f"{name}.tif.copying"
     shutil.copyfile(src, tmp)
     os.replace(tmp, dst)
@@ -68,7 +76,8 @@ def replace(src: Path):
 
 
 def main():
-    sources = sorted(p for p in FINISHED.glob("*.tif") if not p.name.endswith(".partial.tif"))
+    """Replace every finished DEM (skipping unfinished .partial files)."""
+    sources =sorted(p for p in FINISHED.glob("*.tif") if not p.name.endswith(".partial.tif"))
     print(f"{len(sources)} finished DEMs -> {TARGET}\nOriginals -> {BACKUP}", flush=True)
     for src in sources:
         print("  " + replace(src), flush=True)

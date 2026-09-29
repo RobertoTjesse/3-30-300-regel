@@ -29,7 +29,8 @@ gdal.UseExceptions()
 ogr.UseExceptions()
 
 OUT = Path(__file__).resolve().parent / "data" / "3.pmtiles"
-ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12), "woningen": (13, 16)}
+# Zoom range per layer (the map over-zooms the last level it has)
+ZOOMS ={"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12), "woningen": (13, 16)}
 
 
 def areas(dst):
@@ -79,6 +80,8 @@ def buildings(dst):
 
 
 def main():
+    """Collect the areas and buildings in a temporary GeoPackage, then turn it
+    into one PMTiles file (each layer at its own zoom range, see ZOOMS)."""
     OUT.parent.mkdir(parents=True, exist_ok=True)
     staging = OUT.with_suffix(".staging.gpkg")
     staging.unlink(missing_ok=True)
@@ -87,6 +90,7 @@ def main():
     buildings(dst)
     dst = None
 
+    # Vector tiles in web Mercator; written to .partial, then renamed
     conf = {layer: {"minzoom": z0, "maxzoom": z1} for layer, (z0, z1) in ZOOMS.items()}
     tmp = OUT.with_suffix(".partial.pmtiles")
     tmp.unlink(missing_ok=True)

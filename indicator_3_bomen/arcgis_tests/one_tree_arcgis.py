@@ -4,7 +4,7 @@ one_tree_arcgis.py — ArcGIS Pro half of the one-tree / tree-group comparison
 Visibility on exactly the inputs GDAL got, plus the benchmark's own
 Visibility settings.
 
-Inputs per case (made by `python arcgis_tests/one_tree.py prepare`), in
+Inputs per case (made by `python indicator_3_bomen/arcgis_tests/one_tree.py prepare`), in
 arcgis_tests\one_tree\<case>\:
   dem.tif       AHN5 raw DSM, 0.5 m, NoData filled (what GDAL got)
   dem_raw.tif   the same without the fill (what the benchmark got)
@@ -51,7 +51,7 @@ ArcGIS → Python Command Prompt), all cases:
 Or in ArcGIS Pro → Analysis → Python window (all in one process — a crash
 takes Pro down):
     exec(open(r"D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\one_tree_arcgis.py", encoding="utf-8").read())
-Then, in OSGeo4W Python:  python arcgis_tests\one_tree.py compare
+Then, in OSGeo4W Python:  python indicator_3_bomen/arcgis_tests/one_tree.py compare
 """
 
 import glob
@@ -66,6 +66,7 @@ from arcpy.sa import Viewshed, Viewshed2, Visibility
 ROOT = r"D:\Repositories\330300regel\indicator_3_bomen\arcgis_tests\one_tree"
 WORK = r"D:\Temp\onetree"     # plain path for the old GRID-engine tools; None = work in ROOT
 CASES = ["tree_68418", "group_5", "tree_58448"]
+# Which of the VARIANTS below to run (by name)
 RUN = ["arc_bench", "arc_bench_offset", "arc_bench_both", "arc_bench_fixed", "arc_v2_2d", "arc_v2_3d", "arc_vs_2d", "arc_vs_3d", "arc_vis_2d", "arc_vis_3d"]
 
 # Set per case by use_case()
@@ -73,6 +74,8 @@ DEM = DEM_RAW = TREE = TREE_3D = None
 
 
 def _v2(radius_3d):
+    """Viewshed2 with the case observer (OBS_Z, no extra offset); radius_3d is
+    "GROUND" (2D) or "3D"."""
     return Viewshed2(
         DEM, TREE, analysis_type="FREQUENCY", refractivity_coefficient=0.13,
         surface_offset="1.8 Meters", observer_elevation="OBS_Z", observer_offset="0 Meters",
@@ -81,12 +84,16 @@ def _v2(radius_3d):
 
 
 def _vis(radius):
+    """Visibility with the case observer (OBS_Z, no extra offset); radius
+    "-30" = 2D, "30" = 3D (it turned out to ignore the sign)."""
     return Visibility(
         DEM, TREE, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
         curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
         surface_offset="1.8", observer_elevation="OBS_Z", observer_offset="0", outer_radius=radius)
 
 
+# (result name, function that runs the tool) — lambdas, so a tool only runs
+# when its variant is selected
 VARIANTS = [
     # the benchmark run: raw DSM, RASTERVALU, observer_offset left at the tool default
     ("arc_bench", lambda: Visibility(
@@ -137,7 +144,7 @@ def use_case(case):
     work = os.path.join(WORK, case) if WORK else folder
     for stem in ("dem", "dem_raw", "tree", "tree_3d"):
         if not glob.glob(os.path.join(folder, stem + ".*")):
-            raise SystemExit(f"Not found: {folder}\\{stem} - run `python arcgis_tests/one_tree.py prepare` first")
+            raise SystemExit(f"Not found: {folder}\\{stem} - run `python indicator_3_bomen/arcgis_tests/one_tree.py prepare` first")
     if WORK:
         os.makedirs(work, exist_ok=True)
         for stem in ("dem", "dem_raw", "tree", "tree_3d"):
@@ -185,12 +192,13 @@ def main_isolated(cases):
             code = subprocess.run([sys.executable, os.path.abspath(__file__), case, name]).returncode
             if code != 0:
                 print(f"  {case} {name}: child process ended with code {code} (crash or tool error), no result")
-    print("Done. Compare with:  python arcgis_tests\\one_tree.py compare")
+    print("Done. Compare with:  python indicator_3_bomen/arcgis_tests/one_tree.py compare")
 
 
+# How the script was started decides what it does
 if "__file__" not in globals():         # exec() in the ArcGIS Pro Python window
     main(CASES)
-    print("Done. Compare with:  python arcgis_tests\\one_tree.py compare")
+    print("Done. Compare with:  python indicator_3_bomen/arcgis_tests/one_tree.py compare")
 elif len(sys.argv) > 2:                 # child process: one case, one variant
     main([sys.argv[1]], sys.argv[2])
 else:

@@ -28,7 +28,7 @@ Output: data/processed/<name>_woningen.gpkg, footprint polygons with
   (score), klasse (0 | 1-2 | 3-5 | 6-7 | 8+, as in the QGIS styling).
 
 Usage:
-    python etl/04_score_buildings.py
+    python indicator_3_bomen/etl/04_score_buildings.py
 """
 
 import sys
@@ -52,10 +52,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(
                     datefmt="%H:%M:%S")
 log = logging.getLogger(__name__)
 
+# (highest count in the class, class label)
 CLASSES = [(0, "0"), (2, "1-2"), (5, "3-5"), (7, "6-7"), (float("inf"), "8+")]
 
 
 def klasse(n):
+    """Class label for a number of visible trees, e.g. 4 -> "3-5"; None stays None."""
     if n is None:
         return None
     return next(label for upper, label in CLASSES if n <= upper)
@@ -68,10 +70,13 @@ def residential_building_ids(xmin, ymin, xmax, ymax):
     layer.SetSpatialFilterRect(xmin, ymin, xmax, ymax)
     counts = defaultdict(int)
     for f in layer:
+        # Keep only addresses that are homes and are in use
         uses = (f.GetField(config.BAG_ADDRESS_USE) or "").lower()
         status = (f.GetField(config.BAG_ADDRESS_STATUS) or "").lower()
         if "woonfunctie" not in uses or status not in config.BAG_STATUSES_IN_USE:
             continue
+        # An address can lie in several buildings (comma-separated ids):
+        # count it for each of them
         for bid in (f.GetField(config.BAG_ADDRESS_BUILDING_ID) or "").split(","):
             if bid.strip():
                 counts[bid.strip()] += 1
@@ -79,10 +84,14 @@ def residential_building_ids(xmin, ymin, xmax, ymax):
 
 
 def score_municipality(name):
+    """Score every residential building of one municipality and write
+    <name>_woningen.gpkg; returns the number of buildings scored, or None
+    when the municipality has no viewshed raster yet."""
     vs_path = config.final_output_path(name)
     if not vs_path.exists():
         log.warning(f"[{name}] no viewshed output ({vs_path.name}) — skipped")
         return None
+    # The viewshed raster (trees visible per cell) and its extent in metres
     vs_ds = gdal.Open(str(vs_path))
     vs_band = vs_ds.GetRasterBand(1)
     gt = vs_ds.GetGeoTransform()
@@ -107,6 +116,8 @@ def score_municipality(name):
     all_ds = ogr.GetDriverByName("GPKG").CreateDataSource(mem_path)
     all_layer = all_ds.CopyLayer(bld_layer, "footprints")
 
+    # Write to a .partial file first and rename at the end, so a crashed run
+    # never leaves a half-written <name>_woningen.gpkg behind
     out_path = config.PROCESSED_DIR / f"{name}_woningen.gpkg"
     tmp_path = out_path.with_suffix(".partial.gpkg")
     tmp_path.unlink(missing_ok=True)
@@ -120,6 +131,8 @@ def score_municipality(name):
     mem = gdal.GetDriverByName("MEM")
     px = abs(gt[1])
     n_scored = n_enclosed = 0
+    # The buildings to score: residential, each once, and with their centre
+    # inside this municipality's raster
     candidates, seen = [], set()
     for feat in all_layer:
         bid = feat.GetField(config.BAG_BUILDING_ID)
@@ -141,6 +154,8 @@ def score_municipality(name):
         r1 = min(ny, int(np.ceil((ymax - gy0 + margin) / px)))
         score = None
         if c1 > c0 and r1 > r0:
+            # Draw the ring as a 0/1 mask on that window: first the building
+            # buffered by FACADE_RING_M (1), then all footprints cut out (0)
             wgt = (xmin + c0 * px, px, 0.0, ymax - r0 * px, 0.0, -px)
             mask_ds = mem.Create("", c1 - c0, r1 - r0, 1, gdal.GDT_Byte)
             mask_ds.SetGeoTransform(wgt)
@@ -156,6 +171,7 @@ def score_municipality(name):
             gdal.RasterizeLayer(mask_ds, [1], all_layer, burn_values=[0])
             ring_px = mask_ds.GetRasterBand(1).ReadAsArray().astype(bool)
             if ring_px.any():
+                # The score: the highest tree count anywhere in the ring
                 vals = vs_band.ReadAsArray(c0, r0, c1 - c0, r1 - r0)
                 score = int(vals[ring_px].max())
         if score is None:
@@ -163,6 +179,7 @@ def score_municipality(name):
         else:
             n_scored += 1
 
+        # One output row per building; score and class stay empty when enclosed
         out = ogr.Feature(defn)
         out.SetField("pand_id", bid)
         out.SetField("n_woningen", homes[bid])
@@ -188,6 +205,7 @@ def score_municipality(name):
 
 
 def main():
+    """Score every municipality that has a viewshed raster; log the run times."""
     for path in (config.PROVINCE_BUILDINGS_GPKG, config.PROVINCE_ADDRESSES_GPKG):
         if not path.exists():
             sys.exit(f"ERROR: not found: {path} (BAG footprints / addresses, see README)")

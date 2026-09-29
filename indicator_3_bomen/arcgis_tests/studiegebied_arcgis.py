@@ -11,7 +11,7 @@ result inside the buurt is identical to the benchmark.
    2 x RASTERVALU m NAP — the setting that reproduces visibility_Delft on
    100% of cells, WORKLOG section 9.)
 
-Inputs (made by `python arcgis_tests/studiegebied.py prepare`), in
+Inputs (made by `python indicator_3_bomen/arcgis_tests/studiegebied.py prepare`), in
 data\studiegebied\<buurtcode>\ (the one named in current.json):
   dem_raw.tif   the benchmark DSM cut out, NoData not filled
   bomen.shp     the trees of buurt + buffer, with RASTERVALU
@@ -23,10 +23,10 @@ plain work folder (WORK) and the result is copied back.
 
 HOW TO RUN — ArcGIS Pro Python Command Prompt (Start menu -> ArcGIS ->
 Python Command Prompt), from the repository folder:
-    python arcgis_tests\studiegebied_arcgis.py
+    python indicator_3_bomen/arcgis_tests/studiegebied_arcgis.py
 Takes about a minute. Then, in OSGeo4W Python:
-    python arcgis_tests\studiegebied.py gdal
-    python arcgis_tests\studiegebied.py compare
+    python indicator_3_bomen/arcgis_tests/studiegebied.py gdal
+    python indicator_3_bomen/arcgis_tests/studiegebied.py compare
 """
 
 import glob
@@ -44,17 +44,21 @@ WORK = r"D:\Temp\studiegebied"      # plain path for the old GRID engine
 
 
 def copy_files(stem, src, dst):
+    """Copy stem.* (a raster or shapefile with its side files) from src to dst."""
     for f in glob.glob(os.path.join(src, stem + ".*")):
         shutil.copy2(f, dst)
 
 
 def main():
+    """Run Visibility with the benchmark's settings on the current study area."""
+    # The study area that studiegebied.py prepared last; copy its inputs to
+    # the plain work folder
     with open(os.path.join(ROOT, "current.json"), encoding="utf-8") as fh:
         area = json.load(fh)
     folder = os.path.join(ROOT, area["buurtcode"])
     for stem in ("dem_raw", "bomen"):
         if not glob.glob(os.path.join(folder, stem + ".*")):
-            raise SystemExit(f"Not found: {folder}\\{stem} - run `python arcgis_tests/studiegebied.py prepare` first")
+            raise SystemExit(f"Not found: {folder}\\{stem} - run `python indicator_3_bomen/arcgis_tests/studiegebied.py prepare` first")
     work = os.path.join(WORK, area["buurtcode"])
     os.makedirs(work, exist_ok=True)
     for stem in ("dem_raw", "bomen"):
@@ -69,6 +73,8 @@ def main():
     n = int(arcpy.management.GetCount(trees)[0])
     print(f"{area['naam']} ({area['buurtcode']}): Visibility for {n} trees, benchmark settings ...", flush=True)
 
+    # The benchmark's settings, including RASTERVALU as both observer
+    # elevation and offset (see the module docstring)
     t0 = time.time()
     result = Visibility(dem, trees, analysis_type="FREQUENCY", nonvisible_cell_value="ZERO", z_factor=1,
                         curvature_correction="FLAT_EARTH", refractivity_coefficient=0.13,
@@ -77,7 +83,7 @@ def main():
     result.save(os.path.join(work, "arcgis.tif"))
     copy_files("arcgis", work, folder)
     print(f"Saved {folder}\\arcgis.tif in {time.time() - t0:.0f} s", flush=True)
-    print("Next, in OSGeo4W Python:  python arcgis_tests\\studiegebied.py gdal   and   ... compare")
+    print("Next, in OSGeo4W Python:  python indicator_3_bomen/arcgis_tests/studiegebied.py gdal   and   ... compare")
 
 
 main()

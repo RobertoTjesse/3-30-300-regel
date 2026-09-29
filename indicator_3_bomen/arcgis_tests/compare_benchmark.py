@@ -19,8 +19,8 @@ AHN5, so its differences from the benchmarks mix the observer rule, the
 engine and the surface model.
 
 Usage (OSGeo4W Python):
-    python arcgis_tests/compare_benchmark.py          # all of Delft
-    python arcgis_tests/compare_benchmark.py test     # the test area run
+    python indicator_3_bomen/arcgis_tests/compare_benchmark.py          # all of Delft
+    python indicator_3_bomen/arcgis_tests/compare_benchmark.py test     # the test area run
 """
 
 import sys
@@ -39,7 +39,7 @@ gdal.UseExceptions()
 REFERENCE_GDB = r"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/data.gdb"
 BENCH_NODATA = -2147483647            # visibility_Delft's undeclared NoData
 EXPERIMENTS = REPO / "data" / "processed" / "experiments"
-BLOCK_ROWS = 1024
+BLOCK_ROWS = 1024                     # rasters are read this many rows at a time
 MUNICIPALITIES = REPO / "data" / "interim" / "gemeenten.gpkg"
 MUNICIPALITY = "Delft"
 INSET_M = 30.0                        # = outer radius
@@ -78,7 +78,9 @@ def open_aligned(path, ref_gt, nodata=None):
 
 
 def main(test):
-    name = "visibility_Delft_corrected" + ("_test" if test else "")
+    """Compare the three rasters cell by cell on the corrected benchmark's
+    grid and print mean, share of 0 / >= 3 trees and pairwise agreement."""
+    name ="visibility_Delft_corrected" + ("_test" if test else "")
     corrected = EXPERIMENTS / f"{name}.tif"
     if not corrected.exists():
         raise SystemExit(f"Not found: {corrected} — run arcgis_tests/benchmark_corrected.py first")
@@ -95,14 +97,20 @@ def main(test):
     opened = {k: open_aligned(p, ref_gt, nd) for k, (p, nd) in sources.items()}
     names = list(opened)
 
+    # Running sums, so the whole of Delft never has to be in memory at once:
+    # per raster (for mean, standard deviation, shares) and per pair of
+    # rasters (for the correlation and the agreement)
     n = 0
     s = {k: dict(sum=0.0, sq=0.0, zero=0, ge3=0) for k in names}
     pair = {pq: dict(xy=0.0, same=0, same3=0) for pq in combinations(names, 2)}
     for r0 in range(0, ny, BLOCK_ROWS):
         rows = min(BLOCK_ROWS, ny - r0)
         data = {}
+        # Cells that count: inside the municipality and with data in all three
         valid = np.ones((rows, nx), bool) if inside is None else inside[r0:r0 + rows].copy()
         for k, (ds, band, ro, co, nd) in opened.items():
+            # Read this block from each raster at its offset on the reference
+            # grid; cells it doesn't cover (or NoData) become NaN
             a = np.full((rows, nx), np.nan)
             src_r0, src_c0 = r0 + ro, co
             rr0, rr1 = max(src_r0, 0), min(src_r0 + rows, band.YSize)
@@ -143,7 +151,8 @@ def main(test):
         print(f"{k:28s} {mean[k]:6.2f} {100 * s[k]['zero'] / n:7.1f}% {100 * s[k]['ge3'] / n:9.1f}%")
     print(f"\n{'':56s} {'r':>5s} {'same count':>11s} {'same >=3':>9s}")
     for (p, q), a in pair.items():
-        r = (a["xy"] / n - mean[p] * mean[q]) / (sd[p] * sd[q]) if sd[p] and sd[q] else float("nan")
+        # Pearson r from the running sums: cov(p, q) / (sd_p * sd_q)
+        r =(a["xy"] / n - mean[p] * mean[q]) / (sd[p] * sd[q]) if sd[p] and sd[q] else float("nan")
         print(f"{p + ' vs ' + q:56s} {r:5.2f} {100 * a['same'] / n:10.1f}% {100 * a['same3'] / n:8.1f}%")
 
 

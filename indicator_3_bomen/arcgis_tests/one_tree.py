@@ -41,9 +41,9 @@ Written to arcgis_tests/one_tree/<case>/ by `prepare`:
 for the QGIS validation project (qgis_validation/build_project.py).
 
 Usage:
-    python arcgis_tests/one_tree.py prepare [case|all]   # default: all
+    python indicator_3_bomen/arcgis_tests/one_tree.py prepare [case|all]   # default: all
     (run arcgis_tests/one_tree_arcgis.py in ArcGIS Pro — writes arc_*.tif)
-    python arcgis_tests/one_tree.py compare [case|all]
+    python indicator_3_bomen/arcgis_tests/one_tree.py compare [case|all]
 """
 
 import json
@@ -66,6 +66,7 @@ BENCHMARK = f'OpenFileGDB:"{REFERENCE_GDB}":visibility_Delft'   # the reference 
 PIPELINE = REPO / "data" / "processed" / "Delft_viewshed.tif"   # this pipeline's Delft result
 BENCH_NODATA = -2147483647                   # visibility_Delft's undeclared NoData
 ROOT = REPO / "indicator_3_bomen" / "arcgis_tests" / "one_tree"
+# Test cases: folder name -> tree fids in bomen_Delft_met_hoogte_uit_AHN05ruw
 CASES = {
     "tree_68418": [68418],
     "group_5": [15689, 17046, 17707, 17708, 17717],
@@ -79,7 +80,8 @@ OBSERVER_OFFSET = 1.0                        # the Visibility tool's default, as
 
 
 def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte):
-    ds = gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
+    """Save a numpy array as a compressed GeoTIFF on the given grid."""
+    ds =gdal.GetDriverByName("GTiff").Create(str(path), array.shape[1], array.shape[0], 1, dtype,
                                               options=["COMPRESS=DEFLATE"])
     ds.SetGeoTransform(gt)
     ds.SetProjection(wkt)
@@ -88,7 +90,8 @@ def write_raster(path, array, gt, wkt, dtype=gdal.GDT_Byte):
 
 
 def load_dem(folder):
-    ds = gdal.Open(str(folder / "dem.tif"))
+    """The case's filled DEM: (heights as float64, geotransform, projection)."""
+    ds =gdal.Open(str(folder / "dem.tif"))
     return ds.GetRasterBand(1).ReadAsArray().astype(np.float64), ds.GetGeoTransform(), ds.GetProjection()
 
 
@@ -117,6 +120,7 @@ def load_case(case):
 
 
 def cell_centres(shape, gt):
+    """x and y of every cell centre of a grid, as two arrays."""
     rows, cols = np.mgrid[0:shape[0], 0:shape[1]]
     return gt[0] + (cols + 0.5) * CELL, gt[3] - (rows + 0.5) * CELL
 
@@ -125,19 +129,26 @@ def exact_visibility(dem, gt, tree, order):
     """Exact sightline test from one tree to every cell centre within
     RADIUS; order 1 = bilinear surface between cell centres, 0 = every cell
     a flat square. Samples every <= 0.1 m; the target cell does not block."""
+    # Observer (o) and every target cell within RADIUS (t)
     ox, oy, oz = tree["x"], tree["y"], tree["obs_z"]
     cx, cy = cell_centres(dem.shape, gt)
     rows, cols = np.mgrid[0:dem.shape[0], 0:dem.shape[1]]
     d = np.hypot(cx - ox, cy - oy)
     inside = d <= RADIUS
     rows, cols, tx, ty, d = rows[inside], cols[inside], cx[inside], cy[inside], d[inside]
+    # Sample points along every sightline: t runs from just after the
+    # observer (0) to just before the target (1); one row per target
     n = int(RADIUS / 0.1)
     t = (np.arange(1, n) / n)[None, :]
     sx, sy = ox + t * (tx - ox)[:, None], oy + t * (ty - oy)[:, None]
+    # The surface height under each sample point
     scol, srow = (sx - gt[0]) / CELL - 0.5, (gt[3] - sy) / CELL - 0.5
     if order == 0:
         scol, srow = np.floor(scol + 0.5), np.floor(srow + 0.5)
     surf = map_coordinates(dem, [srow.ravel(), scol.ravel()], order=order, mode="nearest").reshape(sx.shape)
+    # The sightline's height at each sample point, towards eye height above
+    # the target; a target is visible if the surface never rises above it
+    # (except within the target cell itself)
     tz = dem[rows, cols] + TARGET_HEIGHT
     line = oz + t * (tz - oz)[:, None]
     near_target = (1 - t) * d[:, None] < CELL / 2
@@ -157,6 +168,7 @@ def gdal_visibility(folder, dem, gt, tree):
                                 observerHeight=tree["obs_z"] - dem[r, c], targetHeight=TARGET_HEIGHT,
                                 visibleVal=1, invisibleVal=0, outOfRangeVal=0, noDataVal=0,
                                 dfCurvCoeff=0, mode=gdal.GVM_Edge, maxDistance=RADIUS)
+    # GDAL returns a window around the observer; place it on the full clip
     v = out.GetRasterBand(1).ReadAsArray()
     ogt = out.GetGeoTransform()
     full = np.zeros(dem.shape, np.uint8)
@@ -175,6 +187,8 @@ def pipeline_visibility(folder, dem, gt, wkt, trees):
     buildings = mod._building_mask(gt, dem.shape[1], dem.shape[0], wkt)
     total = np.zeros(dem.shape, np.uint8)
     for t in trees:
+        # Stage 2's steps for one tree: small DEM window + observer offset,
+        # viewshed, add the result to the running count
         prepared = mod._prepare_tree(dem, buildings, gt, t["x"], t["y"])
         window, wgt, obs_h, info = prepared
         mem = gdal.GetDriverByName("MEM").Create("", window.shape[1], window.shape[0], 1, gdal.GDT_Float32)
@@ -192,6 +206,9 @@ def pipeline_visibility(folder, dem, gt, wkt, trees):
 
 
 def prepare(case):
+    """Write everything for one case: the DEM clip (filled and raw), the
+    benchmark and pipeline cut-outs, the other-trees mask, the tree points
+    for ArcGIS, and the GDAL, exact and pipeline results."""
     folder = ROOT / case
     trees = load_case(case)
     print(f"\n=== {case}: {len(trees)} tree(s), observer = RASTERVALU + {OBSERVER_OFFSET:.0f} m: "
@@ -309,6 +326,8 @@ def read_counts(path, shape, gt):
     nd = b.GetNoDataValue()
     nodata = np.zeros(a.shape, bool) if nd is None else a == nd
     a[nodata] = 0
+    # The result may cover a different extent: copy the overlapping part onto
+    # the DEM grid (cells it doesn't cover stay 0)
     full, full_nd = np.zeros(shape, np.int64), np.zeros(shape, bool)
     co, ro = round((rgt[0] - gt[0]) / CELL), round((gt[3] - rgt[3]) / CELL)
     r0, c0 = max(ro, 0), max(co, 0)
@@ -319,6 +338,8 @@ def read_counts(path, shape, gt):
 
 
 def compare(case):
+    """Print how every result of one case compares with the exact test and
+    with the benchmark, and write the difference maps for QGIS."""
     folder = ROOT / case
     if not (folder / "dem.tif").exists():
         print(f"\n=== {case}: not prepared — run `one_tree.py prepare {case}` first")
@@ -332,6 +353,7 @@ def compare(case):
     clean = circle & ~others           # cells only the case's trees can see
     raw_nd = read_counts(folder / "dem_raw.tif", dem.shape, gt)[1]
 
+    # Every result raster in the case folder (not the inputs or diff maps)
     results, nodata = {}, {}
     for path in sorted(folder.glob("*.tif")):
         if path.stem in ("dem", "dem_raw", "others") or path.stem.startswith("diff_"):
@@ -343,6 +365,8 @@ def compare(case):
     rings = [(0, 5), (5, 10), (10, 20), (20, 30)]
 
     def row(name, v, area, compare_to):
+        """Print one table row: share seen overall and per distance ring,
+        mean count, and agreement with each raster in compare_to."""
         seen = v > 0
         ring = " ".join(f"{100 * seen[area & (d >= a) & (d < b)].mean():6.1f}%"
                         if (area & (d >= a) & (d < b)).any() else f"{'-':>7s}" for a, b in rings)

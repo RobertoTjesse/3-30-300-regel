@@ -17,7 +17,7 @@ Resumable: finished blocks are kept in data/interim/bag_blocks/ until the
 merge succeeds, and skipped on a re-run.
 
 Usage:
-    python etl/download_bag_pdok.py
+    python indicator_3_bomen/etl/download_bag_pdok.py
 """
 
 import os
@@ -41,14 +41,15 @@ LAYERS = {
                   ["identificatie", "gebruiksdoel", "status", "pandidentificatie"],
                   config.PROVINCE_ADDRESSES_GPKG),
 }
-BLOCK_M = 5000
+BLOCK_M = 5000              # starting block size (m); crowded blocks are split
 PAGE_LIMIT = 50000          # PDOK's paging ceiling
-WORKERS = 4
+WORKERS = 4                 # blocks downloaded at the same time
 BLOCK_DIR = config.INTERIM_DIR / "bag_blocks"
 OGR2OGR = os.path.join(config.GDAL_BIN, "ogr2ogr.exe")
 
 
 def municipality_extents():
+    """Yield (name, (xmin, ymin, xmax, ymax)) for every municipality DEM."""
     # Every municipality DEM, regardless of config.MUNICIPALITIES (the BAG
     # layers are province-wide sources, like province_trees.gpkg)
     for dem in sorted(config.VIEWANALYSE_DIR.glob("*.tif")):
@@ -59,6 +60,8 @@ def municipality_extents():
 
 
 def initial_blocks(extents):
+    """The BLOCK_M blocks (x, y, size) that touch any municipality extent;
+    a set, so blocks shared by neighbours are downloaded once."""
     blocks = set()
     for _name, (x0, y0, x1, y1) in extents:
         for bx in range(int(x0 // BLOCK_M), int(x1 // BLOCK_M) + 1):
@@ -68,6 +71,7 @@ def initial_blocks(extents):
 
 
 def count(path):
+    """Number of features in a downloaded block file (0 if it can't be opened)."""
     ds = ogr.Open(str(path))
     return ds.GetLayer(0).GetFeatureCount() if ds else 0
 
@@ -77,12 +81,14 @@ def fetch(layer_key, block):
     wfs_type, fields, _ = LAYERS[layer_key]
     x, y, size = block
     out = BLOCK_DIR / layer_key / f"{x}_{y}_{size}.fgb"
-    done = out.with_suffix(".done")
+    done = out.with_suffix(".done")     # marker: this block finished in an earlier run
     if done.exists():
         return block, count(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     for f in (out, done):
         f.unlink(missing_ok=True)
+    # ogr2ogr: the WFS layer within the block (-spat), only the needed
+    # fields (-select), fetched in pages of 1000
     cmd = [OGR2OGR, "-f", "FlatGeobuf", str(out), WFS, wfs_type,
            "-spat", str(x), str(y), str(x + size), str(y + size),
            "-spat_srs", "EPSG:28992", "-t_srs", "EPSG:28992",
@@ -103,6 +109,8 @@ def fetch(layer_key, block):
 
 
 def download(layer_key, blocks):
+    """Download all blocks of one layer, splitting any block that is too big
+    and retrying its quarters, until none are left; returns the feature count."""
     total, todo = 0, list(blocks)
     while todo:
         with ThreadPoolExecutor(max_workers=WORKERS) as ex:
@@ -119,6 +127,8 @@ def download(layer_key, blocks):
 
 
 def merge(layer_key):
+    """Combine the block files of one layer into its GeoPackage, keeping each
+    object once (objects on block borders are in several blocks)."""
     _, _, out_path = LAYERS[layer_key]
     tmp = out_path.with_suffix(".partial.gpkg")
     tmp.unlink(missing_ok=True)
@@ -151,6 +161,7 @@ def merge(layer_key):
 
 
 def main():
+    """Download and merge the buildings, then the addresses."""
     extents = list(municipality_extents())
     blocks = initial_blocks(extents)
     print(f"{len(extents)} municipalities -> {len(blocks)} blocks of {BLOCK_M} m per layer", flush=True)

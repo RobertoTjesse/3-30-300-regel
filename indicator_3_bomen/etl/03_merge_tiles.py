@@ -11,7 +11,7 @@ The final raster contains, for every pixel, the number of trees from which
 that pixel was visible within the 30-metre viewshed radius.
 
 Usage:
-    python etl/03_merge_tiles.py [--no-overviews]
+    python indicator_3_bomen/etl/03_merge_tiles.py [--no-overviews]
 
 Processes every municipality in config.MUNICIPALITIES (or all pairs found in
 VIEWANALYSE_DIR if that list is empty), writing data/processed/<name>_viewshed.tif.
@@ -41,6 +41,8 @@ log = logging.getLogger(__name__)
 
 
 def build_vrt(tile_paths: list[str], vrt_path: str) -> None:
+    """Write a VRT: a small XML file that presents all tiles as one raster
+    (no pixels copied). The tiles don't overlap, so no blending is needed."""
     log.info(f"Building VRT from {len(tile_paths)} tiles …")
     vrt_opts = gdal.BuildVRTOptions(
         resolution="highest",
@@ -114,6 +116,7 @@ def merge_municipality(name: str, build_ovr: bool) -> bool:
     build_vrt([str(p) for p in tile_files], vrt_path)
     translate_to_cog(vrt_path, out_path, build_ovr)
 
+    # Log min / max / mean of the result as a quick sanity check
     ds = gdal.Open(out_path)
     if ds:
         band = ds.GetRasterBand(1)
@@ -129,6 +132,7 @@ def merge_municipality(name: str, build_ovr: bool) -> bool:
 
 
 def main():
+    """Merge the tiles of every municipality in turn and log the run time."""
     parser = argparse.ArgumentParser(description="Merge per-tile viewshed rasters per municipality.")
     parser.add_argument(
         "--no-overviews", action="store_true",
