@@ -297,7 +297,7 @@ if __name__ == "__main__":
     if problems:
         sys.exit(
             "ERROR: DEM(s) not stored as plain floating point — heights would be\n"
-            "truncated or mis-scaled. Re-export as Float32 (see sde_reexport/):\n  "
+            "truncated or mis-scaled. Re-export as Float32 (see indicator_3_bomen/sde_reexport/):\n  "
             + "\n  ".join(problems)
         )
     log.info(f"DEM check: province VRT and {len(province_vrt.GetFileList()) - 1} sources are floating point")

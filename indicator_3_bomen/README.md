@@ -4,7 +4,7 @@ For every 0.5 m cell of the surface model: from how many trees (within 30 m)
 is it visible? Every home then gets the maximum in a 1.5 m ring just outside
 its facade, and the results are summarised per gemeente, wijk and buurt.
 Pure open-source Python + GDAL (from a QGIS/OSGeo4W install); runs for a
-whole province (Zuid-Holland: 52 municipalities, ~13 million trees).
+whole province (Zuid-Holland: 52 municipalities, 5.2 million trees).
 
 This replaces an earlier QGIS/PyQGIS prototype which wrote one output raster
 **per individual tree**, which is infeasible at province scale. Instead this
@@ -16,7 +16,7 @@ municipality.
 | this README | how to run it, how it works, known data issues |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | design decisions in depth (§6 observer height, §11 DEM re-export, §14 ArcGIS comparison) |
 | [`BENCHMARKS.md`](BENCHMARKS.md) | run times per municipality (generated) |
-| [`IMPROVEMENTS.md`](IMPROVEMENTS.md) | possible improvements, incl. the 30 and 300 in open-source Python |
+| [`IMPROVEMENTS.md`](IMPROVEMENTS.md) | what this pipeline improved over the original prototype, and planned work (the 30 and 300 in open-source Python) |
 | [`../WORKLOG.md`](../WORKLOG.md) | what was done and found, step by step |
 
 ## Folder

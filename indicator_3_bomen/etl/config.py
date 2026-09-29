@@ -53,8 +53,10 @@ CORRUPTED_DEM_MUNICIPALITIES = []
 PROVINCE = "Zuid-Holland"
 
 # Where the FME results of the 30 and the 300 live (30_regel_v2.gdb, 300.gdb),
-# read by web/build_tiles_30_300.py. Placeholder; set it in config_local.py.
-FME_OUTPUT_DIR = BASE_DIR / "data" / "fme_output"   # local copy of the FME results (30, 300) from R:
+# read by web/build_tiles_30_300.py and the QGIS validation project. Default:
+# data/fme_output, a local copy of the results on R:. Override in
+# config_local.py only when they are elsewhere.
+FME_OUTPUT_DIR = BASE_DIR / "data" / "fme_output"
 
 try:
     from config_local import *  # noqa: F401,F403 — machine-specific overrides
@@ -136,9 +138,10 @@ def final_output_path(name: str) -> Path:
 # real DEM/tree context from the neighbour instead of hitting a hard edge.
 # Built once with:
 #   gdalbuildvrt data/interim/province_dem.vrt <VIEWANALYSE_DIR>/*.tif
-#   ogrmerge.py -o data/interim/province_trees.gpkg -single -nln province_trees \
-#       -field_strategy Union -src_layer_field_name source_municipality \
-#       -f GPKG -overwrite_ds <VIEWANALYSE_DIR>/*.gpkg
+#   and every <VIEWANALYSE_DIR>/*.gpkg appended into one layer
+#   data/interim/province_trees.gpkg with gdal.VectorTranslate() (Python):
+#   the ogr2ogr / ogrmerge.py command line mis-reads names starting with an
+#   apostrophe ('s-Gravenhage) and silently writes an empty layer.
 # TILE_BUFFER_PX (35m, below) already exceeds the required 30m, so the same
 # buffer constant covers both the intra-municipality and cross-municipality
 # halo — no separate constant needed.

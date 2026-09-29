@@ -6,7 +6,8 @@
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
-GDAL_TRANSLATE="/c/Users/bethrt/AppData/Local/Programs/OSGeo4W/bin/gdal_translate.exe"
+# OSGeo4W's gdal_translate; set GDAL_TRANSLATE to override on another machine
+GDAL_TRANSLATE="${GDAL_TRANSLATE:-/c/Users/bethrt/AppData/Local/Programs/OSGeo4W/bin/gdal_translate.exe}"
 RAW_DIR="sde_reexport/raw_clips"
 FINISHED_DIR="sde_reexport/finished"
 mkdir -p "$FINISHED_DIR"

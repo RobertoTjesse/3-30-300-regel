@@ -8,10 +8,12 @@ For current timing numbers, see `BENCHMARKS.md`.
 The original script's approach: for every tree, call QGIS's `gdal:viewshed`
 Processing algorithm against the **entire municipality DEM**, and write the
 result as a **separate GeoTIFF file**. Reported real-world cost: roughly 60
-hours to process Delft (~114,000 trees) via the ArcPy equivalent of the same
-approach. This pipeline processes the same municipality in about 90 seconds
-end-to-end — a difference explained entirely by architecture, not a smarter
-algorithm (it's the same `ViewshedGenerate` underneath).
+hours to process Delft via the ArcPy equivalent of the same approach. This
+pipeline does Delft (87,837 trees, 180,200 per-tree viewsheds including
+the tile halos) in about half an hour, and all 52 municipalities of the
+province in about 16 hours on 4 cores (`BENCHMARKS.md`) — a difference
+explained by architecture, not a smarter algorithm (it's the same
+`ViewshedGenerate` underneath).
 
 ## Performance-critical changes
 
@@ -25,7 +27,7 @@ algorithm (it's the same `ViewshedGenerate` underneath).
 2. **A small tile window instead of the full DEM, per viewshed call.** The
    original ran the viewshed tool against the entire municipality raster
    for every single tree, regardless of city size — for Delft, a ~700MB
-   file opened and processed ~114,000 times. This pipeline pre-splits the
+   file opened and processed once per tree. This pipeline pre-splits the
    DEM into ~570m tiles (500m inner + 35m buffer), so every
    `ViewshedGenerate()` call only ever touches a small window, independent
    of municipality size.
@@ -161,20 +163,17 @@ or mountain, with no error from the pipeline. Fixed in `01_tile_dem.py`:
 every tile now runs through `gdal.FillNodata()` immediately after being
 cut, before any viewshed call ever sees it.
 
-Getting this right took two passes: the first fill used
-`maxSearchDist=300px` (150m), which *looked* safe against `MAX_DISTANCE`
-(30m) but wasn't actually the right thing to compare against — found by
-directly inspecting real tiles afterward, not by re-reasoning about the
-algorithm: 2 of Delft's 208 tiles had gaps up to ~265x140px that went
-completely unfilled, and the code unconditionally cleared the NoData flag
-regardless, leaving `-9999` disguised as real elevation with no way to
-detect it. Fixed by raising `maxSearchDist` to 2000px (safely larger than
-a tile's own ~1140px dimensions) and adding a post-fill check that keeps
-the NoData flag (and logs a warning) if anything is still unfillable,
-instead of clearing it unconditionally.
-
-Verified on Delft only so far — every other municipality's cached tiles
-predate this fix and need re-tiling to benefit from it.
+Getting this right took three passes. The first fill used
+`maxSearchDist=300px` (150m): 2 of Delft's 208 tiles had gaps up to
+~265x140px that went unfilled while the NoData flag was cleared anyway,
+leaving `-9999` disguised as real elevation. The second interpolated
+everything with `maxSearchDist=2000px` — correct, but hours of work on
+coastal municipalities with large water areas. The current fill (since
+2026-09-27) interpolates small gaps up to 50 px (25 m) and sets whatever is
+left (open water) to the tile's lowest value, a flat surface that can never
+block a line of sight; a tile with no valid pixel at all keeps its NoData
+flag. All 52 municipalities were re-tiled with it in the full run of
+2026-09-27/28. Details: `ARCHITECTURE.md` §13.
 
 ## Methodology change: target (eye/window) height
 
@@ -184,11 +183,10 @@ that raises every evaluated surface cell before the line-of-sight test
 rather than testing strictly at ground level. On Delft this raised the
 mean visible-tree count from 3.25 to 4.68 — a large, expected shift in the
 direction of "eye-height clears more small ground obstructions," not a
-bug. See `ARCHITECTURE.md` §12 and §6 for the still-open, separate issue
-this does *not* address: `observerHeight` (tree height) is fed as an
-absolute elevation but `ViewshedGenerate` treats it as an offset added to
-the DEM's own value at the observer's pixel, which empirically over-places
-trees roughly 1.4-2x too high.
+bug. A separate issue found at the same time — `observerHeight` was fed as
+an absolute elevation while `ViewshedGenerate` adds it to the DEM's own
+value at the observer's pixel, placing observers roughly 1.4-2x too high —
+was fixed on 2026-09-27 (`ARCHITECTURE.md` §6).
 
 ## Not a code change, but the highest-stakes catch of the project
 
@@ -210,10 +208,11 @@ not just verifying the pipeline ran without errors.
 ## Planned: the 30 and the 300 as open source (future work)
 
 The 3 is fully in this repository (Python + GDAL). The 30 and the 300 are
-still FME workbenches on the network share (`30_2025.fmw`,
-`300_2025 regel.fmw`) reading a SQL Server tree-crown table and a PostGIS
-road network; only their results enter this repository
-(`web/build_tiles_30_300.py`). The goal is the same pipeline shape for all
+still FME workbenches (`indicator_30_kroonbedekking/fme/30_2024.fmw`, the
+version behind the map, and `indicator_300_park/fme/300_2025 regel.fmw`)
+reading a SQL Server tree-crown table and a PostGIS road network, so others
+can read but not rerun them; their results enter the map through
+`web/build_tiles_30_300.py`. The goal is the same pipeline shape for all
 three, so any province can repeat the whole rule:
 
 - **30** — known bug in the FME version: it looks up each area in

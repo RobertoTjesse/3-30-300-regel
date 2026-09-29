@@ -117,7 +117,9 @@ trees should be excluded, is still open.
 - All results in the QGIS validation project (group "Eén boom"), with
   difference maps against the exact test.
 
-**9. Isolated tree and tree group vs the benchmark** (2026-09-29)
+## 2026-09-29 — benchmark observer found, one repository, 3-30-300 map
+
+**9. Isolated tree and tree group vs the benchmark**
 - `one_tree.py` now runs cases: `tree_68418` (16 m tree, no other tree
   within 56 m), `group_5` (a row of 5 trees 3-7 m tall, no other tree within
   50 m), `tree_58448` (the first tree). The observer is set as in the
@@ -200,3 +202,33 @@ trees should be excluded, is still open.
 - QGIS validation project: visibility_Delft_corrected and the original
   visibility_Delft (read from the geodatabase) side by side under
   Experimenten.
+
+**10. The 3-30-300 web map**
+- The 30 (FME canopy cover per CBS buurt 2023) and the 300 (FME walking
+  isochrones) added to the map behind a 3 / 30 / 300 switch, on the same
+  gemeenten, wijken and buurten as the 3 (`web/build_tiles_30_300.py`);
+  explanation pages in Dutch (`web/uitleg/`).
+- The 30's missing values (all of Voorne aan Zee, 28 buurten in Schiedam,
+  some in Westland, Leiderdorp, Pijnacker-Nootdorp, Delft) turned out to be
+  an FME bug: 2023 codes looked up in the CBS map of 2022. The crown data
+  is complete.
+
+**11. One repository**
+- `3-regel` (the 3) and the earlier `3-30-300-regel` (the map) combined into
+  this repository with full history, one folder per indicator; the FME
+  workbenches of all three added. The old repositories were deleted, their
+  issues transferred here; the site is published from this repository's
+  `gh-pages` branch.
+
+**12. Consistency check, QGIS, comments, wiki**
+- The QGIS validation project now also holds the 3 per gemeente / wijk /
+  buurt and the FME results of the 30 and the 300.
+- Every Python script got docstrings and comments (no code changes;
+  checked by comparing the syntax trees).
+- A GitHub wiki for new readers (overview, getting started, the three
+  indicators, data, validation, known issues).
+- Documentation brought in line with the current state: 5.2 million trees
+  (13.5 million is the number of per-tree viewsheds, halos included);
+  issue #2 open for the remaining difference; `30_2024.fmw` is the
+  workbench behind the map; stale notes in `IMPROVEMENTS.md` and
+  `ARCHITECTURE.md` updated.

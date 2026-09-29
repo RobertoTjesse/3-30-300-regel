@@ -105,7 +105,7 @@ there is no seam to get wrong — every output pixel comes from exactly one
 tile's complete, correctly-buffered computation.
 
 *(This exact bug — querying/writing only the inner extent, no halo — was
-present early in this project and produced a a visible seam artefact at
+present early in this project and produced a visible seam artefact at
 every internal tile boundary, undercounting a regular grid covering
 roughly 10-12% of every municipality's area. Fixed by adding the halo/crop
 split described above. See git history for the full writeup.)*
@@ -207,9 +207,8 @@ GDAL's viewshed code does), putting the observer exactly at the canopy top.
 both `observerHeight` and `targetHeight` switch from blocked to visible
 exactly where the additive interpretation predicts.)
 Re-checked on ~1,000 Delft trees after the fix: median `observerHeight`
-fell from 4.45m to 1.69m (median overshoot removed: 2.3m). **Every
-processed municipality's output predates this fix** and needs re-running
-stage 2 (and 3) to benefit from it.
+fell from 4.45m to 1.69m (median overshoot removed: 2.3m). All 52
+municipalities were rerun with this fix in the full run of 2026-09-27/28.
 
 **Why the canopy top, not the exact tree point (2026-09-27).** Briefly
 the observer was placed on the DSM at the exact tree point, matching the
@@ -316,13 +315,19 @@ municipalities (§11) also standardizes on `BLOCKXSIZE=512 BLOCKYSIZE=512`
 via an explicit `gdal_translate` finishing pass, since ArcGIS Pro's export
 tools don't reliably expose this level of control.
 
-## 10. The three pipeline stages
+## 10. The pipeline stages
+
+Stages 1-3 compute the viewshed raster per municipality; stages 4-6 turn
+it into scores per home and per area.
 
 | Stage | Script | Input | Output |
 |---|---|---|---|
 | **Extract** | `01_tile_dem.py` | `PROVINCE_DEM_VRT` + one municipality's own `.tif` (for its extent/grid) | `data/interim/dem_tiles/<name>/tile_RRRR_CCCC.tif` (1140x1140, buffered) + `tile_index.json` (every tile's buffered *and* inner extents, in both map coordinates and pixel offsets) |
 | **Transform** | `02_compute_viewsheds.py` | `tile_index.json` + `PROVINCE_TREES_GPKG` | `data/interim/viewshed_tiles/<name>/tile_RRRR_CCCC.tif` (1000x1000, cropped to inner window, UInt32 counts) |
 | **Load** | `03_merge_tiles.py` | all of one municipality's viewshed tiles | `data/processed/<name>_viewshed.tif` — one Cloud-Optimized GeoTIFF (COG) |
+| **Score** | `04_score_buildings.py` | `<name>_viewshed.tif` + BAG buildings and addresses | `data/processed/<name>_woningen.gpkg` — every residential building with the maximum count in a 1.5 m ring outside its facade |
+| **Province** | `05_merge_province.py` | all `<name>_woningen.gpkg` + gemeente/provincie boundaries | `<Province>_woningen.gpkg` (each building once, in its current municipality) + `<Province>_samenvatting.csv` |
+| **Areas** | `06_area_summaries.py` | `<Province>_woningen.gpkg` + CBS wijken/buurten 2025 | `<Province>_gebieden.gpkg` (gemeenten, wijken, buurten) + CSVs |
 
 `tile_index.json` is the hand-off contract between stages 1 and 2 — it
 carries everything stage 2 needs to know about a tile's geometry without
@@ -451,6 +456,13 @@ production DEMs are Float32, ~0.1 mm steps.)
 
 ## 14. Comparison with ArcGIS Pro viewshed tools (2026-09-28)
 
+> **Read the last part of this section first.** The first analysis below
+> (2026-09-28) attributed the difference to the viewshed engine. The
+> single-tree tests of 2026-09-29 showed instead that the reference run's
+> observer height was wrong; its conclusions about the engine, the 3D
+> radius and the Visibility crashes no longer hold and are kept only as a
+> record of what was tried.
+
 A reference result for Delft (`visibility_Delft`) was made in ArcGIS Pro
 with the Spatial Analyst **Visibility** tool: AHN5 raw DSM, observer at
 the DSM value at the tree point (bilinear, `ExtractValuesToPoints
@@ -493,8 +505,8 @@ relative to the exact tree point *within GDAL*; compared with ArcGIS's
 Visibility tool, GDAL still occludes more. If an ArcGIS reference is
 needed, Viewshed2 is the closer and (per Esri) more accurate one.
 
-**Resolved (2026-09-29, GitHub issue #2): the reference run's observer
-height was wrong.** An isolated tree and an isolated group of 5 trees
+**Main cause found (2026-09-29, GitHub issue #2, still open for the
+remaining difference): the reference run's observer height was wrong.** An isolated tree and an isolated group of 5 trees
 (`arcgis_tests/one_tree.py`, `one_tree_arcgis.py`; WORKLOG section 9)
 show that `visibility_Delft` is reproduced exactly (same count on 100% of
 cells) by Visibility with `RASTERVALU` as both `observer_elevation` and
@@ -511,7 +523,8 @@ RASTERVALU + an explicit 1 m offset, in 500 m tiles), inside Delft at
 least 30 m from its boundary: mean 3.28 trees visible, 47.3% of cells
 >= 3 trees (original 6.16 / 69.5%; this pipeline 4.57 / 60.4%, pixel
 r 0.61 with the corrected benchmark). The remaining gap to this pipeline
-is its canopy-top observer and its own DEM.
+is its canopy-top observer and its own DEM; whether that explains all of
+it is still open.
 The Visibility crashes were caused by the repository path (a folder name
 starting with a digit and containing a hyphen), not the tool; the tool
 also ignores the sign of the outer radius (always 2D).

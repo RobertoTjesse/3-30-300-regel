@@ -167,7 +167,7 @@ Everything province-specific is a setting or an input file; no code changes.
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup, pipeline, validation, known data issues |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | the 3: design decisions in depth |
 | [`indicator_3_bomen/BENCHMARKS.md`](indicator_3_bomen/BENCHMARKS.md) | the 3: run times (generated) |
-| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | possible improvements, incl. the 30 and 300 in Python |
+| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | the 3: improvements over the original prototype; planned work, incl. the 30 and 300 in Python |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | the 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | the 300 |
 | `web/uitleg/` | explanation pages for the public (Dutch) |

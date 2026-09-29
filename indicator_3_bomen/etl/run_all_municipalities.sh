@@ -14,6 +14,8 @@
 set -uo pipefail
 
 cd "$(dirname "$0")/../.." || exit 1   # repo root
+# The OSGeo4W / QGIS Pythons of this machine; set PYEXE and QGIS_PY to
+# override (the same install as OSGEO4W_ROOT in config_local.py)
 QGIS_PY="${QGIS_PY:-/c/Users/bethrt/AppData/Local/Programs/OSGeo4W/bin/python-qgis-ltr.bat}"
 PYEXE="${PYEXE:-/c/Users/bethrt/AppData/Local/Programs/OSGeo4W/apps/Python312/python.exe}"
 LOGFILE="logs/full_run.log"
