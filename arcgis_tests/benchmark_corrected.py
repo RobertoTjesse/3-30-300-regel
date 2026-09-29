@@ -70,14 +70,13 @@ def main(test):
     arcpy.CheckOutExtension("Spatial")
     arcpy.env.overwriteOutput = True
     os.makedirs(WORK, exist_ok=True)
-    gdb = os.path.join(WORK, "work.gdb")
-    if not arcpy.Exists(gdb):
-        arcpy.management.CreateFileGDB(WORK, "work.gdb")
-    arcpy.env.workspace = arcpy.env.scratchWorkspace = gdb
+    # Plain .tif / .shp files in a plain folder, as in one_tree_arcgis.py:
+    # the GRID engine failed on this run with its inputs in a file geodatabase
+    arcpy.env.workspace = arcpy.env.scratchWorkspace = WORK
 
     t0 = time.time()
-    dem = os.path.join(gdb, "dem_test" if test else "dem")
-    trees = os.path.join(gdb, "trees_test" if test else "trees")
+    dem = os.path.join(WORK, "dem_test.tif" if test else "dem.tif")
+    trees = os.path.join(WORK, "trees_test.shp" if test else "trees.shp")
     if test:
         x0, y0, x1, y1 = (TEST_AREA[0] - MARGIN, TEST_AREA[1] - MARGIN,
                           TEST_AREA[2] + MARGIN, TEST_AREA[3] + MARGIN)
