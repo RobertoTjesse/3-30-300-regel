@@ -16,7 +16,7 @@
   <a href="3.html">3</a>
   <a href="30.html">30</a>
   <a href="300.html">300</a>
-  <a class="repo" href="https://github.com/RobertoTjesse/3-30-300-regel">Code</a>
+  <a class="repo" href="https://github.com/RobertoTjesse/330300regel">Code</a>
 </nav></header>
 
 <main>
@@ -61,21 +61,21 @@ de luchtfoto (Beeldmateriaal Nederland, 8 cm, via de WMS van PDOK).</p>
 <h2 id="provincie">Zelf doen voor een andere provincie</h2>
 <p>De repository is zo opgezet dat alleen instellingen en invoerbestanden per provincie verschillen. De volledige,
 technische handleiding (Engels) staat in de
-<a href="https://github.com/RobertoTjesse/3-30-300-regel#another-province">README</a>. In het kort:</p>
+<a href="https://github.com/RobertoTjesse/330300regel#another-province">README</a>. In het kort:</p>
 <ol class="steps">
   <li><strong>Installeer QGIS/OSGeo4W</strong> (voor GDAL) en haal de code op:
-    <pre><code>git clone https://github.com/RobertoTjesse/3-30-300-regel.git</code></pre></li>
+    <pre><code>git clone https://github.com/RobertoTjesse/330300regel.git</code></pre></li>
   <li><strong>Zet per gemeente een hoogtemodel en een bomenbestand klaar</strong>, met dezelfde naam:
     <code>Utrecht.tif</code> (AHN4 DSM 0,5 m, ruw) en <code>Utrecht.gpkg</code> (boompunten).
     Zonder NEO-data kun je een gemeentelijk bomenbestand of een andere boomkartering gebruiken.</li>
-  <li><strong>Vul <code>etl/config_local.py</code> in</strong> (kopie van <code>config_local.example.py</code>):
+  <li><strong>Vul <code>indicator_3_bomen/etl/config_local.py</code> in</strong> (kopie van <code>config_local.example.py</code>):
     <pre><code>PROVINCE = "Utrecht"              # zoals in PDOK
 VIEWANALYSE_DIR = Path(r"D:\data\utrecht")
 MUNICIPALITIES = []               # leeg = alle gemeenten</code></pre></li>
   <li><strong>Download BAG, gemeente- en provinciegrenzen en CBS-buurten</strong> (PDOK). De commando's staan in
-    <code>etl/download_bag_pdok.py</code>, <code>05_merge_province.py</code> en <code>06_area_summaries.py</code>;
+    <code>indicator_3_bomen/etl/download_bag_pdok.py</code>, <code>05_merge_province.py</code> en <code>06_area_summaries.py</code>;
     gebruik de omgrenzing van je eigen provincie.</li>
-  <li><strong>Draai de zes stappen</strong> (<code>etl/01</code> t/m <code>06</code>) en daarna
+  <li><strong>Draai de zes stappen</strong> (<code>indicator_3_bomen/etl/01</code> t/m <code>06</code>) en daarna
     <code>web/build_tiles.py</code>. Voor de 30 en de 300 zijn (nog) FME-resultaten nodig:
     <code>web/build_tiles_30_300.py</code>.</li>
   <li><strong>Pas de kaart aan</strong>: in <code>web/index.html</code> alleen <code>PROVINCE</code> en <code>REPO</code>
@@ -97,10 +97,10 @@ Python met GDAL te doen, in dezelfde repository, zodat elke provincie de hele re
   <li>Daarnaast: de 3 ook voor scholen en werkplekken (het artikel vraagt dat), en de 30 en de 300 op dezelfde jaargang
       BAG als de 3.</li>
 </ul>
-<p>Zie ook <a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/IMPROVEMENTS.md"><code>IMPROVEMENTS.md</code></a>
+<p>Zie ook <a href="https://github.com/RobertoTjesse/330300regel/blob/master/indicator_3_bomen/IMPROVEMENTS.md"><code>IMPROVEMENTS.md</code></a>
 en de <a href="https://github.com/RobertoTjesse/3-regel/issues">open punten</a>.</p>
 </main>
-<footer>3-30-300-regel · <a href="https://github.com/RobertoTjesse/3-30-300-regel">broncode op GitHub</a> ·
+<footer>3-30-300-regel · <a href="https://github.com/RobertoTjesse/330300regel">broncode op GitHub</a> ·
   <a href="konijnendijk.html">Konijnendijk (2023)</a></footer>
 </body>
 </html>
