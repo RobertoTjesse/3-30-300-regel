@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
+<title>The 300: green within walking distance</title>
+<meta name="description" content="How was it calculated which homes lie within a 5-minute walk of a park or wood, and why this way?">
+<link rel="alternate" hreflang="nl" href="../300.html">
+<link rel="stylesheet" href="../uitleg.css">
+</head>
+<body>
+<header class="top"><nav>
+  <a class="home" href="../../?lang=en">← 3-30-300 map</a>
+  <a href="./">Overview</a>
+  <a href="konijnendijk.html">Paper</a>
+  <a href="3.html">3</a>
+  <a href="30.html">30</a>
+  <a href="300.html" aria-current="page">300</a>
+  <a class="repo" href="https://github.com/RobertoTjesse/3-30-300-regel">Code</a>
+  <a href="../300.html" hreflang="nl" lang="nl">Nederlands</a>
+</nav></header>
+
+<main>
+<h1>The 300: a park within 300 metres</h1>
+<p class="lead">Does everyone live within walking distance of a park or wood? From every entrance of a park or wood we
+calculated how far you walk in 5 minutes over real streets and paths. Every home in that zone meets the rule (green on
+the map). For information, the 15-minute zone was calculated too.</p>
+
+<div class="facts">
+  <div class="fact"><b>78.9%</b><span>of homes within a 5-min walk of green</span></div>
+  <div class="fact"><b>99.2%</b><span>within a 15-min walk</span></div>
+  <div class="fact"><b>27,111</b><span>entrances of parks and woods</span></div>
+</div>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, weighted by the number of homes per building. Per municipality
+from 51.0% (Nieuwkoop) to 95.1% (Zoeterwoude) within 5 minutes.</p>
+
+<h2>What is measured?</h2>
+<p>The <a href="konijnendijk.html">paper</a> asks for a large public green space within 300 m of every home,
+"approximately a 5-min walk". We measure those 5 minutes of walking over the network of streets and paths, counted from
+the entrances of the green.</p>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Collect the green.</strong>
+    Parks and woods from OpenStreetMap and from TOP10NL (Kadaster), combined (as of 2024).</li>
+  <li><strong>Leave out pieces that are too small or too narrow.</strong>
+    Only green of at least 300 m² <i>and</i> with a perimeter/area ratio of at most 0.35 remains. That second
+    condition removes long narrow strips, such as verges: a strip has to be about 6 m wide or more.
+    This green is on the map (from neighbourhood level): dark green outlines, filled in once the homes show.
+    Click it for its type, source and area.</li>
+  <li><strong>Find the entrances.</strong>
+    All paths and streets you may walk on (OpenStreetMap, within 300 m around every municipality) are intersected with
+    the edge of the green. Where a path enters the green is an entrance: 27,111 in total.</li>
+  <li><strong>Calculate the walking zones.</strong>
+    From every entrance, an isochrone calculator
+    (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) uses a network analysis over the streets and paths of
+    OpenStreetMap (pedestrian profile) to calculate the area you reach on foot in 5 and in 15 minutes. All zones are
+    merged.</li>
+  <li><strong>Classify the homes.</strong>
+    A BAG building with a residential use that lies in or on the edge of a 5-minute zone meets the rule: green on the
+    map. All other homes are red. Whether a red home lies within 15 minutes is shown in the popup.</li>
+  <li><strong>Per municipality, district and neighbourhood.</strong>
+    The share of homes within 5 (and 15) minutes, on the same areas as the 3 and the 30. A building counts for as many
+    homes as it has addresses with a residential use.</li>
+</ol>
+
+<h2>Choices and why</h2>
+<div class="table-wrap"><table>
+<tr><th>Choice</th><th>Why</th><th>Alternative we did not choose</th></tr>
+<tr><td>Walking time over the network</td>
+    <td>300 m as the crow flies can in reality be a long detour, because of water, a railway or a motorway without a
+        crossing. The paper itself speaks of "approximately a 5-min walk".</td>
+    <td>A circle of 300 m (buffer): simpler, but ignores barriers.</td></tr>
+<tr><td>5 minutes</td>
+    <td>The network analysis (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) uses 5.1 km/h for pedestrians
+        by default: 5 minutes is about 425 m along the road. With the usual detour of roads compared with the straight
+        line, that comes to around 300 m as the crow flies.</td>
+    <td>Exactly 300 m over the network: stricter than the WHO's 300 m as the crow flies.</td></tr>
+<tr><td>Colour by 5 minutes only</td>
+    <td>The rule is 300 m, about a 5-minute walk: a home meets it or not. The map therefore only colours green
+        (within 5 minutes) and red (further).</td>
+    <td>A separate colour for 5–15 minutes: suggests an in-between category the rule does not have.</td></tr>
+<tr><td>15 minutes as extra information</td>
+    <td>Shows whether homes that miss the 300 are just outside or really far from green. Visible in the popups and as
+        a walking zone, not in the colours.</td>
+    <td>Leaving it out altogether.</td></tr>
+<tr><td>From the entrances</td>
+    <td>You enter a park by a path. Counting from the edge would also count fences, water and dense woodland edges as
+        access.</td>
+    <td>Distance to the edge of the green.</td></tr>
+<tr><td>At least 300 m², not too narrow</td>
+    <td>Small planted patches and verges are no place for recreation; the shape condition removes strips that are large
+        but narrow.</td>
+    <td>The WHO threshold of 1 ha (see limitations).</td></tr>
+<tr><td>OSM <i>and</i> TOP10NL</td>
+    <td>Both sources miss pieces: OSM is strong in parks and paths, TOP10NL in woods and areas outside the city.</td>
+    <td>One source: more gaps.</td></tr>
+<tr><td>A building counts if it touches the zone</td>
+    <td>The front door is somewhere on the facade; if part of the building lies in the zone, the green is within reach.</td>
+    <td>Only the building's centre point: stricter for large buildings.</td></tr>
+<tr><td>Open-source isochrone calculator</td>
+    <td>Free, reproducible and with a pedestrian profile over OpenStreetMap.</td>
+    <td>Commercial routing services: costs, and not repeatable.</td></tr>
+</table></div>
+
+<h2 id="mijn-woning">Is this right for my home?</h2>
+<p>Per neighbourhood, district and municipality the map gives a reliable picture. Per home it is a good indication, but
+not a measurement on site. Is your home red while a park seems close by? Then it can be because of this:</p>
+<ul>
+  <li><b>The route is longer than the straight line.</b> We calculate a 5-minute walk over existing streets and paths.
+      If there is water, a railway or a busy road without a crossing in between, a park that looks close can still be
+      a longer walk.</li>
+  <li><b>The entrance is on the other side.</b> We calculate to an entrance where a path enters the green, not to the
+      edge. A park with a fence or ditch on your side counts from the nearest entrance.</li>
+  <li><b>The green does not count.</b> A lawn without paths, a narrow green strip or a private garden is not a park in
+      this calculation. Newly created green may still be missing from the map sources.</li>
+  <li><b>A path is missing in OpenStreetMap.</b> A shortcut you always take yourself, but which is not on the map, is
+      unknown to the network analysis.</li>
+</ul>
+<p>Whether a red home lies within 15 minutes is shown in the popup.</p>
+
+<h2>Limitations and open issues</h2>
+<ul>
+  <li><b>300 m² is much smaller than the WHO norm of 1 ha.</b> The paper and the WHO mean a large public green space;
+      here a small park counts too. The result is therefore more favourable than under the strict norm. A calculation
+      with 1 ha is the first improvement.</li>
+  <li><b>Public access.</b> Whether the green is publicly accessible has not been checked; an entrance only means that a
+      path enters the green.</li>
+  <li><b>Green without paths</b> (an open lawn by the street) gets no entrance and therefore does not count.</li>
+  <li><b>Made with FME</b>, with an isochrone calculator
+      (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) that ran locally for a while. The steps use open data
+      and open software; the workbench is in the repository, but only runs with FME. The plan is to do this fully in
+      Python (see the <a href="./#toekomst">overview</a>).</li>
+</ul>
+
+<h2>Code and sources</h2>
+<div class="table-wrap"><table class="plain">
+<tr><th>Step</th><th>Where</th></tr>
+<tr><td>Green, entrances, walking zones, classifying buildings</td><td>FME workbench <a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/fme"><code>300_2025 regel.fmw</code></a></td></tr>
+<tr><td>Share per municipality/district/neighbourhood, map tiles</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/web/build_tiles_30_300.py"><code>web/build_tiles_30_300.py</code></a></td></tr>
+<tr><td>Parks and woods on the map</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/web/build_tiles_groen.py"><code>web/build_tiles_groen.py</code></a></td></tr>
+</table></div>
+<div class="table-wrap"><table class="plain">
+<tr><th>Data</th><th>Source</th><th>As of</th></tr>
+<tr><td>Parks and woods</td><td>OpenStreetMap and TOP10NL (Kadaster)</td><td>2024</td></tr>
+<tr><td>Paths and streets</td><td>OpenStreetMap, Zuid-Holland extract (Geofabrik)</td><td>2025</td></tr>
+<tr><td>Walking time</td><td>Isochrone calculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>), pedestrian profile</td><td>2025</td></tr>
+<tr><td>Buildings with homes</td><td>BAG (provincial copy)</td><td>9 December 2025</td></tr>
+</table></div>
+</main>
+<footer>3-30-300 rule · <a href="https://github.com/RobertoTjesse/3-30-300-regel">source code on GitHub</a> ·
+  <a href="konijnendijk.html">Konijnendijk (2023)</a> · WHO Regional Office for Europe (2017), <i>Urban green spaces:
+  a brief for action</i>.</footer>
+</body>
+</html>

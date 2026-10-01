@@ -28,6 +28,7 @@
            box-sizing: border-box; background: var(--bg); border: 1px solid var(--border);
            border-radius: 8px; box-shadow: var(--panel-shadow); padding: 14px 16px; z-index: 1; }
   .panel h1 { font-size: 17px; margin: 0 0 8px; }
+  .lang { float: right; font-size: 12px; font-weight: 400; margin-top: 3px; }
   .panel p { margin: 0 0 10px; color: var(--muted); }
   .tabs { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
   .tabs button { flex: 1; padding: 6px 0; border: 0; background: var(--bg); color: var(--fg);
@@ -76,8 +77,9 @@
 <div id="map"></div>
 
 <div class="panel">
+  <a class="lang" id="lang" href="?lang=en" hreflang="en" lang="en">English</a>
   <h1 id="title">3-30-300</h1>
-  <div class="tabs" role="group" aria-label="Onderdeel van de regel">
+  <div class="tabs" role="group" aria-label="Onderdeel van de regel" data-en-label="Part of the rule">
     <button type="button" data-theme="3">3</button>
     <button type="button" data-theme="30">30</button>
     <button type="button" data-theme="300">300</button>
@@ -85,32 +87,36 @@
   <p class="intro" id="intro"></p>
 
   <form class="search" id="search">
-    <input id="q" type="search" placeholder="Zoek adres of plaats" aria-label="Zoek adres of plaats">
-    <button type="submit">Zoek</button>
+    <input id="q" type="search" placeholder="Zoek adres of plaats" aria-label="Zoek adres of plaats" data-en-label="Search address or place">
+    <button type="submit" data-en="Search">Zoek</button>
   </form>
-  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="aerial"> Luchtfoto als achtergrond</label>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="aerial"> <span data-en="Aerial photo as background">Luchtfoto als achtergrond</span></label>
 
   <div id="legend"></div>
-  <label class="toggle" id="iso-toggle"><input type="checkbox" id="iso"> Looptijdzones en ingangen van groen tonen</label>
+  <label class="toggle" id="iso-toggle"><input type="checkbox" id="iso"> <span data-en="Show walking zones and entrances of green">Looptijdzones en ingangen van groen tonen</span></label>
   <div class="hint" id="hint"></div>
 
   <details>
-    <summary>Hoe is dit berekend?</summary>
+    <summary data-en="How was this calculated?">Hoe is dit berekend?</summary>
     <p id="method"></p>
   </details>
-  <p class="hint">Uitleg en keuzes: <a href="uitleg/">overzicht</a> ·
+  <p class="hint"><span data-en="Method and choices:">Uitleg en keuzes:</span>
+     <a href="uitleg/" data-en="overview">overzicht</a> ·
      <a href="uitleg/3.html">3</a> · <a href="uitleg/30.html">30</a> · <a href="uitleg/300.html">300</a> ·
-     <a href="uitleg/konijnendijk.html">het artikel</a></p>
+     <a href="uitleg/konijnendijk.html" data-en="the paper">het artikel</a></p>
 </div>
 
 <dialog id="info">
-  <button class="close" id="info-close" type="button">Sluiten</button>
-  <h2>Bronnen en actualiteit</h2>
-  <table id="sources"><tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr></table>
-  <h3>Kanttekeningen</h3>
+  <button class="close" id="info-close" type="button" data-en="Close">Sluiten</button>
+  <h2 data-en="Sources and dates">Bronnen en actualiteit</h2>
+  <table id="sources"><tr><th data-en="Data">Gegevens</th><th data-en="Source">Bron</th><th data-en="As of">Stand</th></tr></table>
+  <h3 data-en="Caveats">Kanttekeningen</h3>
   <p id="caveats"></p>
-  <h3>Methode en code</h3>
-  <p>Hoe elke indicator is berekend en waarom, staat op de uitlegpagina's:
+  <h3 data-en="Method and code">Methode en code</h3>
+  <p data-en='How each indicator was calculated, and why, is on the explanation pages:
+     <a href="uitleg/3.html">3</a>, <a href="uitleg/30.html">30</a> and <a href="uitleg/300.html">300</a>.
+     The code of the 3 and of this map is in the
+     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub repository</a>; the 30 and the 300 were (still) calculated with FME.'>Hoe elke indicator is berekend en waarom, staat op de uitlegpagina's:
      <a href="uitleg/3.html">3</a>, <a href="uitleg/30.html">30</a> en <a href="uitleg/300.html">300</a>.
      De code van de 3 en van deze kaart staat in de
      <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub-repository</a>; de 30 en de 300 zijn (nog) met FME berekend.</p>
@@ -127,15 +133,21 @@ const TILES_30_300 = "data/30-300.pmtiles";       // web/build_tiles_30_300.py
 const TILES_GROEN = "data/groen.pmtiles";         // web/build_tiles_groen.py (the 300's parks and woods)
 // The map opens on the extent of the tile files, so no coordinates to set per province.
 
+// Language: Dutch, or English with ?lang=en (link at the top of the panel).
+// Every text below is written as L("Nederlands", "English").
+const EN = new URLSearchParams(location.search).get("lang") === "en";
+const L = (nl, en) => EN ? en : nl;
+const UITLEG = EN ? "uitleg/en/" : "uitleg/";   // explanation pages in that language
+
 // --- 3: visible trees per home (same colours as the 3-regel map) ---
 const CLASSES_3 = [
-  ["0",   "#d7191c", "0 bomen"],
-  ["1-2", "#fd8d3c", "1-2 bomen"],
-  ["3-5", "#74c476", "3-5 bomen"],
-  ["6-7", "#31a354", "6-7 bomen"],
-  ["8+",  "#006d2c", "8 of meer bomen"],
+  ["0",   "#d7191c", L("0 bomen", "0 trees")],
+  ["1-2", "#fd8d3c", L("1-2 bomen", "1-2 trees")],
+  ["3-5", "#74c476", L("3-5 bomen", "3-5 trees")],
+  ["6-7", "#31a354", L("6-7 bomen", "6-7 trees")],
+  ["8+",  "#006d2c", L("8 of meer bomen", "8 or more trees")],
 ];
-const NO_RING = ["#bdbdbd", "geen vrije gevel"];
+const NO_RING = ["#bdbdbd", L("geen vrije gevel", "no free facade")];
 const STEPS_3 = [
   [0,  "#d7301f", "< 80%"],
   [80, "#fdae6b", "80-90%"],
@@ -145,9 +157,9 @@ const STEPS_3 = [
 ];
 // Areas: the same gemeenten / wijken / buurten and zooms for 3, 30 and 300
 const LEVELS = [
-  { layer: "gemeenten", name: "gemeente", from: 0,    to: 10 },
-  { layer: "wijken",    name: "wijk",     from: 10,   to: 11.5 },
-  { layer: "buurten",   name: "buurt",    from: 11.5, to: 13 },
+  { layer: "gemeenten", name: L("gemeente", "municipality"), plural: L("de gemeenten", "municipalities"), from: 0,    to: 10 },
+  { layer: "wijken",    name: L("wijk", "district"),          plural: L("de wijken", "districts"),        from: 10,   to: 11.5 },
+  { layer: "buurten",   name: L("buurt", "neighbourhood"),    plural: L("de buurten", "neighbourhoods"),  from: 11.5, to: 13 },
 ];
 
 // --- 30: tree canopy cover per wijk / buurt (%) ---
@@ -155,18 +167,19 @@ const STEPS_30 = [
   [0,  "#d7301f", "< 10%"],
   [10, "#fdae6b", "10-20%"],
   [20, "#c7e9c0", "20-30%"],
-  [30, "#238b45", "≥ 30% (voldoet)"],
+  [30, "#238b45", L("≥ 30% (voldoet)", "≥ 30% (meets the rule)")],
 ];
 
 // --- 300: homes within a 5-minute walk of a park or wood ---
 const CLASSES_300 = [
-  ["5",   "#238b45", "binnen 5 min lopen (≈ 300 m)"],
-  ["ver", "#d7301f", "verder dan 5 min lopen"],
+  ["5",   "#238b45", L("binnen 5 min lopen (≈ 300 m)", "within a 5-min walk (≈ 300 m)")],
+  ["ver", "#d7301f", L("verder dan 5 min lopen", "more than a 5-min walk")],
 ];
 // Colours follow the 5 minutes only; the tiles also hold 15 minutes (klasse "15",
 // pct_15), shown in the popups and as a zone line.
-const POPUP_300 = { "5": "Binnen 5 min lopen van groen", "15": "Verder dan 5 min lopen (wel binnen 15 min)",
-                    "ver": "Verder dan 15 min lopen van groen" };
+const POPUP_300 = { "5": L("Binnen 5 min lopen van groen", "Within a 5-minute walk of green"),
+                    "15": L("Verder dan 5 min lopen (wel binnen 15 min)", "More than a 5-minute walk (but within 15 min)"),
+                    "ver": L("Verder dan 15 min lopen van groen", "More than a 15-minute walk from green") };
 const VALHALLA = '(<a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a>)';
 const STEPS_300 = [
   [0,  "#d7301f", "< 50%"],
@@ -184,55 +197,74 @@ const BUILDINGS_FROM_ZOOM = 13;
 
 const THEMES = {
   "3": {
-    intro: "Ziet elke woning minstens 3 bomen? Aantal zichtbare bomen per woning, en het aandeel woningen met ≥ 3 zichtbare bomen per gebied.",
-    method: "Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin (AHN4, 0,5 m). " +
-            "Een woning krijgt het hoogste aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte) gezien wordt.",
+    intro: L("Ziet elke woning minstens 3 bomen? Aantal zichtbare bomen per woning, en het aandeel woningen met ≥ 3 zichtbare bomen per gebied.",
+             "Does every home see at least 3 trees? Number of visible trees per home, and the share of homes with ≥ 3 visible trees per area."),
+    method: L("Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin (AHN4, 0,5 m). " +
+              "Een woning krijgt het hoogste aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte) gezien wordt.",
+              "For every tree, the part of its surroundings within 30 m that is visible from the crown top was calculated (AHN4, 0.5 m). " +
+              "A home gets the highest number of visible trees seen anywhere just outside its facade (within 1.5 m, at an eye height of 1.8 m)."),
   },
   "30": {
-    intro: "Heeft elke buurt minstens 30% bedekking met boomkronen? Kroonoppervlak als aandeel van het landoppervlak, per gemeente, wijk en buurt.",
-    method: "Per CBS-buurt (2023) is het kroonoppervlak van de NEO-bomen opgeteld en gedeeld door het landoppervlak. " +
-            "Voor deze kaart zijn kroon- en landoppervlak naar de gemeenten, wijken en buurten van de 3 omgerekend, naar rato van overlappend oppervlak. " +
-            "Grijs: geen gegevens. Voor Voorne aan Zee en delen van Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp en Delft " +
-            "ontbreekt de waarde door een fout in de berekening (buurtcodes van 2023 gezocht in de CBS-kaart van 2022).",
+    intro: L("Heeft elke buurt minstens 30% bedekking met boomkronen? Kroonoppervlak als aandeel van het landoppervlak, per gemeente, wijk en buurt.",
+             "Does every neighbourhood have at least 30% tree canopy cover? Crown area as a share of land area, per municipality, district and neighbourhood."),
+    method: L("Per CBS-buurt (2023) is het kroonoppervlak van de NEO-bomen opgeteld en gedeeld door het landoppervlak. " +
+              "Voor deze kaart zijn kroon- en landoppervlak naar de gemeenten, wijken en buurten van de 3 omgerekend, naar rato van overlappend oppervlak. " +
+              "Grijs: geen gegevens. Voor Voorne aan Zee en delen van Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp en Delft " +
+              "ontbreekt de waarde door een fout in de berekening (buurtcodes van 2023 gezocht in de CBS-kaart van 2022).",
+              "Per CBS neighbourhood (2023), the crown area of the NEO trees was added up and divided by the land area. " +
+              "For this map, crown and land area were carried over to the municipalities, districts and neighbourhoods of the 3, in proportion to overlapping area. " +
+              "Grey: no data. For Voorne aan Zee and parts of Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp and Delft " +
+              "the value is missing because of an error in the calculation (2023 neighbourhood codes looked up in the CBS map of 2022)."),
   },
   "300": {
-    intro: "Woont iedereen binnen 300 m van een park of bos? Looptijd over het wegennet van elke woning tot de dichtstbijzijnde ingang van groen.",
-    method: "Rond elke ingang van een park of bos (OSM- en TOP10NL-groen van minstens 300 m², waar een voetpad het groen in gaat) " +
-            `is met een netwerkanalyse ${VALHALLA} berekend wat binnen 5 en binnen 15 minuten lopen bereikbaar is. 5 minuten lopen is ongeveer 300 m hemelsbreed. ` +
-            "De kleuren gaan over de 5 minuten: een pand (BAG, met woonfunctie) in die zone is groen. Per gebied: het aandeel woningen binnen 5 minuten. " +
-            "De 15 minuten staan in de pop-ups en bij de looptijdzones. Donkergroen omlijnd: de parken en bossen die meetellen.",
+    intro: L("Woont iedereen binnen 300 m van een park of bos? Looptijd over het wegennet van elke woning tot de dichtstbijzijnde ingang van groen.",
+             "Does everyone live within 300 m of a park or wood? Walking time over the street network from every home to the nearest entrance of green."),
+    method: L("Rond elke ingang van een park of bos (OSM- en TOP10NL-groen van minstens 300 m², waar een voetpad het groen in gaat) " +
+              `is met een netwerkanalyse ${VALHALLA} berekend wat binnen 5 en binnen 15 minuten lopen bereikbaar is. 5 minuten lopen is ongeveer 300 m hemelsbreed. ` +
+              "De kleuren gaan over de 5 minuten: een pand (BAG, met woonfunctie) in die zone is groen. Per gebied: het aandeel woningen binnen 5 minuten. " +
+              "De 15 minuten staan in de pop-ups en bij de looptijdzones. Donkergroen omlijnd: de parken en bossen die meetellen.",
+              "Around every entrance of a park or wood (OSM and TOP10NL green of at least 300 m², where a footpath enters the green), " +
+              `a network analysis ${VALHALLA} calculated what can be reached within a 5 and a 15-minute walk. A 5-minute walk is about 300 m as the crow flies. ` +
+              "The colours are about the 5 minutes: a building (BAG, with homes) in that zone is green. Per area: the share of homes within 5 minutes. " +
+              "The 15 minutes are in the popups and the walking zones. Dark green outlines: the parks and woods that count."),
   },
 };
 
 const SOURCES = {
   "3": [
-    ["Hoogtemodel", '<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0,5 m', "2020–2022"],
-    ["Bomen", "NEO boomdata (aangekocht)", "2020–2022"],
-    ["Woningen", "BAG via PDOK", "27 september 2026"],
-    ["Gebieden", "Bestuurlijke gebieden; CBS wijken en buurten 2025", "2025–2026"],
+    [L("Hoogtemodel", "Elevation model"), L('<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0,5 m',
+                                             '<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0.5 m'), "2020–2022"],
+    [L("Bomen", "Trees"), L("NEO boomdata (aangekocht)", "NEO tree data (purchased)"), "2020–2022"],
+    [L("Woningen", "Homes"), "BAG via PDOK", L("27 september 2026", "27 September 2026")],
+    [L("Gebieden", "Areas"), L("Bestuurlijke gebieden; CBS wijken en buurten 2025", "Administrative boundaries; CBS districts and neighbourhoods 2025"), "2025–2026"],
   ],
   "30": [
-    ["Boomkronen", "NEO boomkronen (aangekocht)", "2020–2022"],
-    ["Landoppervlak", '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2023" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2023</a>', "2023"],
-    ["Gebieden", "Zelfde als de 3", "2025–2026"],
+    [L("Boomkronen", "Tree crowns"), L("NEO boomkronen (aangekocht)", "NEO tree crowns (purchased)"), "2020–2022"],
+    [L("Landoppervlak", "Land area"), '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2023" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2023</a>', "2023"],
+    [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
   "300": [
-    ["Groen", "OpenStreetMap- en TOP10NL-groen (parken, bossen)", "2024"],
-    ["Paden (ingangen)", "OpenStreetMap, extract Zuid-Holland (Geofabrik)", "2025"],
-    ["Looptijd", `Isochronencalculator ${VALHALLA}, voetganger, over het OSM-wegennet`, "2025"],
-    ["Woningen", "BAG-panden met een woonfunctie", "9 december 2025"],
-    ["Gebieden", "Zelfde als de 3", "2025–2026"],
+    [L("Groen", "Green"), L("OpenStreetMap- en TOP10NL-groen (parken, bossen)", "OpenStreetMap and TOP10NL green (parks, woods)"), "2024"],
+    [L("Paden (ingangen)", "Paths (entrances)"), L("OpenStreetMap, extract Zuid-Holland (Geofabrik)", "OpenStreetMap, Zuid-Holland extract (Geofabrik)"), "2025"],
+    [L("Looptijd", "Walking time"), L(`Isochronencalculator ${VALHALLA}, voetganger, over het OSM-wegennet`,
+                                      `Isochrone calculator ${VALHALLA}, pedestrian, over the OSM street network`), "2025"],
+    [L("Woningen", "Homes"), L("BAG-panden met een woonfunctie", "BAG buildings with homes"), L("9 december 2025", "9 December 2025")],
+    [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
 };
-const CAVEATS = "Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 is berekend op de buurten van 2023 " +
+const CAVEATS = L("Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 is berekend op de buurten van 2023 " +
   "en omgerekend: waar een buurt sinds 2023 is gesplitst of samengevoegd, is de kroonbedekking een benadering. Een boom telt mee in elke " +
   "buurt die zijn kroon raakt. De woningen van de 3 (BAG 2026) en de 300 (BAG 2025) zijn apart geteld; het aantal woningen per gebied kan " +
-  "daardoor iets verschillen. De 300 meet looptijd tot een ingang, niet hemelsbreed tot de rand van het groen.";
+  "daardoor iets verschillen. De 300 meet looptijd tot een ingang, niet hemelsbreed tot de rand van het groen.",
+  "All tabs show the same municipalities, districts (CBS 2025) and neighbourhoods (CBS 2025). The 30 was calculated on the neighbourhoods of 2023 " +
+  "and carried over: where a neighbourhood has been split or merged since 2023, the canopy cover is an approximation. A tree counts in every " +
+  "neighbourhood its crown touches. The homes of the 3 (BAG 2026) and the 300 (BAG 2025) were counted separately, so the number of homes per area can " +
+  "differ slightly. The 300 measures walking time to an entrance, not the straight-line distance to the edge of the green.");
 // Second background: aerial photo (WMS), highest resolution available nationwide
 const AERIAL_WMS = "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0";
 const AERIAL_LAYER = "Actueel_orthoHR";      // latest complete year, 8 cm
-const BASE_SOURCES = [["Achtergrondkaart", "BRT-achtergrondkaart grijs (Kadaster) via PDOK", "actueel"],
-                      ["Luchtfoto", "Beeldmateriaal Nederland, ortho 8 cm RGB (WMS) via PDOK", "meest recente jaar"]];
+const BASE_SOURCES = [[L("Achtergrondkaart", "Background map"), L("BRT-achtergrondkaart grijs (Kadaster) via PDOK", "BRT background map, grey (Kadaster) via PDOK"), L("actueel", "current")],
+                      [L("Luchtfoto", "Aerial photo"), L("Beeldmateriaal Nederland, ortho 8 cm RGB (WMS) via PDOK", "Beeldmateriaal Nederland, ortho 8 cm RGB (WMS) via PDOK"), L("meest recente jaar", "latest year")]];
 let aerialOn = new URLSearchParams(location.search).get("bg") === "luchtfoto";
 // ---------------------------------------------------------------------------
 
@@ -241,8 +273,27 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 const tiles3 = new pmtiles.PMTiles(new URL(TILES_3, location.href).href);
 protocol.add(tiles3);
 
+// Static texts and links in the chosen language; the switch keeps theme,
+// background and position (read at click time, they change while browsing)
+if (EN) {
+  document.documentElement.lang = "en";
+  document.querySelectorAll("[data-en]").forEach((el) => el.innerHTML = el.dataset.en);
+  document.querySelectorAll("[data-en-label]").forEach((el) => {
+    el.ariaLabel = el.dataset.enLabel;
+    if (el.placeholder) el.placeholder = el.dataset.enLabel;
+  });
+  document.querySelectorAll('a[href^="uitleg/"]').forEach((a) => a.href = a.getAttribute("href").replace("uitleg/", UITLEG));
+}
+const langLink = document.getElementById("lang");
+Object.assign(langLink, EN ? { textContent: "Nederlands", hreflang: "nl", lang: "nl" } : {});
+langLink.onclick = (ev) => {
+  ev.preventDefault();
+  const url = new URL(location.href);
+  if (EN) url.searchParams.delete("lang"); else url.searchParams.set("lang", "en");
+  location.href = url;
+};
 document.getElementById("title").textContent = `3-30-300 in ${PROVINCE}`;
-document.title = `3-30-300-regel ${PROVINCE}`;
+document.title = L(`3-30-300-regel ${PROVINCE}`, `3-30-300 rule ${PROVINCE}`);
 document.getElementById("repo-link").href = REPO;
 
 const stepColour = (field, steps) => ["case",
@@ -309,16 +360,16 @@ const map = new maplibregl.Map({
       brt: {
         type: "raster", tileSize: 256, maxzoom: 19,
         tiles: ["https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png"],
-        attribution: 'Achtergrond: <a href="https://www.pdok.nl">PDOK</a> BRT-achtergrondkaart (Kadaster)',
+        attribution: L("Achtergrond", "Background") + ': <a href="https://www.pdok.nl">PDOK</a> BRT-achtergrondkaart (Kadaster)',
       },
       luchtfoto: {
         type: "raster", tileSize: 256, maxzoom: 21,
         tiles: [AERIAL_WMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=" + AERIAL_LAYER +
                 "&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/jpeg"],
-        attribution: 'Luchtfoto: <a href="https://www.beeldmateriaal.nl">Beeldmateriaal Nederland</a> via PDOK',
+        attribution: L("Luchtfoto", "Aerial photo") + ': <a href="https://www.beeldmateriaal.nl">Beeldmateriaal Nederland</a> via PDOK',
       },
       t3: { type: "vector", url: "pmtiles://" + new URL(TILES_3, location.href).href,
-            attribution: "AHN4, BAG, CBS, bomen: NEO" },
+            attribution: L("AHN4, BAG, CBS, bomen: NEO", "AHN4, BAG, CBS, trees: NEO") },
       t30: { type: "vector", url: "pmtiles://" + new URL(TILES_30_300, location.href).href,
              attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
       tg: { type: "vector", url: "pmtiles://" + new URL(TILES_GROEN, location.href).href },
@@ -339,7 +390,7 @@ class InfoControl {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "info-btn";
-    btn.title = btn.ariaLabel = "Bronnen en actualiteit";
+    btn.title = btn.ariaLabel = L("Bronnen en actualiteit", "Sources and dates");
     btn.textContent = "i";
     btn.onclick = () => info.showModal();
     div.appendChild(btn);
@@ -395,8 +446,9 @@ const bgBtn = document.createElement("button");
 function setAerial(on) {
   aerialOn = on;
   aerialBox.checked = on;
-  bgBtn.textContent = on ? "Kaart" : "Luchtfoto";            // what a click switches to
-  bgBtn.title = bgBtn.ariaLabel = on ? "Achtergrond: grijze kaart" : "Achtergrond: luchtfoto";
+  bgBtn.textContent = on ? L("Kaart", "Map") : L("Luchtfoto", "Aerial");     // what a click switches to
+  bgBtn.title = bgBtn.ariaLabel = on ? L("Achtergrond: grijze kaart", "Background: grey map")
+                                     : L("Achtergrond: luchtfoto", "Background: aerial photo");
   if (map.getLayer("luchtfoto")) map.setLayoutProperty("luchtfoto", "visibility", on ? "visible" : "none");
   const url = new URL(location.href);
   if (on) url.searchParams.set("bg", "luchtfoto"); else url.searchParams.delete("bg");
@@ -444,11 +496,12 @@ function legendBlock(title, rows) {
 function homeNote(href) {
   const p = document.createElement("p");
   p.className = "hint";
-  p.append("Per woning is dit een indicatie uit een model, geen meting ter plekke. ");
+  p.append(L("Per woning is dit een indicatie uit een model, geen meting ter plekke. ",
+             "Per home this is an indication from a model, not a measurement on site. "));
   const a = document.createElement("a");
   a.href = href;
   a.target = "_blank";
-  a.textContent = "Klopt het niet voor jouw woning?";
+  a.textContent = L("Klopt het niet voor jouw woning?", "Not right for your home?");
   p.appendChild(a);
   return p;
 }
@@ -457,36 +510,36 @@ function updateLegend() {
   const hint = document.getElementById("hint");
   legend.replaceChildren();
   hint.textContent = "";
-  const few = [NO_DATA, `minder dan ${MIN_HOMES} woningen`];
+  const few = [NO_DATA, L(`minder dan ${MIN_HOMES} woningen`, `fewer than ${MIN_HOMES} homes`)];
   const z = map.getZoom();
   let i = LEVELS.findIndex((lv) => z >= lv.from && z < lv.to);
   if (theme === "30" && i < 0) i = LEVELS.length - 1;       // the 30 stays on buurten
-  const next = i + 1 < LEVELS.length ? "de " + LEVELS[i + 1].layer : "de afzonderlijke woningen";
-  if (i >= 0 && !(theme === "30" && i === LEVELS.length - 1)) hint.textContent = `Zoom in voor ${next}.`;
+  const next = i + 1 < LEVELS.length ? LEVELS[i + 1].plural : L("de afzonderlijke woningen", "individual homes");
+  if (i >= 0 && !(theme === "30" && i === LEVELS.length - 1)) hint.textContent = L(`Zoom in voor ${next}.`, `Zoom in for ${next}.`);
   if (theme === "3") {
     if (i < 0) {
-      legend.appendChild(legendBlock("Zichtbare bomen per woning", [...CLASSES_3.map(([, c, l]) => [c, l]), NO_RING]));
-      legend.appendChild(homeNote("uitleg/3.html#mijn-woning"));
+      legend.appendChild(legendBlock(L("Zichtbare bomen per woning", "Visible trees per home"), [...CLASSES_3.map(([, c, l]) => [c, l]), NO_RING]));
+      legend.appendChild(homeNote(UITLEG + "3.html#mijn-woning"));
     } else {
-      legend.appendChild(legendBlock(`Woningen met ≥ 3 zichtbare bomen, per ${LEVELS[i].name}`,
+      legend.appendChild(legendBlock(L(`Woningen met ≥ 3 zichtbare bomen, per ${LEVELS[i].name}`, `Homes with ≥ 3 visible trees, per ${LEVELS[i].name}`),
                                      [...STEPS_3.map(([, c, l]) => [c, l]), few]));
     }
   } else if (theme === "30") {
-    legend.appendChild(legendBlock(`Kroonbedekking per ${LEVELS[i].name}`,
-                                   [...STEPS_30.map(([, c, l]) => [c, l]), [NO_DATA, "geen gegevens"]]));
+    legend.appendChild(legendBlock(L(`Kroonbedekking per ${LEVELS[i].name}`, `Canopy cover per ${LEVELS[i].name}`),
+                                   [...STEPS_30.map(([, c, l]) => [c, l]), [NO_DATA, L("geen gegevens", "no data")]]));
   } else {
     if (i < 0) {
-      legend.appendChild(legendBlock("Looptijd naar park of bos", [...CLASSES_300.map(([, c, l]) => [c, l])]));
-      legend.appendChild(homeNote("uitleg/300.html#mijn-woning"));
+      legend.appendChild(legendBlock(L("Looptijd naar park of bos", "Walking time to a park or wood"), [...CLASSES_300.map(([, c, l]) => [c, l])]));
+      legend.appendChild(homeNote(UITLEG + "300.html#mijn-woning"));
     } else {
-      legend.appendChild(legendBlock(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`,
+      legend.appendChild(legendBlock(L(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`, `Homes within a 5-min walk of green, per ${LEVELS[i].name}`),
                                      [...STEPS_300.map(([, c, l]) => [c, l]), few]));
     }
     if (z >= GROEN_300.from) {
-      legend.appendChild(legendBlock("Groen", [[GROEN_300.line, "park of bos (≥ 300 m²)", "solid"]]));
+      legend.appendChild(legendBlock(L("Groen", "Green"), [[GROEN_300.line, L("park of bos (≥ 300 m²)", "park or wood (≥ 300 m²)"), "solid"]]));
     }
     if (isoBox.checked) {
-      legend.appendChild(legendBlock("Looptijdzones", [["#006d2c", "5 minuten", "solid"], ["#e6550d", "15 minuten", "dashed"]]));
+      legend.appendChild(legendBlock(L("Looptijdzones", "Walking zones"), [["#006d2c", L("5 minuten", "5 minutes"), "solid"], ["#e6550d", L("15 minuten", "15 minutes"), "dashed"]]));
     }
   }
 }
@@ -503,7 +556,7 @@ tiles3.getHeader().then((h) => {
 });
 
 // Popups
-const fmt = (n) => n == null ? "–" : Number(n).toLocaleString("nl-NL");
+const fmt = (n) => n == null ? "–" : Number(n).toLocaleString(L("nl-NL", "en-GB"));
 const pct = (n) => n == null ? "–" : `${fmt(n)}%`;
 function popup(lngLat, rows, link) {
   const div = document.createElement("div");
@@ -525,10 +578,10 @@ function popup(lngLat, rows, link) {
 map.on("click", "3-woningen", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [
-    [null, p.bomen == null ? "Geen vrije gevel" : `${fmt(p.bomen)} zichtbare bomen`],
-    ["Woningen in dit pand", fmt(p.woningen)],
-    ["Gemeente", p.gemeente],
-  ], (p.bomen ?? 0) < 3 ? ["Ik zie wel bomen: waarom deze kleur?", "uitleg/3.html#mijn-woning"] : null);
+    [null, p.bomen == null ? L("Geen vrije gevel", "No free facade") : L(`${fmt(p.bomen)} zichtbare bomen`, `${fmt(p.bomen)} visible trees`)],
+    [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+    [L("Gemeente", "Municipality"), p.gemeente],
+  ], (p.bomen ?? 0) < 3 ? [L("Ik zie wel bomen: waarom deze kleur?", "But I do see trees: why this colour?"), UITLEG + "3.html#mijn-woning"] : null);
 });
 const areaTitle = (p, lv) => lv.layer === "gemeenten" ? p.naam : `${p.naam} (${lv.name}, ${p.gemeente})`;
 for (const lv of LEVELS) {
@@ -537,28 +590,28 @@ for (const lv of LEVELS) {
     const few = (p.woningen ?? 0) < MIN_HOMES;
     popup(e.lngLat, [
       [null, areaTitle(p, lv)],
-      ["Woningen", fmt(p.woningen)],
-      ["Met ≥ 3 zichtbare bomen", few ? "–" : pct(p.pct_3_of_meer)],
-      ["Met 0 zichtbare bomen", few ? "–" : pct(p.pct_0)],
+      [L("Woningen", "Homes"), fmt(p.woningen)],
+      [L("Met ≥ 3 zichtbare bomen", "With ≥ 3 visible trees"), few ? "–" : pct(p.pct_3_of_meer)],
+      [L("Met 0 zichtbare bomen", "With 0 visible trees"), few ? "–" : pct(p.pct_0)],
     ]);
   });
 }
 map.on("click", "300-groen-fill", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [
-    [null, "Park of bos"],
-    ["Soort", p.type ?? "–"],
-    ["Bron", p.bron === "osm groen" ? "OpenStreetMap" : p.bron === "top 10 groen" ? "TOP10NL" : (p.bron ?? "–")],
-    ["Oppervlak", `${fmt(p.m2)} m²`],
-  ], ["Hoe telt dit groen mee?", "uitleg/300.html"]);
+    [null, L("Park of bos", "Park or wood")],
+    [L("Soort", "Type"), p.type ?? "–"],
+    [L("Bron", "Source"), p.bron === "osm groen" ? "OpenStreetMap" : p.bron === "top 10 groen" ? "TOP10NL" : (p.bron ?? "–")],
+    [L("Oppervlak", "Area"), `${fmt(p.m2)} m²`],
+  ], [L("Hoe telt dit groen mee?", "How does this green count?"), UITLEG + "300.html"]);
 });
 map.on("click", "300-woningen", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [
-    [null, POPUP_300[p.klasse] ?? "onbekend"],
-    ["Woningen in dit pand", fmt(p.woningen)],
-    ["Bouwjaar", p.bouwjaar ?? "–"],
-  ], p.klasse !== "5" ? ["Er is wel groen dichtbij: waarom rood?", "uitleg/300.html#mijn-woning"] : null);
+    [null, POPUP_300[p.klasse] ?? L("onbekend", "unknown")],
+    [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+    [L("Bouwjaar", "Year built"), p.bouwjaar ?? "–"],
+  ], p.klasse !== "5" ? [L("Er is wel groen dichtbij: waarom rood?", "But there is green nearby: why red?"), UITLEG + "300.html#mijn-woning"] : null);
 });
 for (const lv of LEVELS) {
   for (const t of ["30", "300"]) {
@@ -567,11 +620,11 @@ for (const lv of LEVELS) {
       const few = (p.woningen ?? 0) < MIN_HOMES;
       popup(e.lngLat, [
         [null, areaTitle(p, lv)],
-        ["Kroonbedekking (30)", pct(p.groen)],
-        ["Kroonoppervlak", p.kroon_m2 == null ? "–" : `${fmt(p.kroon_m2)} m²`],
-        ["Woningen", fmt(p.woningen)],
-        ["Binnen 5 min lopen van groen (300)", few ? "–" : pct(p.pct_5)],
-        ["Binnen 15 min lopen", few ? "–" : pct(p.pct_15)],
+        [L("Kroonbedekking (30)", "Canopy cover (30)"), pct(p.groen)],
+        [L("Kroonoppervlak", "Crown area"), p.kroon_m2 == null ? "–" : `${fmt(p.kroon_m2)} m²`],
+        [L("Woningen", "Homes"), fmt(p.woningen)],
+        [L("Binnen 5 min lopen van groen (300)", "Within a 5-min walk of green (300)"), few ? "–" : pct(p.pct_5)],
+        [L("Binnen 15 min lopen", "Within a 15-min walk"), few ? "–" : pct(p.pct_15)],
       ]);
     });
   }
@@ -592,12 +645,12 @@ document.getElementById("search").addEventListener("submit", async (ev) => {
             + `&fq=provincienaam:"${PROVINCE}"&q=` + encodeURIComponent(q);
   try {
     const doc = (await (await fetch(url)).json()).response.docs[0];
-    if (!doc) { alert("Niets gevonden voor: " + q); return; }
+    if (!doc) { alert(L("Niets gevonden voor: ", "Nothing found for: ") + q); return; }
     const [lon, lat] = doc.centroide_ll.match(/POINT\(([^ ]+) ([^)]+)\)/).slice(1).map(Number);
     const zoom = { adres: 18, weg: 16, postcode: 16, woonplaats: 13, gemeente: 11 }[doc.type] ?? 15;
     map.flyTo({ center: [lon, lat], zoom });
   } catch (err) {
-    alert("Zoeken lukt niet: " + err.message);
+    alert(L("Zoeken lukt niet: ", "Search failed: ") + err.message);
   }
 });
 </script>
