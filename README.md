@@ -88,7 +88,7 @@ Everything under `data/` is gitignored. What is where:
 | `data/fme_output/` | the FME results: `30_regel_v2.gdb` (30), `300.gdb` (300), `3_lijst.gdb` | copy of `R:\…\3-30-300\fme output` |
 | `data/fme_input/` | FME inputs for the 30/300: `gemeentes`, `groenvoorzieningen`, `localeversie_osm` | copy of `R:\…\3-30-300\fme_input` (`panden`, 8.8 GB, stays on R:) |
 | `data/studiegebied/` | study-area comparison for one Delft buurt | `indicator_3_bomen/arcgis_tests/studiegebied.py` |
-| `web/data/` | `3.pmtiles`, `30-300.pmtiles`, `groen.pmtiles` (each under GitHub's 100 MB limit) | `web/build_tiles*.py` |
+| `web/data/` | `3.pmtiles`, `30-300.pmtiles`, `looptijd.pmtiles`, `groen.pmtiles` (each under GitHub's 100 MB limit) | `web/build_tiles*.py` |
 
 The ArcGIS benchmark `visibility_Delft` and the AHN5 DSM used in the
 comparisons are read from
@@ -108,7 +108,7 @@ province).
 | `web/index.html` | the map (MapLibre + PMTiles); settings (`PROVINCE`, `REPO`, colours, texts) at the top of the `<script>`; Dutch, English with `?lang=en` (every text as `L("Nederlands", "English")`) |
 | `web/uitleg/*.html`, `web/uitleg/en/*.html` | explanation pages in Dutch and English: method, choices, the Konijnendijk paper, how to repeat it |
 | `web/build_tiles.py` | `data/3.pmtiles` from `<Province>_gebieden.gpkg` and `_woningen.gpkg` |
-| `web/build_tiles_30_300.py` | `data/30-300.pmtiles` from the FME results (`config.FME_OUTPUT_DIR`, default `data/fme_output`) and the 3's areas |
+| `web/build_tiles_30_300.py` | `data/30-300.pmtiles` (areas, homes) and `data/looptijd.pmtiles` (walking zones, entrances; a file of its own so switching them on or off does not re-process the building tiles) from the FME results (`config.FME_OUTPUT_DIR`, default `data/fme_output`) and the 3's areas |
 | `web/build_tiles_groen.py` | `data/groen.pmtiles`: the parks and woods of the 300, from the workbench's green input (`config.FME_INPUT_DIR`) |
 | `web/serve.py` | local preview server (supports the Range requests PMTiles needs) |
 

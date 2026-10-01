@@ -292,3 +292,17 @@ trees should be excluded, is still open.
   `logs/archief_2026-09.zip` (`benchmark.csv` kept, `BENCHMARKS.md` is
   generated from it); the obsolete `province_dem.vrt.bak_2026-09-27`
   removed.
+
+**18. Walking zones and entrances in a tile file of their own**
+- Ticking "Looptijdzones en ingangen" was slow: MapLibre re-processes every
+  loaded tile of a source when one of its layers is switched on or off, and
+  the zones were in `30-300.pmtiles` with all the buildings (~20,000
+  buildings / 210,000 points in a Delft-sized view at zoom 13).
+- `web/build_tiles_30_300.py` now writes two files from one run:
+  `30-300.pmtiles` (areas, homes; 94 -> 87 MB) and `looptijd.pmtiles`
+  (iso5, iso15, ingangen; 7.5 MB), with the same zoom ranges as before; the
+  map reads the zones from the new source. Same features as before (checked
+  in a Delft window at zoom 13).
+- Not done (possible next steps): simplify the isochrones (the 15-minute
+  zone is one polygon of 100,242 vertices), show them from zoom 11, toggle
+  by opacity instead of visibility.

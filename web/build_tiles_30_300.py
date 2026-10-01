@@ -1,15 +1,20 @@
 """
 build_tiles_30_300.py — Build the web map's vector tiles for the 30 and the 300
-(web/data/30-300.pmtiles) from the FME results. The 3 has its own tile file
-(web/build_tiles.py -> web/data/3.pmtiles).
+from the FME results, in two files. The 3 has its own tile file
+(web/build_tiles.py -> web/data/3.pmtiles), the 300's parks and woods too
+(web/build_tiles_groen.py -> web/data/groen.pmtiles).
 
-Layers:
+web/data/30-300.pmtiles:
   gemeenten   zoom 6-9    } the same areas as the 3 map, with canopy
   wijken      zoom 9-11   } cover (the 30) and the share of homes within 5 / 15
   buurten     zoom 11-12  } minutes' walk of green (the 300)
+  woningen    zoom 13-16  every BAG pand with a woonfunctie and its walking class
+web/data/looptijd.pmtiles (the map's optional "walking zones" layers):
   iso5, iso15 zoom 9-16   5- and 15-minute walking isochrones from the entrances
   ingangen    zoom 13-16  entrances of parks and woods
-  woningen    zoom 13-16  every BAG pand with a woonfunctie and its walking class
+A file of its own because MapLibre re-processes every loaded tile of a source
+when a layer of it is switched on or off: with the zones inside
+30-300.pmtiles, ticking them re-processed all the (heavy) building tiles.
 
 Inputs:
   data/processed/<Province>_gebieden.gpkg   gemeenten, wijken 2025, buurten 2025
@@ -48,9 +53,12 @@ _args.add_argument("--gebieden", type=Path,
 ARGS = _args.parse_args()
 SRC = ARGS.fme
 GEBIEDEN = ARGS.gebieden
-OUT = Path(__file__).resolve().parent / "data" / "30-300.pmtiles"
-ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12),
-         "iso15": (9, 16), "iso5": (9, 16), "ingangen": (13, 16), "woningen": (13, 16)}
+DATA = Path(__file__).resolve().parent / "data"
+# Output file -> {layer: (minzoom, maxzoom)}; the map over-zooms the last level
+OUTPUTS = {
+    "30-300.pmtiles": {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12), "woningen": (13, 16)},
+    "looptijd.pmtiles": {"iso15": (9, 16), "iso5": (9, 16), "ingangen": (13, 16)},
+}
 GONE = {"Pand gesloopt", "Niet gerealiseerd pand", "Pand buiten gebruik"}
 
 # RD New (the Dutch grid, metres), with x = easting first
@@ -216,11 +224,31 @@ def copy(dst, src_layer, name, fields=()):
     print(f"{name}: {out.GetFeatureCount():,}")
 
 
+def write(staging, out, zooms):
+    """One PMTiles file in web Mercator with the given layers of the staging
+    GeoPackage, each at its own zoom range; written to .partial, then renamed."""
+    conf = {layer: {"minzoom": z0, "maxzoom": z1} for layer, (z0, z1) in zooms.items()}
+    tmp = out.with_suffix(".partial.pmtiles")
+    tmp.unlink(missing_ok=True)
+    print(f"Writing {out.name} …")
+    gdal.VectorTranslate(str(tmp), str(staging), format="PMTiles", dstSRS="EPSG:3857",
+                         layers=list(zooms),
+                         datasetCreationOptions=[f"MINZOOM={min(z for z, _ in zooms.values())}",
+                                                 f"MAXZOOM={max(z for _, z in zooms.values())}",
+                                                 f"CONF={json.dumps(conf)}",
+                                                 f"NAME=3-30-300 {config.PROVINCE}: {out.stem}"],
+                         callback=gdal.TermProgress_nocb)
+    tmp.replace(out)
+    size = out.stat().st_size / 1e6
+    print(f"Wrote {out} ({size:.0f} MB)" + ("  — over GitHub's 100 MB file limit!" if size > 100 else ""))
+
+
 def main():
-    """Collect all layers in a temporary GeoPackage, then turn it into one
-    PMTiles file (each layer at its own zoom range, see ZOOMS)."""
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    staging = OUT.with_suffix(".staging.gpkg")
+    """Collect all layers in a temporary GeoPackage, then write the PMTiles
+    files of OUTPUTS from it (the helper layers "punten" and "buurten_2023"
+    go into neither)."""
+    DATA.mkdir(parents=True, exist_ok=True)
+    staging = DATA / "30-300.staging.gpkg"
     staging.unlink(missing_ok=True)
     dst = ogr.GetDriverByName("GPKG").CreateDataSource(str(staging))
     pts = woningen(dst)
@@ -230,23 +258,9 @@ def main():
     copy(dst, "ingang_parken", "ingangen", ("type", "name"))
     dst = None
 
-    # Vector tiles in web Mercator; only the layers in ZOOMS (not the helper
-    # layers "punten" and "buurten_2023"); written to .partial, then renamed
-    conf = {layer: {"minzoom": z0, "maxzoom": z1} for layer, (z0, z1) in ZOOMS.items()}
-    tmp = OUT.with_suffix(".partial.pmtiles")
-    tmp.unlink(missing_ok=True)
-    print("Writing vector tiles …")
-    gdal.VectorTranslate(str(tmp), str(staging), format="PMTiles", dstSRS="EPSG:3857",
-                         layers=list(ZOOMS),
-                         datasetCreationOptions=[f"MINZOOM={min(z for z, _ in ZOOMS.values())}",
-                                                 f"MAXZOOM={max(z for _, z in ZOOMS.values())}",
-                                                 f"CONF={json.dumps(conf)}",
-                                                 f"NAME=3-30-300 {config.PROVINCE}: 30 en 300"],
-                         callback=gdal.TermProgress_nocb)
-    tmp.replace(OUT)
+    for name, zooms in OUTPUTS.items():
+        write(staging, DATA / name, zooms)
     staging.unlink()
-    size = OUT.stat().st_size / 1e6
-    print(f"Wrote {OUT} ({size:.0f} MB)" + ("  — over GitHub's 100 MB file limit!" if size > 100 else ""))
 
 
 if __name__ == "__main__":

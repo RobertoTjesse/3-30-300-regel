@@ -92,7 +92,7 @@ Alles onder `data/` is gitignored. Wat staat waar:
 | `data/fme_output/` | de FME-resultaten: `30_regel_v2.gdb` (30), `300.gdb` (300), `3_lijst.gdb` | kopie van `R:\…\3-30-300\fme output` |
 | `data/fme_input/` | FME-invoer voor de 30/300: `gemeentes`, `groenvoorzieningen`, `localeversie_osm` | kopie van `R:\…\3-30-300\fme_input` (`panden`, 8,8 GB, blijft op R:) |
 | `data/studiegebied/` | vergelijking op een studiegebied (één Delftse buurt) | `indicator_3_bomen/arcgis_tests/studiegebied.py` |
-| `web/data/` | `3.pmtiles`, `30-300.pmtiles`, `groen.pmtiles` (elk onder de limiet van 100 MB van GitHub) | `web/build_tiles*.py` |
+| `web/data/` | `3.pmtiles`, `30-300.pmtiles`, `looptijd.pmtiles`, `groen.pmtiles` (elk onder de limiet van 100 MB van GitHub) | `web/build_tiles*.py` |
 
 De ArcGIS-benchmark `visibility_Delft` en het AHN5-DSM uit de vergelijkingen
 worden gelezen uit
@@ -113,7 +113,7 @@ Engels.
 | `web/index.html` | de kaart (MapLibre + PMTiles); instellingen (`PROVINCE`, `REPO`, kleuren, teksten) bovenin het `<script>`; Nederlands, Engels met `?lang=en` (elke tekst als `L("Nederlands", "English")`) |
 | `web/uitleg/*.html`, `web/uitleg/en/*.html` | uitlegpagina's in het Nederlands en Engels: methode, keuzes, het artikel van Konijnendijk, hoe je het herhaalt |
 | `web/build_tiles.py` | `data/3.pmtiles` uit `<Provincie>_gebieden.gpkg` en `_woningen.gpkg` |
-| `web/build_tiles_30_300.py` | `data/30-300.pmtiles` uit de FME-resultaten (`config.FME_OUTPUT_DIR`, standaard `data/fme_output`) en de gebieden van de 3 |
+| `web/build_tiles_30_300.py` | `data/30-300.pmtiles` (gebieden, woningen) en `data/looptijd.pmtiles` (looptijdzones, ingangen; een eigen bestand, zodat aan- en uitzetten de tegels met panden niet opnieuw laat verwerken) uit de FME-resultaten (`config.FME_OUTPUT_DIR`, standaard `data/fme_output`) en de gebieden van de 3 |
 | `web/build_tiles_groen.py` | `data/groen.pmtiles`: de parken en bossen van de 300, uit de groeninvoer van de workbench (`config.FME_INPUT_DIR`) |
 | `web/serve.py` | lokale server om te bekijken (ondersteunt de Range-requests die PMTiles nodig heeft) |
 
