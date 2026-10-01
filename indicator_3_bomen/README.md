@@ -23,9 +23,9 @@ municipality.
 
 | Path | What |
 |---|---|
-| `etl/` | the pipeline: `config.py` (all settings), `config_local.py` (this machine, gitignored), stages `01`-`06`, helpers |
+| `etl/` | the pipeline: `config.py` (all settings), `config_local.py` (this machine, gitignored), stages `01`-`06`, helpers (below) |
 | `arcgis_tests/` | experiments, kept locally and not published on GitHub: comparisons with ArcGIS and an exact line-of-sight test, and the corrected ArcGIS benchmark (see [Validation](#validation-against-arcgis)) |
-| `sde_reexport/` | one-off re-export of 12 corrupted municipality DEMs from the SDE (`ARCHITECTURE.md` §11) |
+| `sde_reexport/` | one-off re-export of 12 corrupted municipality DEMs from the SDE (`ARCHITECTURE.md` §11), in three steps: `export_from_sde.py` (arcpy, extents from `municipality_extents.csv`), `watch_and_finish.sh` (finishes each raw clip with `gdal_translate` as soon as it is written), `replace_on_share.py` (swaps the files on the share, keeping the originals) |
 | `fme/` | the original FME workbenches for the 3 (`3_2024.fmw`, `bomen_extract.fmw`), kept for reference |
 
 ## Setup
@@ -104,7 +104,12 @@ deletes a municipality's intermediate tiles once its output is written
 logs tile errors, or with `KEEP_TILES=1`.
 
 All tunables (radius, tile size, workers, heights) are in `etl/config.py`;
-`etl/generate_benchmark_report.py` turns `logs/benchmark.csv` into
+Helpers in `etl/`: `download_bag_pdok.py` (BAG from PDOK),
+`run_all_municipalities.sh` with `print_municipality_summary.py` (stages 1-3
+per municipality), `add_tree_heights.py <municipality>` (writes every tree's
+canopy top, local ground, height and observer offset as used by stage 2 to
+`data/processed/<name>_tree_heights.gpkg`, for checking in QGIS), and
+`generate_benchmark_report.py`, which turns `logs/benchmark.csv` into
 `BENCHMARKS.md`.
 
 ### Why halo-then-crop

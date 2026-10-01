@@ -269,3 +269,26 @@ trees should be excluded, is still open.
   pipeline is its own inputs (canopy-top observer, AHN4 DEM). Summary
   posted on the issue, issue retitled and closed; README, ARCHITECTURE,
   `uitleg/3.html` and the wiki updated.
+
+## 2026-10-01 (later) — bilingual site, clean-up
+
+**16. Site and README in Dutch and English**
+- The map has a NL / EN switch (`?lang=en`): every text in `index.html`
+  as `L("Nederlands", "English")`, static HTML via `data-en`; links go to
+  the explanation pages in the chosen language. English versions of all
+  five explanation pages in `web/uitleg/en/`, each page linking to its
+  counterpart. `README.nl.md`: the README in Dutch.
+- Checked: no console errors in either language (headless Edge), all 11
+  pages' relative links and anchors resolve.
+
+**17. Clean-up and consistency check**
+- Removed `sde_reexport/municipality_extents.json` (an exact copy of the
+  `.csv` that `export_from_sde.py` reads). The other rarely mentioned files
+  are in use or record how the DEMs were fixed; now documented in the 3's
+  README (helpers in `etl/`, the three re-export steps).
+- ARCHITECTURE §12 checked against `config.py`: all values match. Wiki
+  pages updated for the English version.
+- Local (gitignored): old run logs packed into
+  `logs/archief_2026-09.zip` (`benchmark.csv` kept, `BENCHMARKS.md` is
+  generated from it); the obsolete `province_dem.vrt.bak_2026-09-27`
+  removed.
