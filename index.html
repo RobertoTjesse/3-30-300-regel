@@ -131,6 +131,7 @@ const REPO = "https://github.com/RobertoTjesse/3-30-300-regel";
 const TILES_3 = "data/3.pmtiles";                 // web/build_tiles.py
 const TILES_30_300 = "data/30-300.pmtiles";       // web/build_tiles_30_300.py
 const TILES_GROEN = "data/groen.pmtiles";         // web/build_tiles_groen.py (the 300's parks and woods)
+const TILES_LOOPTIJD = "data/looptijd.pmtiles";   // web/build_tiles_30_300.py (walking zones, entrances)
 // The map opens on the extent of the tile files, so no coordinates to set per province.
 
 // Language: Dutch, or English with ?lang=en (link at the top of the panel).
@@ -339,13 +340,14 @@ add("300", { id: "300-woningen", type: "fill", source: "t30", "source-layer": "w
              paint: { "fill-color": ["case", ["==", ["get", "klasse"], "5"], CLASSES_300[0][1], CLASSES_300[1][1]],
                       "fill-opacity": 0.9,
                       "fill-outline-color": "rgba(40,40,40,0.5)" } });
-// Optional: the walking zones and entrances (checkbox)
+// Optional: the walking zones and entrances (checkbox), from a source of their own:
+// switching a layer on or off makes MapLibre re-process every tile of its source
 const ISO_LAYERS = ["300-iso15", "300-iso5", "300-ingangen"];
-add("300", { id: "300-iso15", type: "line", source: "t30", "source-layer": "iso15", minzoom: 9,
+add("300", { id: "300-iso15", type: "line", source: "tl", "source-layer": "iso15", minzoom: 9,
              paint: { "line-color": "#e6550d", "line-width": 1.2, "line-dasharray": [2, 2] } });
-add("300", { id: "300-iso5", type: "line", source: "t30", "source-layer": "iso5", minzoom: 9,
+add("300", { id: "300-iso5", type: "line", source: "tl", "source-layer": "iso5", minzoom: 9,
              paint: { "line-color": "#006d2c", "line-width": 1.5 } });
-add("300", { id: "300-ingangen", type: "circle", source: "t30", "source-layer": "ingangen", minzoom: 13,
+add("300", { id: "300-ingangen", type: "circle", source: "tl", "source-layer": "ingangen", minzoom: 13,
              paint: { "circle-radius": 3.5, "circle-color": "#006d2c", "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
 
 const map = new maplibregl.Map({
@@ -373,6 +375,7 @@ const map = new maplibregl.Map({
       t30: { type: "vector", url: "pmtiles://" + new URL(TILES_30_300, location.href).href,
              attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
       tg: { type: "vector", url: "pmtiles://" + new URL(TILES_GROEN, location.href).href },
+      tl: { type: "vector", url: "pmtiles://" + new URL(TILES_LOOPTIJD, location.href).href },
     },
     layers: [{ id: "brt", type: "raster", source: "brt" },
              { id: "luchtfoto", type: "raster", source: "luchtfoto",
