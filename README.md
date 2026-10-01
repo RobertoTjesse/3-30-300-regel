@@ -67,7 +67,7 @@ What to run:
 |---|---|
 | The 3, all stages | `indicator_3_bomen/etl/01_tile_dem.py` … `06_area_summaries.py` — see [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md#pipeline) |
 | The 30 and 300 | run the workbenches in FME; results go to `data/fme_output/` — see their READMEs |
-| Web map tiles | `python web/build_tiles.py` (the 3) and `python web/build_tiles_30_300.py` (the 30 and 300) |
+| Web map tiles | `python web/build_tiles.py` (the 3), `python web/build_tiles_30_300.py` (the 30 and 300) and `python web/build_tiles_groen.py` (the 300's green) |
 | Preview the map | `python web/serve.py` → http://localhost:8000 |
 | QGIS validation project | `C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py` |
 
@@ -83,7 +83,7 @@ Everything under `data/` is gitignored. What is where:
 | `data/fme_output/` | the FME results: `30_regel_v2.gdb` (30), `300.gdb` (300), `3_lijst.gdb` | copy of `R:\…\3-30-300\fme output` |
 | `data/fme_input/` | FME inputs for the 30/300: `gemeentes`, `groenvoorzieningen`, `localeversie_osm` | copy of `R:\…\3-30-300\fme_input` (`panden`, 8.8 GB, stays on R:) |
 | `data/studiegebied/` | study-area comparison for one Delft buurt | `indicator_3_bomen/arcgis_tests/studiegebied.py` |
-| `web/data/` | `3.pmtiles`, `30-300.pmtiles` (each under GitHub's 100 MB limit) | `web/build_tiles*.py` |
+| `web/data/` | `3.pmtiles`, `30-300.pmtiles`, `groen.pmtiles` (each under GitHub's 100 MB limit) | `web/build_tiles*.py` |
 
 The ArcGIS benchmark `visibility_Delft` and the AHN5 DSM used in the
 comparisons are read from
@@ -104,6 +104,7 @@ province).
 | `web/uitleg/*.html` | explanation pages (Dutch): method, choices, the Konijnendijk paper, how to repeat it |
 | `web/build_tiles.py` | `data/3.pmtiles` from `<Province>_gebieden.gpkg` and `_woningen.gpkg` |
 | `web/build_tiles_30_300.py` | `data/30-300.pmtiles` from the FME results (`config.FME_OUTPUT_DIR`, default `data/fme_output`) and the 3's areas |
+| `web/build_tiles_groen.py` | `data/groen.pmtiles`: the parks and woods of the 300, from the workbench's green input (`config.FME_INPUT_DIR`) |
 | `web/serve.py` | local preview server (supports the Range requests PMTiles needs) |
 
 The 30 was computed per CBS buurt 2023; crown and land area are carried over
@@ -114,7 +115,10 @@ query looks each buurt up by its 2023 code in the CBS Wijk- en Buurtkaart
 *2022* (`GRENZEN.CBS_WIJKKAART_2022_VERSIE3`), and 114 of the 115 empty
 buurten have codes that are new in 2023 — an FME bug, not a gap in the
 crown data. The 300 is recounted per area from the
-buildings' walking class.
+buildings' walking class. The 300 also shows the parks and woods themselves
+(from zoom 11), selected from the workbench's input
+`data/fme_input/groenvoorzieningen/groenkaart.gdb` (`config.FME_INPUT_DIR`)
+as the workbench does: no TOP10NL water, >= 300 m2, perimeter / area <= 0.35.
 
 **Publishing:** copy `web/` without the `.py` files to the `gh-pages` branch
 (plus an empty `.nojekyll`); GitHub Pages serves that branch at

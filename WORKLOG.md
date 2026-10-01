@@ -245,3 +245,18 @@ trees should be excluded, is still open.
   issue #2 open for the remaining difference; `30_2024.fmw` is the
   workbench behind the map; stale notes in `IMPROVEMENTS.md` and
   `ARCHITECTURE.md` updated.
+
+## 2026-10-01 — the green of the 300 on the map
+
+**14. Parks and woods on the 300 map**
+- The 300 tab now shows the green the calculation walks to: dark green
+  outlines from zoom 11, filled from zoom 13; a click gives type, source
+  (OSM / TOP10NL) and area. New `web/build_tiles_groen.py` ->
+  `web/data/groen.pmtiles` (20,973 polygons, zoom 11-14, 7 MB).
+- The FME results hold only the entrances, so the green is read from the
+  workbench's input (`groenkaart.gdb`, new `config.FME_INPUT_DIR`) with the
+  workbench's own selection: its reader leaves out `bron = 'top 10 water'`
+  (8,681 lakes, watercourses and the sea, which are in the same layer) and
+  its Tester keeps >= 300 m2 with perimeter / area <= 0.35.
+- A file of its own: inside `30-300.pmtiles` (zoom 11-16) it grew from
+  94 to 117 MB, over GitHub's 100 MB limit.

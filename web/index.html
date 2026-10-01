@@ -124,6 +124,7 @@ const PROVINCE = "Zuid-Holland";                  // as in PDOK (also filters th
 const REPO = "https://github.com/RobertoTjesse/3-30-300-regel";
 const TILES_3 = "data/3.pmtiles";                 // web/build_tiles.py
 const TILES_30_300 = "data/30-300.pmtiles";       // web/build_tiles_30_300.py
+const TILES_GROEN = "data/groen.pmtiles";         // web/build_tiles_groen.py (the 300's parks and woods)
 // The map opens on the extent of the tile files, so no coordinates to set per province.
 
 // --- 3: visible trees per home (same colours as the 3-regel map) ---
@@ -174,6 +175,9 @@ const STEPS_300 = [
   [85, "#74c476", "85-95%"],
   [95, "#238b45", "≥ 95%"],
 ];
+// The parks and woods themselves (>= 300 m², as in the calculation): outline from
+// zoom 11, a light fill once the buildings show
+const GROEN_300 = { line: "#00441b", fill: "#41ab5d", from: 11 };
 const MIN_HOMES = 10;                        // fewer homes: no percentage shown
 const NO_DATA = "#d9d9d9";
 const BUILDINGS_FROM_ZOOM = 13;
@@ -196,7 +200,7 @@ const THEMES = {
     method: "Rond elke ingang van een park of bos (OSM- en TOP10NL-groen van minstens 300 m², waar een voetpad het groen in gaat) " +
             `is met een netwerkanalyse ${VALHALLA} berekend wat binnen 5 en binnen 15 minuten lopen bereikbaar is. 5 minuten lopen is ongeveer 300 m hemelsbreed. ` +
             "De kleuren gaan over de 5 minuten: een pand (BAG, met woonfunctie) in die zone is groen. Per gebied: het aandeel woningen binnen 5 minuten. " +
-            "De 15 minuten staan in de pop-ups en bij de looptijdzones.",
+            "De 15 minuten staan in de pop-ups en bij de looptijdzones. Donkergroen omlijnd: de parken en bossen die meetellen.",
   },
 };
 
@@ -276,6 +280,10 @@ for (const lv of LEVELS) {
   add("300", { id: `300-${lv.layer}-line`, type: "line", source: "t30", "source-layer": lv.layer,
                minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
 }
+add("300", { id: "300-groen-fill", type: "fill", source: "tg", "source-layer": "groen", minzoom: BUILDINGS_FROM_ZOOM,
+             paint: { "fill-color": GROEN_300.fill, "fill-opacity": 0.35 } });
+add("300", { id: "300-groen-line", type: "line", source: "tg", "source-layer": "groen", minzoom: GROEN_300.from,
+             paint: { "line-color": GROEN_300.line, "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.6, 15, 1.5] } });
 add("300", { id: "300-woningen", type: "fill", source: "t30", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
              paint: { "fill-color": ["case", ["==", ["get", "klasse"], "5"], CLASSES_300[0][1], CLASSES_300[1][1]],
                       "fill-opacity": 0.9,
@@ -313,6 +321,7 @@ const map = new maplibregl.Map({
             attribution: "AHN4, BAG, CBS, bomen: NEO" },
       t30: { type: "vector", url: "pmtiles://" + new URL(TILES_30_300, location.href).href,
              attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
+      tg: { type: "vector", url: "pmtiles://" + new URL(TILES_GROEN, location.href).href },
     },
     layers: [{ id: "brt", type: "raster", source: "brt" },
              { id: "luchtfoto", type: "raster", source: "luchtfoto",
@@ -473,6 +482,9 @@ function updateLegend() {
       legend.appendChild(legendBlock(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`,
                                      [...STEPS_300.map(([, c, l]) => [c, l]), few]));
     }
+    if (z >= GROEN_300.from) {
+      legend.appendChild(legendBlock("Groen", [[GROEN_300.line, "park of bos (≥ 300 m²)", "solid"]]));
+    }
     if (isoBox.checked) {
       legend.appendChild(legendBlock("Looptijdzones", [["#006d2c", "5 minuten", "solid"], ["#e6550d", "15 minuten", "dashed"]]));
     }
@@ -531,6 +543,15 @@ for (const lv of LEVELS) {
     ]);
   });
 }
+map.on("click", "300-groen-fill", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, "Park of bos"],
+    ["Soort", p.type ?? "–"],
+    ["Bron", p.bron === "osm groen" ? "OpenStreetMap" : p.bron === "top 10 groen" ? "TOP10NL" : (p.bron ?? "–")],
+    ["Oppervlak", `${fmt(p.m2)} m²`],
+  ], ["Hoe telt dit groen mee?", "uitleg/300.html"]);
+});
 map.on("click", "300-woningen", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [

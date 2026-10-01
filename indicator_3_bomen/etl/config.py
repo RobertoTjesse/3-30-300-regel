@@ -57,6 +57,9 @@ PROVINCE = "Zuid-Holland"
 # data/fme_output, a local copy of the results on R:. Override in
 # config_local.py only when they are elsewhere.
 FME_OUTPUT_DIR = BASE_DIR / "data" / "fme_output"
+# The workbenches' inputs (copied from R: as well); web/build_tiles_30_300.py
+# reads the green of the 300 from here (groenvoorzieningen/groenkaart.gdb).
+FME_INPUT_DIR = BASE_DIR / "data" / "fme_input"
 
 try:
     from config_local import *  # noqa: F401,F403 — machine-specific overrides

@@ -30,5 +30,10 @@ Result used downstream:
   `_related_suppliers` = 1 when it lies in a 5 / 15-minute isochrone from an
   entrance), `isochrones_dissolved(_15)`, `ingang_parken`. Read by
   `web/build_tiles_30_300.py`.
+- The green itself is not in the results; `web/build_tiles_groen.py` reads
+  it from the input `groenkaart.gdb` with the workbench's own selection (its
+  reader's `bron <> 'top 10 water'` and its Tester: `_area >= 300` and
+  `Shape_Length / Shape_Area <= 0.35`) to show the parks and woods on the
+  map (`web/data/groen.pmtiles`).
 
 Method and caveats: `web/uitleg/300.html`.
