@@ -1,5 +1,7 @@
 # 3-30-300-regel — the 3-30-300 rule per home, buurt, wijk and gemeente
 
+*Nederlands: [README.nl.md](README.nl.md)*
+
 The **3-30-300 rule** (Konijnendijk, 2023) asks for green in three ways:
 
 | | Rule | Measured here as | How it is made | Folder |
@@ -11,7 +13,9 @@ The **3-30-300 rule** (Konijnendijk, 2023) asks for green in three ways:
 All three are computed for the province of **Zuid-Holland** and published
 together as one web map with a 3 / 30 / 300 switch, per gemeente, wijk,
 buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**, with
-explanation pages in Dutch (`/uitleg/`). The 3 can be run for another
+explanation pages. The site is in Dutch, with an English version
+([map](https://robertotjesse.github.io/3-30-300-regel/?lang=en),
+`/uitleg/en/`). The 3 can be run for another
 province without code changes ([Another province](#another-province)); the
 30 and 300 still depend on FME, and moving them to open-source Python is
 planned (`indicator_3_bomen/IMPROVEMENTS.md`).
@@ -21,6 +25,7 @@ planned (`indicator_3_bomen/IMPROVEMENTS.md`).
 ```
 330300regel/
 ├── README.md                     this file: the project as a whole
+├── README.nl.md                  the same in Dutch
 ├── WORKLOG.md                    what was done and found, step by step
 ├── indicator_3_bomen/            the 3 — full pipeline, see its README
 │   ├── etl/                      stages 01-06, config.py, config_local.py (gitignored)
@@ -100,8 +105,8 @@ province).
 
 | File | What |
 |---|---|
-| `web/index.html` | the map (MapLibre + PMTiles); settings (`PROVINCE`, `REPO`, colours, texts) at the top of the `<script>` |
-| `web/uitleg/*.html` | explanation pages (Dutch): method, choices, the Konijnendijk paper, how to repeat it |
+| `web/index.html` | the map (MapLibre + PMTiles); settings (`PROVINCE`, `REPO`, colours, texts) at the top of the `<script>`; Dutch, English with `?lang=en` (every text as `L("Nederlands", "English")`) |
+| `web/uitleg/*.html`, `web/uitleg/en/*.html` | explanation pages in Dutch and English: method, choices, the Konijnendijk paper, how to repeat it |
 | `web/build_tiles.py` | `data/3.pmtiles` from `<Province>_gebieden.gpkg` and `_woningen.gpkg` |
 | `web/build_tiles_30_300.py` | `data/30-300.pmtiles` from the FME results (`config.FME_OUTPUT_DIR`, default `data/fme_output`) and the 3's areas |
 | `web/build_tiles_groen.py` | `data/groen.pmtiles`: the parks and woods of the 300, from the workbench's green input (`config.FME_INPUT_DIR`) |
@@ -159,8 +164,8 @@ Everything province-specific is a setting or an input file; no code changes.
    them, publish the 3 only.
 6. **Map**: set `PROVINCE` and `REPO` at the top of the script in
    `web/index.html`; the map opens on the extent of `data/3.pmtiles`.
-7. **Publish** `web/` as described above. The explanation pages describe
-   Zuid-Holland's run; adapt the figures there.
+7. **Publish** `web/` as described above. The explanation pages (Dutch and
+   English) describe Zuid-Holland's run; adapt the figures there.
 
 ## Documents
 
@@ -174,7 +179,8 @@ Everything province-specific is a setting or an input file; no code changes.
 | [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | the 3: improvements over the original prototype; planned work, incl. the 30 and 300 in Python |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | the 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | the 300 |
-| `web/uitleg/` | explanation pages for the public (Dutch) |
+| `web/uitleg/` | explanation pages for the public (Dutch; English in `web/uitleg/en/`) |
+| [`README.nl.md`](README.nl.md) | this README in Dutch |
 
 ## History
 

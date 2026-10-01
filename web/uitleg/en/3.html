@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
+<title>The 3: visible trees</title>
+<meta name="description" content="How was the number of trees visible from every home calculated, and why this way?">
+<link rel="alternate" hreflang="nl" href="../3.html">
+<link rel="stylesheet" href="../uitleg.css">
+</head>
+<body>
+<header class="top"><nav>
+  <a class="home" href="../../?lang=en">← 3-30-300 map</a>
+  <a href="./">Overview</a>
+  <a href="konijnendijk.html">Paper</a>
+  <a href="3.html" aria-current="page">3</a>
+  <a href="30.html">30</a>
+  <a href="300.html">300</a>
+  <a class="repo" href="https://github.com/RobertoTjesse/3-30-300-regel">Code</a>
+  <a href="../3.html" hreflang="nl" lang="nl">Nederlands</a>
+</nav></header>
+
+<main>
+<h1>The 3: seeing three trees from your home</h1>
+<p class="lead">Does every home see at least three trees? For every tree in the province we calculated which spots
+within 30 metres can see it, taking buildings, hedges and terrain into account. Then every home gets the number of
+trees you can see just outside its facade.</p>
+
+<div class="facts">
+  <div class="fact"><b>94.7%</b><span>of homes see ≥ 3 trees</span></div>
+  <div class="fact"><b>2.0%</b><span>of homes see no tree at all</span></div>
+  <div class="fact"><b>1.8 million</b><span>homes in 978,428 buildings</span></div>
+  <div class="fact"><b>5.2 million</b><span>trees calculated</span></div>
+</div>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, run of 27–28 September 2026.</p>
+
+<h2>What is measured?</h2>
+<p>The 3-30-300 rule (<a href="konijnendijk.html">Konijnendijk, 2023</a>) asks that everyone sees at least three
+well-established trees from their home, school and workplace. The paper does not say from what distance or from which
+window. For homes, we made that concrete as follows:</p>
+<ul>
+  <li>A tree counts as <b>visible</b> when there is a clear line of sight from the top of its crown to a point at
+      <b>1.8 m height</b> (eye height) <b>within 30 m</b> of the tree.</li>
+  <li>A home sees <b>N trees</b> when somewhere <b>just outside its facade</b> (within 1.5 m outside the building) there is a
+      spot that sees N trees.</li>
+</ul>
+
+<h2>Steps</h2>
+<ol class="steps">
+  <li><strong>Collect the elevation model and trees per municipality.</strong>
+    The elevation model is AHN4, 0.5 m, the <i>raw</i> version: a surface model that contains buildings, hedges and
+    tree crowns, not just the ground. The trees are points from the NEO tree data. Per province all municipalities are
+    combined into one elevation mosaic and one tree file.</li>
+  <li><strong>Cut the elevation model into tiles.</strong>
+    Tiles of 500 × 500 m with an extra margin of 35 m. Trees and heights in that margin are included, but only the
+    inner part is kept. That way the tiles fit seamlessly and a tree just across a tile or municipal boundary still
+    counts. Holes in the elevation model (water, under bridges) are filled first (see choices).</li>
+  <li><strong>Per tree: where can it be seen?</strong>
+    The observer stands at the top of the crown. GDAL's <code>ViewshedGenerate</code> determines for every 0.5 m cell
+    within 30 m whether there is a clear line of sight to 1.8 m above the surface. Every visible cell gets +1. The
+    result is a map in which every cell counts the number of trees visible from there.</li>
+  <li><strong>Find the homes.</strong>
+    A BAG building is residential when at least one address (verblijfsobject) in it has a residential use and is in
+    use. The number of homes in a building is the number of those addresses.</li>
+  <li><strong>Score per home.</strong>
+    Around every residential building lies a ring of 1.5 m outside the facade, without the buildings themselves. The
+    building's score is the highest value in that ring. Buildings without a free facade (fully enclosed) get no score.</li>
+  <li><strong>Summarise per municipality, district and neighbourhood.</strong>
+    Every building goes to its current municipality and CBS neighbourhood (2025), based on its centre point. Per area:
+    the share of homes with ≥ 3 visible trees, weighted by the number of homes per building.</li>
+</ol>
+
+<h2>Choices and why</h2>
+<div class="table-wrap"><table>
+<tr><th>Choice</th><th>Why</th><th>Alternative we did not choose</th></tr>
+<tr><td>Radius of 30 m</td>
+    <td>The rule names no distance. 30 m is the radius of the earlier 3 analysis (QGIS/ArcGIS), so results stay
+        comparable. At that distance a tree is still clearly recognisable as a tree.</td>
+    <td>A larger radius counts distant trees you hardly experience as "a view of a tree" and makes the calculation
+        much heavier.</td></tr>
+<tr><td>Raw surface model (AHN4 DSM)</td>
+    <td>Buildings, hedges and crowns must be able to block the view. In a ground model everything is open.</td>
+    <td>AHN ground model (DTM): too optimistic. The classified AHN point cloud would be better, but is much heavier
+        to process.</td></tr>
+<tr><td>Observer at the top of the crown</td>
+    <td>A tree is visible when you see its crown. The crown top is the highest point of the surface within 1.5 m of the
+        tree (roofs do not count). With the observer on the tree point itself, it sits <i>inside</i> its own crown, which
+        blocks the view: in Delft, 35.5% of the trees then saw practically nothing.</td>
+    <td>The tree point + 1 m (ArcGIS default). One fixed tree height for all trees.</td></tr>
+<tr><td>Height check: 0–35 m above the ground</td>
+    <td>The elevation model does not know what a tree is. A power line or roof edge next to a tree can be measured as
+        "crown". If the measured height above the local ground (lowest point within 5 m) is not positive or higher than
+        35 m, a fixed 1.7 m is used. That happens for fewer than 1 in 80,000 trees. The check is on height above the
+        ground, not on NAP, because the province runs from −6 m to +40 m NAP.</td>
+    <td>A check on NAP height (used earlier): it wrongly rejected 3% of Delft's trees.</td></tr>
+<tr><td>Target height 1.8 m</td>
+    <td>Eye height of a standing person. The same value as the <i>surface offset</i> in the ArcGIS method.</td>
+    <td>Calculating per floor: not possible with one surface model (see limitations).</td></tr>
+<tr><td>Score = highest value in a 1.5 m ring around the facade</td>
+    <td>Within the outline of a building the surface model is the roof: "1.8 m above the roof" is not what a resident
+        sees. Just outside the facade, 1.8 m <i>is</i> eye height. The highest value, because the rule asks whether you
+        see trees from your home, not from every window.</td>
+    <td>The average along the facade (penalises homes with one blind wall). Only the front facade (cannot be determined
+        from the BAG).</td></tr>
+<tr><td>Home = address in use with a residential use</td>
+    <td>Homes above shops count too. Addresses still to be built ("gevormd") or out of use do not count: they are
+        usually not in the elevation model.</td>
+    <td>Buildings with a residential use in the BAG building data: too coarse for mixed buildings.</td></tr>
+<tr><td>Classes 0, 1–2, 3–5, 6–7, 8+</td>
+    <td>The threshold of 3 is the rule itself; 0 and 1–2 show how far below a home is, 6–7 and 8+ how far above.
+        The same classes as the QGIS validation project.</td>
+    <td>Only meets / does not meet: hides the difference between 0 and 2 trees.</td></tr>
+<tr><td>Margin of 35 m around every tile</td>
+    <td>Must be at least the 30 m radius, or cells at the edge miss trees of the neighbouring tile. Without a margin,
+        visible seams appeared in 10–12% of the area.</td>
+    <td>Larger tiles without a margin: too much memory for the large municipalities.</td></tr>
+<tr><td>Filling holes: interpolate small ones, lowest value for large ones</td>
+    <td>GDAL treats a NoData value as a real height: a hole of −9999 becomes a cliff. Small holes (≤ 25 m) are filled
+        from their surroundings, large open water gets the lowest point of the tile, so it never blocks the view.</td>
+    <td>Interpolating everything: correct, but hours of computing time for coastal municipalities.</td></tr>
+<tr><td>GDAL instead of ArcGIS</td>
+    <td>Open source, scriptable and repeatable for any province. Tested against an exact line-of-sight test per cell:
+        95.5–99.7% of cells equal. With the same observer, ArcGIS Visibility, GDAL and the exact test give practically
+        the same result.</td>
+    <td>ArcGIS Pro (licence, hard to automate; the old engine behind Visibility fails on folder names with a digit and
+        a hyphen).</td></tr>
+<tr><td>Fewer than 10 homes: no percentage</td>
+    <td>With very small numbers a percentage says little and can be traced back to individual addresses.</td>
+    <td>—</td></tr>
+</table></div>
+
+<h2 id="mijn-woning">Is this right for my home?</h2>
+<p>The map shows for almost 1.8 million homes how many trees are visible nearby. Per neighbourhood, district and
+municipality that gives a reliable picture: small deviations average out there. Per home the result is a good
+<b>indication</b>, but not a measurement on site. Is your home red or orange while you do see trees from your house?
+Then the difference is usually one of these:</p>
+<ul>
+  <li><b>The tree is more than 30 metres away.</b> Only trees within 30 m of the facade count. A row of trees across a
+      wide canal or a large square is visible, but falls outside the rule as we measure it.</li>
+  <li><b>You look from a higher floor.</b> We calculate at eye height (1.8 m) just outside the facade, so at street or
+      garden level. From a balcony or upper floor you look over hedges, fences and cars and often see more trees than
+      the map shows.</li>
+  <li><b>The tree is new or not in the tree file.</b> The tree file and the elevation model are from 2020–2022. Trees
+      planted later are missing, and very young or small trees are sometimes not included.</li>
+  <li><b>The situation has changed.</b> If a building was demolished, a fence removed or a new neighbourhood built since
+      2020–2022, the model still uses the old situation. That works the other way round too.</li>
+  <li><b>Something blocks the view in the model.</b> The elevation model sees hedges, fences, bus shelters and the crowns
+      of other trees as obstacles. A dense two-metre hedge in front of your window counts as a wall, even if in reality
+      you see through it, for example in winter.</li>
+  <li><b>The home has little free facade.</b> We look all around the building, but for enclosed homes, corners and
+      courtyards there is little room just outside the facade where the calculation can "stand".</li>
+</ul>
+<div class="note ok">The reverse can happen too: a home is green, but the trees cannot be seen from the living room, for
+example because they are at the back and the living room is at the front. The map says whether three trees can be seen
+somewhere around the home, not from which window.</div>
+<p>Do you see an error that these points do not explain? Report it in the
+<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues">issues</a> of the repository; that is how the map gets better.</p>
+
+<h2>Limitations and open issues</h2>
+<ul>
+  <li><b>Eye height at street level only.</b> The view from higher floors is not calculated; residents of flats often
+      see more (or other) trees in reality.</li>
+  <li><b>Tree status.</b> 21% of the counted trees are marked "disappeared, small tree" in the source, 3% "not seen
+      once". All statuses count for now
+      (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/1">open issue #1</a>).</li>
+  <li><b>Dates.</b> Elevation model and trees are from 2020–2022, the homes from 2026. New-build homes appear on the map
+      with the surroundings of back then (3 to 5% of homes).</li>
+  <li><b>No point classification.</b> The elevation model does not tell tree, building and power line apart. The height
+      check catches most of it; the classified AHN point cloud would solve it.</li>
+  <li><b>Comparison with ArcGIS.</b> The earlier ArcGIS result for Delft saw more trees. That turned out to come from an
+      error in that run's observer height, not from the method
+      (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/2">issue #2, resolved</a>).</li>
+</ul>
+
+<h2>Code and sources</h2>
+<div class="table-wrap"><table class="plain">
+<tr><th>Step</th><th>Script</th></tr>
+<tr><td>Settings (radius, heights, tiles)</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/config.py"><code>etl/config.py</code></a></td></tr>
+<tr><td>Download the BAG (PDOK)</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/download_bag_pdok.py"><code>etl/download_bag_pdok.py</code></a></td></tr>
+<tr><td>1. Cut tiles, fill holes</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/01_tile_dem.py"><code>etl/01_tile_dem.py</code></a></td></tr>
+<tr><td>2. Visibility per tree</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/02_compute_viewsheds.py"><code>etl/02_compute_viewsheds.py</code></a></td></tr>
+<tr><td>3. Merge tiles</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/03_merge_tiles.py"><code>etl/03_merge_tiles.py</code></a></td></tr>
+<tr><td>4. Score per home</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/04_score_buildings.py"><code>etl/04_score_buildings.py</code></a></td></tr>
+<tr><td>5. Merge the province</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/05_merge_province.py"><code>etl/05_merge_province.py</code></a></td></tr>
+<tr><td>6. Per municipality, district, neighbourhood</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/etl/06_area_summaries.py"><code>etl/06_area_summaries.py</code></a></td></tr>
+<tr><td>Technical background</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/ARCHITECTURE.md"><code>ARCHITECTURE.md</code></a></td></tr>
+</table></div>
+<div class="table-wrap"><table class="plain">
+<tr><th>Data</th><th>Source</th><th>As of</th></tr>
+<tr><td>Elevation model</td><td>AHN4, surface model 0.5 m, raw</td><td>captured 2020–2022</td></tr>
+<tr><td>Trees</td><td>NEO tree data (purchased, not public)</td><td>2020–2022</td></tr>
+<tr><td>Buildings and addresses</td><td>BAG via PDOK</td><td>27 September 2026</td></tr>
+<tr><td>Municipal boundaries</td><td>Administrative boundaries (Kadaster) via PDOK</td><td>28 September 2026</td></tr>
+<tr><td>Districts and neighbourhoods</td><td>CBS Wijk- en Buurtkaart 2025 via PDOK</td><td>2025</td></tr>
+</table></div>
+</main>
+<footer>3-30-300 rule · <a href="https://github.com/RobertoTjesse/3-30-300-regel">source code on GitHub</a> ·
+  Konijnendijk, C.C. (2023). <i>Evidence-based guidelines for greener, healthier, more resilient neighbourhoods:
+  Introducing the 3–30–300 rule.</i> Journal of Forestry Research 34, 821–830.</footer>
+</body>
+</html>
