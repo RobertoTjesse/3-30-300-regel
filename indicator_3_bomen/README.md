@@ -175,10 +175,12 @@ plain work folder under `D:\Temp` first.
   small tree" in the source registry (`current_st`), 3% "not seen once";
   whether to exclude them is open —
   [issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1).
-- **[OPEN — main cause found 2026-09-29]** ArcGIS comparison: the
-  benchmark's observer height was wrong (see above); the remaining difference
-  with this pipeline is still being looked into —
-  [issue #2](https://github.com/RobertoTjesse/3-30-300-regel/issues/2).
+- **[RESOLVED 2026-10-01]** ArcGIS comparison: the benchmark's observer
+  height was wrong (2 x RASTERVALU; reproduced on 100% of cells, also for a
+  whole study area). With the same DEM and observers GDAL and ArcGIS agree
+  (same >= 3 verdict on 98.3% of cells); the remaining difference with this
+  pipeline is its canopy-top observer and its own DEM, a choice of inputs —
+  [issue #2](https://github.com/RobertoTjesse/3-30-300-regel/issues/2) (closed).
 - DEMs must be **floating point** (AHN: Float32). `01_tile_dem.py` stops on
   integer DEMs (heights truncated to whole metres, which happened once in an
   AHN5 export) or ones with a scale/offset.

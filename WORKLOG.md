@@ -260,3 +260,12 @@ trees should be excluded, is still open.
   its Tester keeps >= 300 m2 with perimeter / area <= 0.35.
 - A file of its own: inside `30-300.pmtiles` (zoom 11-16) it grew from
   94 to 117 MB, over GitHub's 100 MB limit.
+
+**15. Issue #2 closed**
+- The ArcGIS comparison is explained: the benchmark's observer was at
+  2 x RASTERVALU (reproduced on 100% of cells for single trees and for the
+  Molenbuurt study area), and with the same DEM and observers GDAL and
+  ArcGIS agree (same >= 3 verdict on 98.3%). The gap that remains with the
+  pipeline is its own inputs (canopy-top observer, AHN4 DEM). Summary
+  posted on the issue, issue retitled and closed; README, ARCHITECTURE,
+  `uitleg/3.html` and the wiki updated.

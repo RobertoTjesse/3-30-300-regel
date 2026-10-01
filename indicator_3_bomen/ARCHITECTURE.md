@@ -505,8 +505,8 @@ relative to the exact tree point *within GDAL*; compared with ArcGIS's
 Visibility tool, GDAL still occludes more. If an ArcGIS reference is
 needed, Viewshed2 is the closer and (per Esri) more accurate one.
 
-**Main cause found (2026-09-29, GitHub issue #2, still open for the
-remaining difference): the reference run's observer height was wrong.** An isolated tree and an isolated group of 5 trees
+**Cause found (2026-09-29; GitHub issue #2, closed 2026-10-01): the
+reference run's observer height was wrong.** An isolated tree and an isolated group of 5 trees
 (`arcgis_tests/one_tree.py`, `one_tree_arcgis.py`; WORKLOG section 9)
 show that `visibility_Delft` is reproduced exactly (same count on 100% of
 cells) by Visibility with `RASTERVALU` as both `observer_elevation` and
@@ -523,8 +523,10 @@ RASTERVALU + an explicit 1 m offset, in 500 m tiles), inside Delft at
 least 30 m from its boundary: mean 3.28 trees visible, 47.3% of cells
 >= 3 trees (original 6.16 / 69.5%; this pipeline 4.57 / 60.4%, pixel
 r 0.61 with the corrected benchmark). The remaining gap to this pipeline
-is its canopy-top observer and its own DEM; whether that explains all of
-it is still open.
+is its canopy-top observer and its own DEM, not the engine: on a whole
+study area (Molenbuurt, Delft; WORKLOG section 12) Visibility with the
+benchmark's settings reproduces `visibility_Delft` on 100.0% of cells, and
+GDAL with the same DEM and observers gives the same >= 3 verdict on 98.3%.
 The Visibility crashes were caused by the repository path (a folder name
 starting with a digit and containing a hyphen), not the tool; the tool
 also ignores the sign of the outer radius (always 2D).
