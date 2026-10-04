@@ -549,13 +549,25 @@ function updateLegend() {
 map.on("zoom", updateLegend);
 map.on("load", () => setTheme(theme));
 
+// On a phone the panel sits at the bottom (CSS: max-height 45vh, 24px up):
+// views are fitted into the part of the screen above it
+const PHONE = window.matchMedia("(max-width: 600px)").matches;
+const viewPadding = () => PHONE ? { top: 20, left: 20, right: 20, bottom: Math.round(innerHeight * 0.45) + 36 } : 20;
+
 // Open on the extent of the data (unless the URL already holds a position),
 // and keep the view near it
 tiles3.getHeader().then((h) => {
   const bounds = [[h.minLon, h.minLat], [h.maxLon, h.maxLat]];
   const pad = 0.6;   // degrees
-  map.setMaxBounds([[h.minLon - pad, h.minLat - pad / 2], [h.maxLon + pad, h.maxLat + pad / 2]]);
-  if (!location.hash) map.fitBounds(bounds, { padding: 20, animate: false });
+  let south = h.minLat - pad / 2;
+  if (PHONE && !location.hash) {
+    // The pan limits would pull the view back south, under the panel: fit
+    // without them first, then let the south limit include the screen's bottom edge
+    map.fitBounds(bounds, { padding: viewPadding(), animate: false });
+    south = Math.min(south, map.unproject([innerWidth / 2, innerHeight]).lat);
+  }
+  map.setMaxBounds([[h.minLon - pad, south], [h.maxLon + pad, h.maxLat + pad / 2]]);
+  if (!location.hash && !PHONE) map.fitBounds(bounds, { padding: viewPadding(), animate: false });
 });
 
 // Popups
@@ -651,7 +663,9 @@ document.getElementById("search").addEventListener("submit", async (ev) => {
     if (!doc) { alert(L("Niets gevonden voor: ", "Nothing found for: ") + q); return; }
     const [lon, lat] = doc.centroide_ll.match(/POINT\(([^ ]+) ([^)]+)\)/).slice(1).map(Number);
     const zoom = { adres: 18, weg: 16, postcode: 16, woonplaats: 13, gemeente: 11 }[doc.type] ?? 15;
-    map.flyTo({ center: [lon, lat], zoom });
+    // On a phone: the address in the middle of the part above the panel
+    const offset = PHONE ? [0, -viewPadding().bottom / 2] : [0, 0];
+    map.flyTo({ center: [lon, lat], zoom, offset });
   } catch (err) {
     alert(L("Zoeken lukt niet: ", "Search failed: ") + err.message);
   }
