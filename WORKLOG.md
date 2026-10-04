@@ -306,3 +306,15 @@ trees should be excluded, is still open.
 - Not done (possible next steps): simplify the isochrones (the 15-minute
   zone is one polygon of 100,242 vertices), show them from zoom 11, toggle
   by opacity instead of visibility.
+
+## 2026-10-04 — the map on a phone
+
+**19. Opening view above the panel on a phone**
+- On a phone the panel sits at the bottom (up to 45% of the screen) and
+  covered the south of the province. Fitting with bottom padding alone did
+  nothing: the pan limits (`maxBounds`) pulled the view back. Now, on screens
+  <= 600 px wide, the map first fits the province into the part above the
+  panel and then sets the southern pan limit to the screen's bottom edge.
+  The address search puts the found place in the middle of that part too.
+- Measured in headless Edge at phone size: province from y 20 to 378 with
+  the panel from 390 (before: 177 to 579). Desktop unchanged.
