@@ -55,3 +55,7 @@ data/studiegebied/
 # Copies of the FME results and inputs for the 30 and 300 (from R:)
 data/fme_output/
 data/fme_input/
+
+# Source documents: the Cobra/Yggdrasil handbook (NL) is handed out by Cobra
+# after a request form, so it stays local; the CC BY paper is committed
+docs/bronnen/handboek_*.pdf

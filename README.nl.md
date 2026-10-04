@@ -39,6 +39,7 @@ de README's per indicator) en de code zijn in het Engels.
 ├── indicator_30_kroonbedekking/  de 30: FME-workbenches + README
 ├── indicator_300_park/           de 300: FME-workbenches + README
 ├── web/                          de webkaart voor alle drie (gepubliceerde site)
+├── docs/                         COMPARISON_COBRA.md; bronnen/ (Konijnendijk 2023, het handboek alleen lokaal)
 ├── qgis_validation/              bouwt het QGIS-validatieproject voor alle drie
 ├── data/                         alle gegevens (gitignored), zie "Gegevens"
 └── logs/                         logbestanden van runs (gitignored)
@@ -185,7 +186,8 @@ geen codewijzigingen.
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | de 3: installatie, pipeline, validatie, bekende gegevensproblemen |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | de 3: ontwerpkeuzes in detail |
 | [`indicator_3_bomen/BENCHMARKS.md`](indicator_3_bomen/BENCHMARKS.md) | de 3: rekentijden (gegenereerd) |
-| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | de 3: verbeteringen ten opzichte van het oorspronkelijke prototype; gepland werk, ook de 30 en de 300 in Python |
+| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | de 3: verbeteringen ten opzichte van het oorspronkelijke prototype; gepland werk, ook de 30 en de 300 in Python, hoogbouw, waarden per woning |
+| [`docs/COMPARISON_COBRA.md`](docs/COMPARISON_COBRA.md) | vergelijking met de 3+30+300 van Cobra Groeninzicht en het Yggdrasil-handboek: methode, cijfer per pand, wat elk mist (Engels) |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | de 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | de 300 |
 | `web/uitleg/` | uitlegpagina's voor het publiek (Nederlands; Engels in `web/uitleg/en/`) |

@@ -36,6 +36,7 @@ planned (`indicator_3_bomen/IMPROVEMENTS.md`).
 ├── indicator_30_kroonbedekking/  the 30 — FME workbenches + README
 ├── indicator_300_park/           the 300 — FME workbenches + README
 ├── web/                          the web map for all three (published site)
+├── docs/                         COMPARISON_COBRA.md; bronnen/ (Konijnendijk 2023, the handbook local only)
 ├── qgis_validation/              builds the QGIS validation project for all three
 ├── data/                         all data (gitignored), see "Data"
 └── logs/                         run logs (gitignored)
@@ -176,7 +177,8 @@ Everything province-specific is a setting or an input file; no code changes.
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup, pipeline, validation, known data issues |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | the 3: design decisions in depth |
 | [`indicator_3_bomen/BENCHMARKS.md`](indicator_3_bomen/BENCHMARKS.md) | the 3: run times (generated) |
-| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | the 3: improvements over the original prototype; planned work, incl. the 30 and 300 in Python |
+| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | the 3: improvements over the original prototype; planned work, incl. the 30 and 300 in Python, multi-storey buildings, values per home |
+| [`docs/COMPARISON_COBRA.md`](docs/COMPARISON_COBRA.md) | comparison with Cobra Groeninzicht's 3+30+300 and the Yggdrasil handbook: method, mark per building, what each side misses |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | the 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | the 300 |
 | `web/uitleg/` | explanation pages for the public (Dutch; English in `web/uitleg/en/`) |

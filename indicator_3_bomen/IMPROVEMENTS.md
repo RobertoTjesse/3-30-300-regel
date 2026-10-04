@@ -233,3 +233,60 @@ three, so any province can repeat the whole rule:
   matrix API could replace one request per entrance); classify BAG homes
   from the same BAG download as the 3.
 - The 3 also for schools and workplaces, as the paper asks.
+
+## Planned: multi-storey buildings (future work)
+
+The 3 is measured at eye height (`TARGET_HEIGHT` = 1.8 m) in a ring just
+outside the facade, so every home in a flat gets the street-level view.
+From higher floors you look over hedges, fences, cars and lower crowns, and
+you see trees the street does not. The opposite also happens: a young tree
+seen from the 10th floor is a crown far below, not a view of a tree. One DSM
+surface cannot express this, but the facade ring can be lifted per floor.
+
+- **Floors per building**: 3D BAG (`b3_bouwlagen`, roof heights
+  `b3_h_dak_*`), from the 3D BAG download (the QGIS project only shows it as
+  WMS and 3D Tiles). Floor height ~3 m; window
+  height per floor `k` = 1.8 + 3k m above ground.
+- **Visibility per floor**: `ViewshedGenerate` takes one `targetHeight`
+  per call, so run stage 02 once per height level (1.8, 4.8, 7.8, ... m,
+  capped at e.g. 10 floors) into one accumulator per level, or test the
+  facade points of tall buildings directly with the exact line-of-sight test
+  used for validation (cheaper: only buildings with 3+ floors need it). The
+  ring cells lie on the ground in front of the facade, so "height above the
+  DSM" there is height above the street, as it should be.
+- **Which floor a home is on**: the BAG has no floor number. Spread a
+  building's homes evenly over its residential floors, or use house number
+  additions where they encode floors (`-1`, `-2`, `bis`) as a check. Shops on
+  the ground floor (non-residential addresses) move homes up.
+- **Data to check first**: how many homes are in buildings with 3+ floors in
+  Zuid-Holland, and how much the score changes for them on one test buurt
+  (Delft Poptahof or Rotterdam Ommoord) before a full run.
+
+## Planned: values per home and a mark (future work)
+
+Today a building has `bomen_zichtbaar` and `klasse` for the 3; the 30 and
+the 300 come from FME and are only joined in `web/build_tiles_30_300.py`. A
+fixed set of values per building makes the three rules comparable and
+allows a combined result, as the Yggdrasil handbook and Cobra Groeninzicht
+do (`docs/COMPARISON_COBRA.md`). Proposed fields in `<Province>_woningen.gpkg`:
+
+| Field | Meaning |
+|---|---|
+| `pand_id`, `n_woningen` | as now |
+| `n_bouwlagen` | floors (3D BAG); NULL when unknown |
+| `bomen_3` | visible trees, best place in the facade ring (as now `bomen_zichtbaar`) |
+| `bomen_3_groot` | the same, counting only crowns >= 28 m² (handbook, Cobra) |
+| `bomen_3_per_laag` | visible trees per floor, e.g. `"4;6;9"`; NULL for 1–2 floors |
+| `woningen_3` | homes that see >= 3 trees, summed over floors (homes spread over floors) |
+| `kroon_30_buurt` | canopy % of the buurt (the paper's neighbourhood) |
+| `kroon_30_500m` | canopy % of the land within 500 m of the building (handbook, Cobra), for comparison |
+| `loop_300_min` | walking minutes to the nearest entrance of green >= the chosen size (needs the Python 300 with times, not only 5/15-minute zones) |
+| `voldoet_3`, `voldoet_30`, `voldoet_300` | 0/1 per rule |
+| `regels_voldaan` | 0–3, the number of rules met (the handbook's simple combined score) |
+| `cijfer_3`, `cijfer_30`, `cijfer_300`, `cijfer_totaal` | optional mark 0–10, 6 = just meets the rule, on Cobra's scale so results can be compared: 30 = % / 5; 300 = 10 − 0.02 × (metres − 100); 3 = 0→1, 1→3, 2→5, 3→6, 4→7, 5→8, 6→9, 7+→10. Total with equal weights by default (Cobra: 0.25 / 0.5 / 0.25), the weights in `config.py` |
+
+Per area, report shares of homes, not means: the share meeting each rule,
+the share meeting all three, and the distribution of `regels_voldaan`. A
+mean mark lets a good 300 make up for a poor 30, which is not how the rule
+is meant (each number is a minimum). The map would get a fourth button "3-30-300"
+coloured by `regels_voldaan`.

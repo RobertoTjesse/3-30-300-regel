@@ -336,3 +336,23 @@ trees should be excluded, is still open.
   on CBS 2025: 20.9%.
 - CBS land area (2023 and 2025) is in whole hectares; per buurt that
   rounding moves a percentage by up to a few points.
+
+**21. Comparison with Cobra Groeninzicht; sources in `docs/`**
+- Cobra Groeninzicht sells a national 3+30+300 with a mark per building. Their
+  method comes from the FAQ on their site and their public ArcGIS layers; the
+  mark formulas follow exactly from the 11 sample buildings in their legend
+  layer: 3 = 1/3/5/.../10 for 0/1/2/.../7+ trees, 30 = % / 5, 300 = 10 -
+  0.02 x (m - 100), total = 0.25 / 0.5 / 0.25. Written up in
+  `docs/COMPARISON_COBRA.md`, with the Yggdrasil handbook (Dutch translation
+  by Cobra) and what each side probably misses.
+- Their gemeente values for the 50 municipalities of Zuid-Holland against
+  ours: the 30 ranks alike (r = 0.83) but is 7.6 points higher on average
+  (500 m around buildings vs all land of the municipality); the 3 hardly
+  relates (r = 0.31): they count only crowns > 28 m², we count every tree
+  point. The tree-size threshold is the main open point for the 3.
+- `docs/bronnen/`: the Konijnendijk (2023) paper (CC BY 4.0, committed) and
+  the handbook (local only, handed out by Cobra after a form).
+- Planned work added to `IMPROVEMENTS.md`: the 3 per floor for multi-storey
+  buildings (3D BAG floors, one target height per floor) and a fixed set of
+  values per home, incl. the number of rules met (0-3) and an optional mark
+  on Cobra's scale.
