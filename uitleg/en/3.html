@@ -54,7 +54,7 @@ window. For homes, we made that concrete as follows:</p>
     combined into one elevation mosaic and one tree file.</li>
   <li><strong>Cut the elevation model into tiles.</strong>
     Tiles of 500 × 500 m with an extra margin of 35 m. Trees and heights in that margin are included, but only the
-    inner part is kept. That way the tiles fit seamlessly and a tree just across a tile or municipal boundary still
+    inner part is kept. That way the tiles fit without seams and a tree just across a tile or municipal boundary still
     counts. Holes in the elevation model (water, under bridges) are filled first (see choices).</li>
   <li><strong>Per tree: where can it be seen?</strong>
     The observer stands at the top of the crown. GDAL's <code>ViewshedGenerate</code> determines for every 0.5 m cell
