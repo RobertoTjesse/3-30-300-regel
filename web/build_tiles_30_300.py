@@ -1,6 +1,6 @@
 """
-build_tiles_30_300.py — Build the web map's vector tiles for the 30 and the 300
-from the FME results, in two files. The 3 has its own tile file
+build_tiles_30_300.py — Build the web map's vector tiles for the 30 (from BKB
+2024) and the 300 (from the FME results), in two files. The 3 has its own tile file
 (web/build_tiles.py -> web/data/3.pmtiles), the 300's parks and woods too
 (web/build_tiles_groen.py -> web/data/groen.pmtiles).
 
@@ -19,21 +19,22 @@ when a layer of it is switched on or off: with the zones inside
 Inputs:
   data/processed/<Province>_gebieden.gpkg   gemeenten, wijken 2025, buurten 2025
                                             (indicator_3_bomen/etl/06_area_summaries.py)
+  data/processed/<Province>_kroonbedekking.csv   the 30: canopy cover per
+                    gemeente, wijk and buurt from BKB 2024 on the same CBS 2025
+                    areas (indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py)
   config.FME_OUTPUT_DIR (set in indicator_3_bomen/etl/config_local.py):
-  30_regel_v2.gdb   FeatureClass_buurt: crown area (sum of NEO crowns touching
-                    the buurt) and land area per CBS buurt 2023. Carried over to
-                    the areas above in proportion to overlapping area.
   300.gdb           _300regel / _300regel_15: every BAG pand, _related_suppliers
                     = 1 when it lies in a 5 / 15 minute pedestrian isochrone
                     (Valhalla) from an entrance of a park or wood >= 300 m2;
                     isochrones_dissolved(_15); ingang_parken
 
 Usage:
-    python web/build_tiles_30_300.py [--fme DIR] [--gebieden GPKG]
-(both default to the paths in indicator_3_bomen/etl/config.py / config_local.py)
+    python web/build_tiles_30_300.py [--fme DIR] [--gebieden GPKG] [--kroon CSV]
+(all default to the paths in indicator_3_bomen/etl/config.py / config_local.py)
 """
 
 import argparse
+import csv
 import json
 import sys
 from pathlib import Path
@@ -47,9 +48,12 @@ ogr.UseExceptions()
 
 _args = argparse.ArgumentParser(description=__doc__.splitlines()[1])
 _args.add_argument("--fme", type=Path, default=config.FME_OUTPUT_DIR,
-                   help="folder with 30_regel_v2.gdb and 300.gdb")
+                   help="folder with 300.gdb")
 _args.add_argument("--gebieden", type=Path,
                    default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_gebieden.gpkg")
+_args.add_argument("--kroon", type=Path,
+                   default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_kroonbedekking.csv",
+                   help="the 30 per area (kroonbedekking_gebieden.py)")
 ARGS = _args.parse_args()
 SRC = ARGS.fme
 GEBIEDEN = ARGS.gebieden
@@ -118,35 +122,22 @@ def woningen(dst):
     return pts
 
 
-def buurten_2023(dst):
-    """The FME 30 per CBS buurt 2023: crown area and land area (m2), as a layer
-    to apportion from. FME: Percentage_groen = crown m2 / 100 / land ha."""
-    gdb = ogr.Open(str(SRC / "30_regel_v2.gdb"))
-    src = gdb.GetLayerByName("FeatureClass_buurt")
-    out = dst.CreateLayer("buurten_2023", RD, ogr.wkbMultiPolygon)
-    for fname in ("kroon", "land"):
-        out.CreateField(ogr.FieldDefn(fname, ogr.OFTReal))
-    out.CreateField(ogr.FieldDefn("data", ogr.OFTInteger))
-    dst.StartTransaction()
-    for f in src:
-        kroon = f.GetField("totaal_kroonoppervlak_m2")
-        has_data = kroon not in (None, "")   # no crown data: all of Voorne aan Zee
-        land = f.GetField("oppervlakte_land_in_ha") or 0
-        nf = ogr.Feature(out.GetLayerDefn())
-        nf.SetField("data", int(has_data))
-        nf.SetField("kroon", float(kroon) if has_data else 0.0)
-        nf.SetField("land", max(land, 0) * 1e4 if has_data else 0.0)   # -99997 = no land
-        g = f.GetGeometryRef().Clone()
-        nf.SetGeometry(g if g.IsValid() else g.MakeValid())
-        out.CreateFeature(nf)
-    dst.CommitTransaction()
+def kroonbedekking():
+    """The 30 from BKB 2024: {(level, key): (canopy %, crown m2)}, with the
+    gemeenten keyed by name (the map's gemeenten have no code) and the wijken
+    and buurten by CBS code."""
+    out = {}
+    with open(ARGS.kroon, encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            level = {"gemeente": "gemeenten", "wijk": "wijken", "buurt": "buurten"}[r["niveau"]]
+            key = r["naam"] if level == "gemeenten" else r["code"]
+            out[(level, key)] = (float(r["pct"]) if r["pct"] else None, float(r["kroon_m2"]))
     return out
 
 
-def areas(dst, pts, b23):
-    """Gemeenten, wijken and buurten of the 3 map (same polygons):
-    canopy cover apportioned from the 2023 buurten by overlapping area, and the
-    share of homes by walking class."""
+def areas(dst, pts, kroon):
+    """Gemeenten, wijken and buurten of the 3 map (same polygons): canopy
+    cover from BKB 2024 (the 30) and the share of homes by walking class (the 300)."""
     src_ds = ogr.Open(str(GEBIEDEN))
     for level in ("gemeenten", "wijken", "buurten"):
         src = src_ds.GetLayerByName(level)
@@ -157,36 +148,26 @@ def areas(dst, pts, b23):
                              ("pct_5", ogr.OFTReal), ("pct_15", ogr.OFTReal)):
             out.CreateField(ogr.FieldDefn(fname, ftype))
         dst.StartTransaction()
+        missing = 0
         for f in src:
             g = f.GetGeometryRef()
-            valid = g if g.IsValid() else g.MakeValid()
             # The 300: homes per walking class among the pand points in the area
             counts = {"5": 0, "15": 0, "ver": 0}
             pts.SetSpatialFilter(g)
             for p in pts:
                 counts[p.GetField("klasse")] += p.GetField("woningen")
             total = sum(counts.values())
-            # The 30: every 2023 buurt that overlaps contributes the same share
-            # of its crown and land area as the share of its surface that
-            # overlaps; overlap_data tracks how much of that has crown data
-            kroon = land = overlap = overlap_data = 0.0
-            b23.SetSpatialFilter(g)
-            for b in b23:
-                bg = b.GetGeometryRef()
-                inter = valid.Intersection(bg).GetArea()
-                share = inter / bg.GetArea() if bg.GetArea() else 0
-                kroon += share * b.GetField("kroon")
-                land += share * b.GetField("land")
-                overlap += inter
-                overlap_data += inter * b.GetField("data")
             nf = ogr.Feature(out.GetLayerDefn())
             nf.SetField("naam", f.GetField("naam"))
             nf.SetField("gemeente", f.GetField("gemeente"))
-            # a value only when most of the area is covered by buurten with crown
-            # data (otherwise edge slivers of a neighbour would stand for the whole)
-            if land > 0 and overlap_data >= 0.5 * overlap:
-                nf.SetField("groen", num(100 * kroon / land))
-                nf.SetField("kroon_m2", round(kroon))
+            # The 30 (no value for an area without land)
+            key = f.GetField("naam") if level == "gemeenten" else f.GetField("code")
+            pct, kroon_m2 = kroon.get((level, key), (None, None))
+            if kroon_m2 is None:
+                missing += 1
+            elif pct is not None:
+                nf.SetField("groen", num(pct))
+                nf.SetField("kroon_m2", round(kroon_m2))
             nf.SetField("woningen", total)
             if total:
                 nf.SetField("pct_5", num(100 * counts["5"] / total))
@@ -195,8 +176,7 @@ def areas(dst, pts, b23):
             out.CreateFeature(nf)
         dst.CommitTransaction()
         pts.SetSpatialFilter(None)
-        b23.SetSpatialFilter(None)
-        print(f"{level}: {out.GetFeatureCount():,}")
+        print(f"{level}: {out.GetFeatureCount():,}" + (f"  ({missing} without a 30 value!)" if missing else ""))
 
 
 def copy(dst, src_layer, name, fields=()):
@@ -245,14 +225,13 @@ def write(staging, out, zooms):
 
 def main():
     """Collect all layers in a temporary GeoPackage, then write the PMTiles
-    files of OUTPUTS from it (the helper layers "punten" and "buurten_2023"
-    go into neither)."""
+    files of OUTPUTS from it (the helper layer "punten" goes into neither)."""
     DATA.mkdir(parents=True, exist_ok=True)
     staging = DATA / "30-300.staging.gpkg"
     staging.unlink(missing_ok=True)
     dst = ogr.GetDriverByName("GPKG").CreateDataSource(str(staging))
     pts = woningen(dst)
-    areas(dst, pts, buurten_2023(dst))
+    areas(dst, pts, kroonbedekking())
     copy(dst, "isochrones_dissolved", "iso5")
     copy(dst, "isochrones_dissolved_15", "iso15")
     copy(dst, "ingang_parken", "ingangen", ("type", "name"))

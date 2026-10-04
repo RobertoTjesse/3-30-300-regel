@@ -107,6 +107,38 @@ def _tile(window):
     return crowns, every
 
 
+def count(areas, bkb, workers):
+    """Crown pixels and all pixels per area: two arrays indexed like `areas`
+    (code, WKB), plus the pixel size in m2."""
+    t0 = time.perf_counter()
+    ds = gdal.Open(str(bkb))
+    gt = ds.GetGeoTransform()
+    px = gt[1]
+    # Extent of the areas, snapped outward to the raster's pixel grid
+    env = [ogr.CreateGeometryFromWkb(w).GetEnvelope() for _, w in areas]
+    xmin, xmax = min(e[0] for e in env), max(e[1] for e in env)
+    ymin, ymax = min(e[2] for e in env), max(e[3] for e in env)
+    c0, c1 = int((xmin - gt[0]) // px), int(-(-(xmax - gt[0]) // px))
+    r0, r1 = int((gt[3] - ymax) // px), int(-(-(gt[3] - ymin) // px))
+    windows = [(c, r, min(TILE_PX, c1 - c), min(TILE_PX, r1 - r))
+               for r in range(r0, r1, TILE_PX) for c in range(c0, c1, TILE_PX)]
+    print(f"{len(areas)} areas, {len(windows)} tiles of up to {TILE_PX * px:.0f} m, {workers} workers")
+
+    n = len(areas)
+    crowns = np.zeros(n + 1, dtype=np.int64)
+    every = np.zeros(n + 1, dtype=np.int64)
+    done = 0
+    with ProcessPoolExecutor(workers, initializer=_init, initargs=(bkb, areas)) as pool:
+        for res in pool.map(_tile, windows, chunksize=4):
+            done += 1
+            if res is not None:
+                crowns += res[0]
+                every += res[1]
+            if done % 500 == 0 or done == len(windows):
+                print(f"  {done}/{len(windows)} tiles, {time.perf_counter() - t0:.0f} s", flush=True)
+    return crowns[1:], every[1:], px * px
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     p.add_argument("areas", type=Path)
@@ -122,38 +154,13 @@ def main():
     areas = load_areas(a.areas, a.layer, a.code_field, a.where)
     if not areas:
         sys.exit("No areas selected.")
-    ds = gdal.Open(str(a.bkb))
-    gt = ds.GetGeoTransform()
-    px = gt[1]
-    # Extent of the areas, snapped outward to the raster's pixel grid
-    env = [ogr.CreateGeometryFromWkb(w).GetEnvelope() for _, w in areas]
-    xmin, xmax = min(e[0] for e in env), max(e[1] for e in env)
-    ymin, ymax = min(e[2] for e in env), max(e[3] for e in env)
-    c0, c1 = int((xmin - gt[0]) // px), int(-(-(xmax - gt[0]) // px))
-    r0, r1 = int((gt[3] - ymax) // px), int(-(-(gt[3] - ymin) // px))
-    windows = [(c, r, min(TILE_PX, c1 - c), min(TILE_PX, r1 - r))
-               for r in range(r0, r1, TILE_PX) for c in range(c0, c1, TILE_PX)]
-    print(f"{len(areas)} areas, {len(windows)} tiles of up to {TILE_PX * px:.0f} m, {a.workers} workers")
-
+    crowns, every, pixel_m2 = count(areas, a.bkb, a.workers)
     n = len(areas)
-    crowns = np.zeros(n + 1, dtype=np.int64)
-    every = np.zeros(n + 1, dtype=np.int64)
-    done = 0
-    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.bkb, areas)) as pool:
-        for res in pool.map(_tile, windows, chunksize=4):
-            done += 1
-            if res is not None:
-                crowns += res[0]
-                every += res[1]
-            if done % 200 == 0 or done == len(windows):
-                print(f"  {done}/{len(windows)} tiles, {time.perf_counter() - t0:.0f} s", flush=True)
-
-    pixel_m2 = px * px
     a.out.parent.mkdir(parents=True, exist_ok=True)
     with open(a.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["code", "kroon_px", "gebied_px", "kroon_m2", "gebied_m2"])
-        for i, (code, _) in enumerate(areas, start=1):
+        for i, (code, _) in enumerate(areas):
             w.writerow([code, crowns[i], every[i], round(crowns[i] * pixel_m2, 2), round(every[i] * pixel_m2, 2)])
     print(f"Wrote {a.out} ({n} areas) in {time.perf_counter() - t0:.0f} s")
 

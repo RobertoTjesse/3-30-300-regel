@@ -116,10 +116,10 @@
   <p data-en='How each indicator was calculated, and why, is on the explanation pages:
      <a href="uitleg/3.html">3</a>, <a href="uitleg/30.html">30</a> and <a href="uitleg/300.html">300</a>.
      The code of the 3 and of this map is in the
-     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub repository</a>; the 30 and the 300 were (still) calculated with FME.'>Hoe elke indicator is berekend en waarom, staat op de uitlegpagina's:
+     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub repository</a>; the 300 was (still) calculated with FME.'>Hoe elke indicator is berekend en waarom, staat op de uitlegpagina's:
      <a href="uitleg/3.html">3</a>, <a href="uitleg/30.html">30</a> en <a href="uitleg/300.html">300</a>.
      De code van de 3 en van deze kaart staat in de
-     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub-repository</a>; de 30 en de 300 zijn (nog) met FME berekend.</p>
+     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub-repository</a>; de 300 is (nog) met FME berekend.</p>
 </dialog>
 
 <script>
@@ -208,14 +208,12 @@ const THEMES = {
   "30": {
     intro: L("Heeft elke buurt minstens 30% bedekking met boomkronen? Kroonoppervlak als aandeel van het landoppervlak, per gemeente, wijk en buurt.",
              "Does every neighbourhood have at least 30% tree canopy cover? Crown area as a share of land area, per municipality, district and neighbourhood."),
-    method: L("Per CBS-buurt (2023) is het kroonoppervlak van de NEO-bomen opgeteld en gedeeld door het landoppervlak. " +
-              "Voor deze kaart zijn kroon- en landoppervlak naar de gemeenten, wijken en buurten van de 3 omgerekend, naar rato van overlappend oppervlak. " +
-              "Grijs: geen gegevens. Voor Voorne aan Zee en delen van Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp en Delft " +
-              "ontbreekt de waarde door een fout in de berekening (buurtcodes van 2023 gezocht in de CBS-kaart van 2022).",
-              "Per CBS neighbourhood (2023), the crown area of the NEO trees was added up and divided by the land area. " +
-              "For this map, crown and land area were carried over to the municipalities, districts and neighbourhoods of the 3, in proportion to overlapping area. " +
-              "Grey: no data. For Voorne aan Zee and parts of Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp and Delft " +
-              "the value is missing because of an error in the calculation (2023 neighbourhood codes looked up in the CBS map of 2022)."),
+    method: L("Het oppervlak onder boomkronen komt uit de Boomkroonbedekking 2024 (BKB 2024) van Friedenau Society: een kaart met vakjes van 25 cm, " +
+              "gemaakt uit lidar (laserhoogtemetingen vanuit de lucht). Per buurt is dat oppervlak gedeeld door het landoppervlak van het CBS (2025). " +
+              "Elk stukje kroon telt in precies één buurt; wijken en gemeenten zijn de som van hun buurten. Grijs: geen land.",
+              "The area under tree crowns comes from Friedenau Society's Boomkroonbedekking 2024 (BKB 2024): a map with 25 cm cells, " +
+              "made from lidar (airborne laser measurements). Per neighbourhood, that area is divided by the CBS land area (2025). " +
+              "Every bit of crown counts in exactly one neighbourhood; districts and municipalities are the sum of their neighbourhoods. Grey: no land."),
   },
   "300": {
     intro: L("Woont iedereen binnen 300 m van een park of bos? Looptijd over het wegennet van elke woning tot de dichtstbijzijnde ingang van groen.",
@@ -240,8 +238,10 @@ const SOURCES = {
     [L("Gebieden", "Areas"), L("Bestuurlijke gebieden; CBS wijken en buurten 2025", "Administrative boundaries; CBS districts and neighbourhoods 2025"), "2025–2026"],
   ],
   "30": [
-    [L("Boomkronen", "Tree crowns"), L("NEO boomkronen (aangekocht)", "NEO tree crowns (purchased)"), "2020–2022"],
-    [L("Landoppervlak", "Land area"), '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2023" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2023</a>', "2023"],
+    [L("Boomkronen", "Tree crowns"), L("Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, uit lidar, 25 cm",
+                                       "Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, from lidar, 25 cm"), "2024"],
+    [L("Landoppervlak", "Land area"), '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2025" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2025</a>' +
+                                      L(", in hele hectares", ", in whole hectares"), "2025"],
     [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
   "300": [
@@ -253,14 +253,14 @@ const SOURCES = {
     [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
 };
-const CAVEATS = L("Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 is berekend op de buurten van 2023 " +
-  "en omgerekend: waar een buurt sinds 2023 is gesplitst of samengevoegd, is de kroonbedekking een benadering. Een boom telt mee in elke " +
-  "buurt die zijn kroon raakt. De woningen van de 3 (BAG 2026) en de 300 (BAG 2025) zijn apart geteld; het aantal woningen per gebied kan " +
-  "daardoor iets verschillen. De 300 meet looptijd tot een ingang, niet hemelsbreed tot de rand van het groen.",
-  "All tabs show the same municipalities, districts (CBS 2025) and neighbourhoods (CBS 2025). The 30 was calculated on the neighbourhoods of 2023 " +
-  "and carried over: where a neighbourhood has been split or merged since 2023, the canopy cover is an approximation. A tree counts in every " +
-  "neighbourhood its crown touches. The homes of the 3 (BAG 2026) and the 300 (BAG 2025) were counted separately, so the number of homes per area can " +
-  "differ slightly. The 300 measures walking time to an entrance, not the straight-line distance to the edge of the green.");
+const CAVEATS = L("Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 meet kronen in 2024; het landoppervlak " +
+  "van het CBS staat in hele hectares, wat bij een kleine buurt het percentage een paar punten kan verschuiven. De woningen van de 3 (BAG 2026) en " +
+  "de 300 (BAG 2025) zijn apart geteld, dus het aantal woningen per gebied kan iets verschillen. De 300 meet looptijd tot een ingang, niet " +
+  "hemelsbreed tot de rand van het groen.",
+  "All tabs show the same municipalities, districts (CBS 2025) and neighbourhoods (CBS 2025). The 30 measures crowns in 2024; the CBS land area is " +
+  "in whole hectares, which can shift the percentage of a small neighbourhood by a few points. The homes of the 3 (BAG 2026) and the 300 (BAG 2025) " +
+  "were counted separately, so the number of homes per area can differ slightly. The 300 measures walking time to an entrance, not the straight-line " +
+  "distance to the edge of the green.");
 // Second background: aerial photo (WMS), highest resolution available nationwide
 const AERIAL_WMS = "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0";
 const AERIAL_LAYER = "Actueel_orthoHR";      // latest complete year, 8 cm

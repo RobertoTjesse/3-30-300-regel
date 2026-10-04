@@ -1,6 +1,6 @@
 # Work log
 
-## 2026-09-28 — code review, ArcGIS comparison, web map
+## 2026-09-28: code review, ArcGIS comparison, web map
 
 **1. Code review and simplification** (no change in results; stage 2 tile,
 stage 4 scores for Hillegom and the stage 5 summary verified identical
@@ -31,7 +31,7 @@ for spotting integer terraces, NoData holes and seams in the input DEM.
   offset 1 m, Viewshed2 documented as more accurate).
 - Open: Visibility fails on ArcGIS Pro 3.6.1 here (GitHub issue #2).
 
-**4. Web map** — https://robertotjesse.github.io/3-regel/ (see README,
+**4. Web map**: https://robertotjesse.github.io/3-regel/ (see README,
 "Web map")
 - `web/build_tiles.py` builds one PMTiles file (83 MB): municipalities
   (share of homes with >= 3 visible trees) at zoom 6-12, all 978,428
@@ -52,13 +52,13 @@ trees should be excluded, is still open.
 - `etl/06_area_summaries.py`: assigns every building to its CBS buurt
   (Wijk- en Buurtkaart 2025) and summarises per gemeente, wijk and buurt;
   the gemeente figures match stage 5 exactly. CBS names Rijswijk
-  "Rijswijk (ZH.)" — matched by stripping the suffix.
+  "Rijswijk (ZH.)"; it is matched by stripping the suffix.
 - Web map: the area level follows the zoom (gemeente < 10, wijk < 11.5,
   buurt < 13, then buildings), one colour scale for all levels
   (< 80 / 80-90 / 90-95 / 95-98 / >= 98% of homes with >= 3 trees),
   grey for areas with fewer than 10 homes.
 
-**7. Temporal consistency of the inputs** — shown on the map under (i)
+**7. Temporal consistency of the inputs**, shown on the map under (i)
 - AHN4 (height model): flown 2020-2022 depending on the area (ahn.nl
   confirms Hollandse Delta in 2020; the year for the rest of the province
   is not stated there).
@@ -72,7 +72,7 @@ trees should be excluded, is still open.
   1,797,328. Their surroundings are those of 2020-2022. Decision: not
   filtered out; stated on the map instead.
 
-**8. One-tree comparison** (issue #2) — `arcgis_tests/one_tree.py` +
+**8. One-tree comparison** (issue #2): `arcgis_tests/one_tree.py` +
 `one_tree_arcgis.py`
 - One ~26 m tree 245 m from the Markt in Delft; all tools get the same
   AHN5 DEM clip (NoData filled as in stage 1), the same absolute observer
@@ -81,7 +81,7 @@ trees should be excluded, is still open.
   of the cells within 30 m visible, same verdict on 95.5% of cells. For
   this tree GDAL is close to exact; the ArcGIS results are still to come.
 - Lesson: with an unfilled NoData sentinel (3.4e38) in the clip the
-  results were meaningless for every tool — the fill matters.
+  results were meaningless for every tool, so the fill matters.
 - Tree data: NEO (purchased); the web map now says so.
 - Result: GDAL 37.7% of cells visible, exact reference 36.4%, ArcGIS
   Viewshed2 47.3% (2D radius). Of the cells only Viewshed2 sees, 83% are
@@ -89,7 +89,7 @@ trees should be excluded, is still open.
   1.2 m from the tree, 0.27 m above the sightline): Viewshed2 hardly lets
   the surface right around the observer block. GDAL is close to exact.
 - The classic ArcGIS Viewshed tool crashes Pro 3.6.1 here too.
-- Water/NoData: no rerun needed — stage 1 fills NoData in every tile, and
+- Water/NoData: no rerun needed. Stage 1 fills NoData in every tile, and
   all 52 municipalities were tiled after that fix; only the ad-hoc test
   clip (cut straight from the ArcGIS DEM) needed filling.
 - Rerun (2026-09-28): Viewshed2 with a 3D radius sees 32.8% (2D: 47.3%).
@@ -117,7 +117,7 @@ trees should be excluded, is still open.
 - All results in the QGIS validation project (group "Eén boom"), with
   difference maps against the exact test.
 
-## 2026-09-29 — benchmark observer found, one repository, 3-30-300 map
+## 2026-09-29: benchmark observer found, one repository, 3-30-300 map
 
 **9. Isolated tree and tree group vs the benchmark**
 - `one_tree.py` now runs cases: `tree_68418` (16 m tree, no other tree
@@ -135,8 +135,8 @@ trees should be excluded, is still open.
 - group_5: exact 71.9%, GDAL 72.5%, benchmark 77.6% (mean count 2.00 /
   1.91 / 2.09); the benchmark agrees with exact on 76.7% of cells.
 - The pipeline's Delft_viewshed.tif is on its own DEM: for tree 68418 the
-  point cell there is 10.8 m below the canopy top, in AHN5 at the top — not
-  a like-for-like comparison.
+  point cell there is 10.8 m below the canopy top, in AHN5 at the top, so it
+  is not a like-for-like comparison.
 - Next: `one_tree_arcgis.py` with the new `arc_bench` variant (Visibility
   with exactly the benchmark's settings) to see whether ArcGIS reproduces
   the benchmark on these trees.
@@ -162,8 +162,8 @@ trees should be excluded, is still open.
   the production DEM, where that tree point is 10.8 m below its canopy.
 - Next: `arc_bench_offset` (Visibility with observer_offset = RASTERVALU)
   to confirm in ArcGIS itself.
-- **Confirmed in ArcGIS:** `arc_bench_both` — Visibility with
-  observer_elevation = RASTERVALU AND observer_offset = RASTERVALU —
+- Confirmed in ArcGIS: `arc_bench_both` (Visibility with
+  observer_elevation = RASTERVALU and observer_offset = RASTERVALU)
   reproduces visibility_Delft exactly: the same count on 100.0% of cells
   for tree_68418 and for group_5. The benchmark's observers were at
   2 x RASTERVALU m NAP. (`arc_bench_offset`, surface + RASTERVALU: 99.4% /
@@ -246,7 +246,7 @@ trees should be excluded, is still open.
   workbench behind the map; stale notes in `IMPROVEMENTS.md` and
   `ARCHITECTURE.md` updated.
 
-## 2026-10-01 — the green of the 300 on the map
+## 2026-10-01: the green of the 300 on the map
 
 **14. Parks and woods on the 300 map**
 - The 300 tab now shows the green the calculation walks to: dark green
@@ -270,7 +270,7 @@ trees should be excluded, is still open.
   posted on the issue, issue retitled and closed; README, ARCHITECTURE,
   `uitleg/3.html` and the wiki updated.
 
-## 2026-10-01 (later) — bilingual site, clean-up
+## 2026-10-01 (later): bilingual site, clean-up
 
 **16. Site and README in Dutch and English**
 - The map has a NL / EN switch (`?lang=en`): every text in `index.html`
@@ -307,7 +307,7 @@ trees should be excluded, is still open.
   zone is one polygon of 100,242 vertices), show them from zoom 11, toggle
   by opacity instead of visibility.
 
-## 2026-10-04 — the map on a phone
+## 2026-10-04: the map on a phone
 
 **19. Opening view above the panel on a phone**
 - On a phone the panel sits at the bottom (up to 45% of the screen) and
@@ -336,3 +336,32 @@ trees should be excluded, is still open.
   on CBS 2025: 20.9%.
 - CBS land area (2023 and 2025) is in whole hectares; per buurt that
   rounding moves a percentage by up to a few points.
+
+**21. The 30 from BKB 2024 for the whole province, on the map**
+- `indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py`: crown
+  pixels per buurt of the map (CBS 2025, 2,509 buurten), wijken and
+  gemeenten as sums of their buurten, divided by the CBS 2025 land area
+  (`oppervlakteLandInHa`, fetched once from PDOK). 6,225 tiles, 3.6 min.
+  Checked on Delft: the counted area is within 4.1 m2 of each buurt
+  polygon, and summed buurten equal clipping the wijken and the gemeente
+  directly (to 0.02 m2).
+- Zuid-Holland: 8.1% of the land under a crown (21,854 of 269,840 ha). No
+  gemeente reaches 30% (Wassenaar 27.9%, Rijswijk 22.3%, Delft 20.9%;
+  lowest Kaag en Braassem 2.5%); 16 of 518 wijken and 102 of 2,509 buurten
+  do. Voorne aan Zee (12.8%), Schiedam (11.8%) and Leiderdorp (7.4%) now
+  have values.
+- Against the FME 30: higher in all 39 gemeenten with complete FME data
+  (median +23%; together 7.9% vs 6.5%), same ranking (r = 0.99). In Delft
+  FME's surplus per buurt grows with boundary length (~33 of 84 ha) and
+  with the amount of crown (~48 ha): crowns on boundaries counted in full
+  in each buurt, overlapping crowns added up, and different years and
+  crown definitions. The empty NEO export (`D:\Temp\neo_kronen`) means the
+  split is not confirmed yet.
+- `web/build_tiles_30_300.py` reads the BKB 30 per area instead of
+  carrying the FME 30 over from the 2023 buurten. Map, explanation pages
+  (NL/EN), READMEs and wiki updated with the sources (BKB 2024, Friedenau
+  Society, lidar, 2024; CBS 2025 land area).
+- `bkb_2024.tif` moved from the repository root to `data/raw/` (gitignored).
+- Found but not used: `landbedekking_2024.tif` (land cover 2024, same grid,
+  classes 1-9 without names; class 1 looks like water) could give an exact
+  land/water split; it needs its legend first.

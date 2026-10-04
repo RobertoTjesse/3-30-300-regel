@@ -3,20 +3,19 @@
 For every 0.5 m cell of the surface model: from how many trees (within 30 m)
 is it visible? Every home then gets the maximum in a 1.5 m ring just outside
 its facade, and the results are summarised per gemeente, wijk and buurt.
-Pure open-source Python + GDAL (from a QGIS/OSGeo4W install); runs for a
+It is open-source Python + GDAL (from a QGIS/OSGeo4W install) and runs for a
 whole province (Zuid-Holland: 52 municipalities, 5.2 million trees).
 
-This replaces an earlier QGIS/PyQGIS prototype which wrote one output raster
-**per individual tree**, which is infeasible at province scale. Instead this
-pipeline accumulates visible-cell counts per DEM tile and merges once per
-municipality.
+An earlier QGIS/PyQGIS prototype wrote one output raster per tree, which does
+not scale to a province. This pipeline adds up the visible-cell counts per DEM
+tile and merges once per municipality.
 
 | Document | What |
 |---|---|
 | this README | how to run it, how it works, known data issues |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | design decisions in depth (§6 observer height, §11 DEM re-export, §14 ArcGIS comparison) |
 | [`BENCHMARKS.md`](BENCHMARKS.md) | run times per municipality (generated) |
-| [`IMPROVEMENTS.md`](IMPROVEMENTS.md) | what this pipeline improved over the original prototype, and planned work (the 30 and 300 in open-source Python) |
+| [`IMPROVEMENTS.md`](IMPROVEMENTS.md) | what this pipeline improved over the original prototype; the 30, now open source, and the planned open-source 300 |
 | [`../WORKLOG.md`](../WORKLOG.md) | what was done and found, step by step |
 
 ## Folder
@@ -30,13 +29,13 @@ municipality.
 
 ## Setup
 
-GDAL/OGR comes from a **QGIS / OSGeo4W install**, not pip.
+GDAL/OGR comes from a QGIS / OSGeo4W install; nothing is installed with pip.
 
 1. Copy `etl/config_local.example.py` to `etl/config_local.py` (gitignored).
 2. Fill in `OSGEO4W_ROOT` (your QGIS/OSGeo4W install), `VIEWANALYSE_DIR`
    (see [Source data](#source-data)) and `MUNICIPALITIES` (`[]` = all).
 3. Run the scripts with the Python of that install, e.g.
-   `C:\...\OSGeo4W\apps\Python312\python.exe`, from the **repository root**.
+   `C:\...\OSGeo4W\apps\Python312\python.exe`, from the repository root.
 
 Build two combined sources once (see [Cross-municipality context](#cross-municipality-context)):
 
@@ -103,14 +102,15 @@ deletes a municipality's intermediate tiles once its output is written
 (province-wide they would need ~250 GB); they are kept when a stage fails or
 logs tile errors, or with `KEEP_TILES=1`.
 
-All tunables (radius, tile size, workers, heights) are in `etl/config.py`;
-Helpers in `etl/`: `download_bag_pdok.py` (BAG from PDOK),
+All settings (radius, tile size, workers, heights) are in `etl/config.py`.
+The helpers in `etl/` are `download_bag_pdok.py` (BAG from PDOK),
 `run_all_municipalities.sh` with `print_municipality_summary.py` (stages 1-3
 per municipality), `add_tree_heights.py <municipality>` (writes every tree's
 canopy top, local ground, height and observer offset as used by stage 2 to
 `data/processed/<name>_tree_heights.gpkg`, for checking in QGIS), and
 `generate_benchmark_report.py`, which turns `logs/benchmark.csv` into
-`BENCHMARKS.md`.
+`BENCHMARKS.md`; the main run times are also on the wiki page
+[Benchmarks and hardware](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Benchmarks-and-hardware).
 
 ### Why halo-then-crop
 
@@ -132,7 +132,7 @@ written, and the tiles fit edge to edge without seams.
 
 ### Per-tree observer height
 
-Each tree's observer sits at its **canopy top**: the maximum surface value
+Each tree's observer sits at its canopy top: the maximum surface value
 within `TREE_HEIGHT_BUFFER_RADIUS` (1.5 m) of the tree point, ignoring
 building pixels, passed to `ViewshedGenerate` as an offset on the tree's own
 cell. The exact tree point would put the observer inside its own crown,
@@ -146,7 +146,7 @@ default) flattens the tree's own crown first.
 ## Validation against ArcGIS
 
 The ArcGIS benchmark `visibility_Delft` (Spatial Analyst *Visibility*) turned
-out to have its observers at **2 x RASTERVALU** instead of RASTERVALU + 1 m:
+out to have its observers at 2 x RASTERVALU instead of RASTERVALU + 1 m:
 the field was given as both observer elevation and observer offset. Found
 with an isolated tree and an isolated group of trees
 (`arcgis_tests/one_tree.py` + `one_tree_arcgis.py`), where ArcGIS with those
@@ -178,15 +178,15 @@ plain work folder under `D:\Temp` first.
 
 - **[OPEN]** Tree status: 21% of the counted trees are marked "disappeared,
   small tree" in the source registry (`current_st`), 3% "not seen once";
-  whether to exclude them is open —
-  [issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1).
+  whether to exclude them is open
+  ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)).
 - **[RESOLVED 2026-10-01]** ArcGIS comparison: the benchmark's observer
   height was wrong (2 x RASTERVALU; reproduced on 100% of cells, also for a
   whole study area). With the same DEM and observers GDAL and ArcGIS agree
   (same >= 3 verdict on 98.3% of cells); the remaining difference with this
-  pipeline is its canopy-top observer and its own DEM, a choice of inputs —
-  [issue #2](https://github.com/RobertoTjesse/3-30-300-regel/issues/2) (closed).
-- DEMs must be **floating point** (AHN: Float32). `01_tile_dem.py` stops on
+  pipeline comes from its inputs, the canopy-top observer and its own DEM
+  ([issue #2](https://github.com/RobertoTjesse/3-30-300-regel/issues/2), closed).
+- DEMs must be floating point (AHN: Float32). `01_tile_dem.py` stops on
   integer DEMs (heights truncated to whole metres, which happened once in an
   AHN5 export) or ones with a scale/offset.
 - **[RESOLVED 2026-09-07]** 12 of 52 municipality DEMs were 0-3.4% real

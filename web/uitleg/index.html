@@ -56,7 +56,7 @@ de luchtfoto (Beeldmateriaal Nederland, 8 cm, via de WMS van PDOK).</p>
 <div class="table-wrap"><table>
 <tr><th>Indicator</th><th>Software</th><th>Gegevens</th></tr>
 <tr><td>3</td><td>Python + GDAL, volledig in de repository</td><td>AHN, BAG, CBS: open. Bomen: NEO (aangekocht)</td></tr>
-<tr><td>30</td><td>FME + SQL Server (workbench in de repository, alleen te draaien met FME en de provinciale database)</td><td>CBS: open. Boomkronen: NEO (aangekocht)</td></tr>
+<tr><td>30</td><td>Python + GDAL, volledig in de repository</td><td>CBS: open. Boomkronen: Boomkroonbedekking 2024 van Friedenau Society</td></tr>
 <tr><td>300</td><td>FME + PostGIS + isochronencalculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>, open source); workbench in de repository</td><td>OpenStreetMap, TOP10NL, BAG: open</td></tr>
 </table></div>
 
@@ -78,26 +78,24 @@ MUNICIPALITIES = []               # leeg = alle gemeenten</code></pre></li>
     <code>indicator_3_bomen/etl/download_bag_pdok.py</code>, <code>05_merge_province.py</code> en <code>06_area_summaries.py</code>;
     gebruik de omgrenzing van je eigen provincie.</li>
   <li><strong>Draai de zes stappen</strong> (<code>indicator_3_bomen/etl/01</code> t/m <code>06</code>) en daarna
-    <code>web/build_tiles.py</code>. Voor de 30 en de 300 zijn (nog) FME-resultaten nodig:
-    <code>web/build_tiles_30_300.py</code> en <code>web/build_tiles_groen.py</code>.</li>
+    <code>web/build_tiles.py</code>. Voor de 30 draai je
+    <code>indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py</code> op de kroonkaart (BKB 2024 dekt heel
+    Nederland). Voor de 300 zijn (nog) FME-resultaten nodig. Daarna <code>web/build_tiles_30_300.py</code> en
+    <code>web/build_tiles_groen.py</code>.</li>
   <li><strong>Pas de kaart aan</strong>: in <code>web/index.html</code> alleen <code>PROVINCE</code> en <code>REPO</code>
     bovenin het script. De kaart zoomt vanzelf naar het gebied van je gegevens.</li>
   <li><strong>Publiceer</strong> de map <code>web/</code> (zonder de <code>.py</code>-bestanden) op een GitHub
     Pages-branch.</li>
 </ol>
 
-<h2 id="toekomst">Toekomst: de 30 en de 300 volledig open source</h2>
-<p>De 3 is volledig open source en herhaalbaar. De 30 en de 300 zijn nu nog met FME gemaakt. Het doel is ze ook in
-Python met GDAL te doen, in dezelfde repository, zodat elke provincie de hele regel kan herhalen:</p>
+<h2 id="toekomst">Toekomst: de 300 volledig open source</h2>
+<p>De 3 en de 30 zijn open source en herhaalbaar: Python met GDAL, in deze repository. De 300 is nu nog met FME
+gemaakt. Het doel is die ook in Python te doen, zodat elke provincie de hele regel kan herhalen:</p>
 <ul>
-  <li><b>30:</b> kroonvlakken per buurt knippen (in plaats van hele kronen tellen), optellen en delen door het
-      landoppervlak uit de CBS-kaart, direct op de gebieden van de kaart. Dat lost ook de dubbeltelling op grenzen op.
-      Een open alternatief voor de kroonvlakken: kronen afleiden uit het AHN (hoogte boven maaiveld) of de
-      geclassificeerde AHN-puntenwolk.</li>
   <li><b>300:</b> groen uit OpenStreetMap en TOP10NL filteren, ingangen bepalen met GDAL, loopzones met een isochronencalculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>, al
       open source), en panden indelen, allemaal in een script. Dan ook de WHO-grens van 1 ha als optie.</li>
-  <li>Daarnaast: de 3 ook voor scholen en werkplekken (het artikel vraagt dat), en de 30 en de 300 op dezelfde jaargang
-      BAG als de 3.</li>
+  <li>Daarnaast: de 3 ook voor scholen en werkplekken (het artikel vraagt dat), en de 300 op dezelfde jaargang BAG
+      als de 3.</li>
 </ul>
 <p>Zie ook <a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/IMPROVEMENTS.md"><code>IMPROVEMENTS.md</code></a>
 en de <a href="https://github.com/RobertoTjesse/3-30-300-regel/issues">open punten</a>.</p>
