@@ -61,6 +61,11 @@ FME_OUTPUT_DIR = BASE_DIR / "data" / "fme_output"
 # reads the green of the 300 from here (groenvoorzieningen/groenkaart.gdb).
 FME_INPUT_DIR = BASE_DIR / "data" / "fme_input"
 
+# Tree canopy raster for the 30 (indicator_30_kroonbedekking/etl/): BKB 2024,
+# boomkroonbedekking from lidar by Friedenau Society; the Netherlands at
+# 0.25 m, 1 = crown. 9.2 GB, gitignored like everything under data/.
+BKB_TIF = BASE_DIR / "data" / "raw" / "bkb_2024.tif"
+
 try:
     from config_local import *  # noqa: F401,F403 — machine-specific overrides
 except ImportError:

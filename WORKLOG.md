@@ -318,3 +318,21 @@ trees should be excluded, is still open.
   The address search puts the found place in the middle of that part too.
 - Measured in headless Edge at phone size: province from y 20 to 378 with
   the panel from 390 (before: 177 to 579). Desktop unchanged.
+
+**20. The 30 from BKB 2024: test on Delft**
+- BKB 2024 (boomkroonbedekking, Friedenau Society, from lidar): the
+  Netherlands at 0.25 m, 1 = crown, 1.2 M x 1.6 M pixels (1.9 TB
+  uncompressed, 9.2 GB as a COG). A 1 km window reads in 0.05 s.
+- New `indicator_30_kroonbedekking/etl/bkb_per_gebied.py`: 1 km tiles in
+  parallel; per tile the areas are burnt into the same 0.25 m grid (pixel
+  centre decides, so no double counting on boundaries) and crown pixels and
+  all pixels counted per area. ~100 MB per worker. Delft (91 buurten):
+  3 s. `config.BKB_TIF` = `data/raw/bkb_2024.tif`.
+- Delft against the FME 30 on the same CBS 2023 buurten and land area:
+  crown area FME/NEO 553.6 ha vs BKB 469.3 ha (FME 18% higher); canopy
+  cover 24.7% vs 21.0%; per buurt r = 0.95, median FME - BKB +3.5 points;
+  buurten >= 30%: 23 vs 17. Largest gap: Bedrijventerrein Delftech
+  (59.8% vs 23.7%). Delft's 91 buurten are the same in CBS 2023 and 2025;
+  on CBS 2025: 20.9%.
+- CBS land area (2023 and 2025) is in whole hectares; per buurt that
+  rounding moves a percentage by up to a few points.
