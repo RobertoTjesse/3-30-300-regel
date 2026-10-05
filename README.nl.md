@@ -1,6 +1,6 @@
 # 3-30-300-regel: de 3-30-300-regel per woning, buurt, wijk en gemeente
 
-*English: [README.md](README.md)*
+*English: [README.md](README.md)* · Documentatie (Engels): **https://3-30-300-regel.readthedocs.io**
 
 De 3-30-300-regel (Konijnendijk, 2023) vraagt op drie manieren om groen:
 
@@ -30,6 +30,8 @@ De technische documenten in de mappen (`ARCHITECTURE.md`, `WORKLOG.md`, de READM
 ├── indicator_30_kroonbedekking/  de 30: etl/ (BKB 2024 per gebied) + de eerdere FME-workbenches
 ├── indicator_300_park/           de 300: FME-workbenches + README
 ├── web/                          de webkaart voor alle drie (gepubliceerde site)
+├── docs/                         de documentatiesite (MkDocs, gebouwd door Read the Docs: mkdocs.yml,
+│                                 .readthedocs.yaml); docs/bronnen/: brondocumenten
 ├── qgis_validation/              bouwt het QGIS-validatieproject voor alle drie
 ├── data/                         alle gegevens (gitignored), zie "Gegevens"
 └── logs/                         logbestanden van runs (gitignored)
@@ -113,6 +115,7 @@ Alles wat per provincie verschilt is een instelling of een invoerbestand; je hoe
 
 | Document | Wat |
 |---|---|
+| [Documentatiesite](https://3-30-300-regel.readthedocs.io) | dezelfde pagina's als de wiki, als doorzoekbare site (uit `docs/`, Engels) |
 | [Wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki) | overzicht voor nieuwe lezers (Engels): aan de slag, de drie onderdelen, gegevens, validatie, bekende problemen, rekentijden |
 | [`WORKLOG.md`](WORKLOG.md) | logboek van het werk en de bevindingen, in volgorde |
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | de 3: installatie, pipeline, validatie, bekende gegevensproblemen |

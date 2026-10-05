@@ -1,0 +1,2 @@
+# To build the documentation site (Read the Docs installs these)
+mkdocs-material>=9.5,<10

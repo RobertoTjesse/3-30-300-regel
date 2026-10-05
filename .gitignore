@@ -55,3 +55,6 @@ data/studiegebied/
 # Copies of the FME results and inputs for the 30 and 300 (from R:)
 data/fme_output/
 data/fme_input/
+
+# Documentation site build output (mkdocs build); Read the Docs builds its own
+site/
