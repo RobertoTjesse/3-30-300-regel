@@ -12,6 +12,57 @@ De 3-30-300-regel (Konijnendijk, 2023) vraagt op drie manieren om groen:
 
 Alle drie zijn berekend voor de provincie Zuid-Holland en samen gepubliceerd als één webkaart met een 3 / 30 / 300-schakelaar, per gemeente, wijk, buurt en woning: **https://robertotjesse.github.io/3-30-300-regel/**. De site en de uitlegpagina's zijn Nederlands, met een Engelse versie ([kaart](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). De 3 en de 30 zijn zonder codewijzigingen voor een andere provincie te draaien ([Andere provincie](#andere-provincie)). De 300 hangt nog van FME af; die naar open-source Python overzetten staat gepland (`indicator_3_bomen/IMPROVEMENTS.md`).
 
+## Wat de uitkomsten zeggen
+
+Zuid-Holland, laatste runs:
+
+| | Uitkomst |
+|---|---|
+| 3 | 94,7% van de woningen ziet minstens 3 bomen; 2,0% ziet er geen |
+| 30 | 8,1% van het land ligt onder een boomkroon. 102 van de 2.509 buurten halen 30%, geen enkele gemeente (Wassenaar komt het dichtst bij met 27,9%) |
+| 300 | 78,9% van de woningen ligt binnen 5 minuten lopen van een park of bos; 99,2% binnen 15 minuten |
+
+De cijfers per gemeente, wijk en buurt zijn betrouwbaar. Voor één woning geeft de kaart een indicatie, en de aannames hieronder verklaren de meeste gevallen waarin die afwijkt van wat een bewoner ziet.
+
+## Wat de uitkomsten aannemen
+
+Het artikel laat veel open: vanaf waar je kijkt, hoe ver, wat telt als boom of park. Elk gat is met een keuze gevuld, en elke keuze verschuift de cijfers. Dit zijn de keuzes die het meest uitmaken, met de kant waarop ze de uitkomst duwen. De uitlegpagina's (`web/uitleg/`, Nederlands en Engels) geven de redenen en de alternatieven die zijn afgewogen.
+
+### De 3
+
+- **Eén goede plek is genoeg.** Een pand krijgt de hoogste telling van alle vakjes van 0,5 x 0,5 m in een ring van 1,5 m eromheen. Ziet één vakje in de achtertuin drie bomen, dan haalt het hele pand de norm, ook als de woonkamer op een blinde muur uitkijkt. De regel vraagt of je vanuit je woning bomen ziet, niet vanuit elk raam. *Duwt de uitkomst omhoog.*
+- **Elke woning in een pand krijgt de score van het pand.** Alle 80 flats in een blok delen één getal, en de cijfers per gebied tellen woningen, dus dat blok weegt 80 keer zo zwaar als een vrijstaand huis.
+- **Het zicht wordt op straatniveau berekend.** De plek ligt 1,8 m boven de grond direct voor de gevel. Hogere verdiepingen en balkons, die over heggen en auto's heen kijken, worden niet berekend. *Duwt de uitkomst omlaag voor flats.*
+- **Een boom is zichtbaar als de top van de kroon zichtbaar is.** De zichtlijn loopt van de top van de kroon (het hoogste punt van het oppervlak binnen 1,5 m van het boompunt) naar de plek voor de woning. Een woning die alleen de zijkant van een kroon of een overhangende tak ziet, terwijl de top achter een dak verdwijnt, telt die boom niet. Een woning die net de top boven een dak uit ziet, telt hem wel. Vanaf het boompunt zelf zou de waarnemer in zijn eigen kroon staan; in Delft zag 35,5% van de bomen dan vrijwel niets.
+- **De 30 m wordt vanaf de stam gemeten.** De afstand loopt van het boompunt naar de plek voor de woning, niet vanaf de rand van de kroon. Een grote boom met de stam op 32 m telt niet mee, ook als de kroon dichterbij hangt.
+- **Elke boom telt even zwaar.** Een jonge straatboom telt net zo hard als een oude eik; het "well-established" uit het artikel wordt niet gecontroleerd. Bomen die in de bron als "verdwenen, kleine boom" staan (21% van de getelde) tellen mee ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)). *Duwt de uitkomst omhoog.*
+- **Alles in het hoogtemodel blokkeert het zicht.** Gebouwen, heggen, schuttingen, bushokjes en de kronen van andere bomen zijn massief. Een dichte heg telt als muur, ook in de winter. *Duwt de uitkomst omlaag.*
+- **De omgeving is van 2020-2022, de woningen van 2026.** Een woning die sindsdien is gebouwd, krijgt een score op de oude situatie (3 tot 5% van de woningen).
+
+### De 30
+
+- **De buurt is de eenheid, zoals het artikel vraagt.** Het cijfer van een wijk of gemeente is het kroonoppervlak van al haar buurten gedeeld door hun totale landoppervlak. Grote groene buurten kunnen dat optillen terwijl andere buurten ver onder 30% blijven, dus lees de kaart op buurtniveau.
+- **Elk vakje van 25 cm telt één keer, in één buurt.** Een vakje hoort bij de buurt waarin het midden ligt. Overlappende kronen tellen één keer, omdat de grond eronder ook maar één keer bestaat.
+- **Kroonoppervlak wordt gedeeld door landoppervlak.** Water telt niet mee in het oppervlak, dus een buurt met een plas wordt daar niet op afgerekend. Een kroon boven een gracht telt wel als kroon, wat buurten met veel bomen langs het water iets optilt. *Duwt de uitkomst een beetje omhoog.*
+- **Wat een kroon is, bepaalt BKB 2024.** De kaart is gemaakt uit lidar en bevat straat- en tuinbomen; een eventuele minimale boomhoogte volgt uit hoe die kaart is gemaakt.
+- **CBS geeft het landoppervlak in hele hectares.** Bij een kleine buurt kan dat het percentage een paar punten verschuiven.
+
+### De 300
+
+- **Een klein park telt mee.** Groen telt vanaf 300 m², terwijl de WHO-norm achter de regel 1 ha is. Stroken smaller dan ongeveer 6 m (omtrek / oppervlak boven 0,35), zoals bermen, vallen af. *Duwt de uitkomst omhoog; een berekening met 1 ha is de eerste geplande verbetering.*
+- **De zone raken is genoeg.** Een pand telt als een deel ervan in de 5-minutenzone ligt. Bij een lange flat haalt de hele flat de norm als één uiteinde erin ligt. *Duwt de uitkomst omhoog.*
+- **Het lopen begint bij een ingang.** Een ingang is een plek waar een pad uit OpenStreetMap de rand van het groen kruist. Groen zonder pad erin heeft geen ingang en telt niet mee, en een kortere route die niet in OSM staat, ontbreekt ook in de berekening. *Duwt de uitkomst omlaag.*
+- **5 minuten is ongeveer 425 m langs de straat.** Valhalla loopt 5,1 km/u. Met de gebruikelijke omweg van straten ten opzichte van de rechte lijn is dat ongeveer 300 m hemelsbreed, en water, spoor en snelwegen worden meegenomen.
+- **Openbare toegang is niet gecontroleerd.** Een pad het groen in geldt als toegang. *Duwt de uitkomst omhoog.*
+- **De woningen komen uit een andere BAG-kopie** (9 december 2025) dan die van de 3 (27 september 2026), dus het aantal woningen per gebied verschilt een beetje tussen de twee.
+
+### Alle drie
+
+- Alleen woningen zijn gemeten. Het artikel vraagt ook om zichtbare bomen vanuit scholen en werkplekken.
+- De bronnen zijn van verschillende jaren: bomen en hoogtemodel 2020-2022 (de 3), kronen 2024 (de 30), groen 2024 en paden 2025 (de 300).
+- De 3 en de 30 gebruiken andere boomgegevens (NEO-boompunten tegenover de kroonkaart van BKB), dus een boom kan bij de een meetellen en bij de ander niet.
+- Een pand hoort bij de buurt en gemeente waarin zijn middelpunt ligt. Voor de 3 en de 300 krijgen gebieden met minder dan 10 woningen geen percentage op de kaart.
+
 De technische documenten in de mappen (`ARCHITECTURE.md`, `WORKLOG.md`, de README's per indicator) en de code zijn in het Engels.
 
 ## Indeling van de repository

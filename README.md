@@ -12,6 +12,57 @@ The 3-30-300 rule (Konijnendijk, 2023) asks for green in three ways:
 
 All three are computed for the province of Zuid-Holland and published as one web map with a 3 / 30 / 300 switch, per gemeente, wijk, buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**. The site and its explanation pages are in Dutch, with an English version ([map](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). The 3 and the 30 run for another province without code changes ([Another province](#another-province)). The 300 still depends on FME; moving it to open-source Python is planned (`indicator_3_bomen/IMPROVEMENTS.md`).
 
+## What the results say
+
+Zuid-Holland, latest runs:
+
+| | Result |
+|---|---|
+| 3 | 94.7% of homes see at least 3 trees; 2.0% see none |
+| 30 | 8.1% of the land lies under a tree crown. 102 of the 2,509 buurten reach 30%, and no gemeente does (Wassenaar comes closest with 27.9%) |
+| 300 | 78.9% of homes lie within a 5-minute walk of a park or wood; 99.2% within 15 minutes |
+
+The figures per gemeente, wijk and buurt are sound. For a single home the map gives an indication, and the assumptions below explain most of the cases where it disagrees with what a resident sees.
+
+## What the results assume
+
+The paper leaves a lot open: from where you look, how far, what counts as a tree or a park. Every gap had to be filled with a choice, and each choice moves the numbers. These are the ones that move them most, with the direction they push the result. The explanation pages (`web/uitleg/`, Dutch and English) give the reasons and the alternatives that were considered.
+
+### The 3
+
+- **One good spot is enough.** A building gets the highest count of any 0.5 x 0.5 m cell in a 1.5 m ring around it. If a single cell in the back garden sees three trees, the whole building passes, even if the living room looks out on a blank wall. The rule asks whether you see trees from your home, not from every window. *Pushes the result up.*
+- **Every home in a building gets the building's score.** All 80 flats in a block share one number, and the area figures count homes, so that block weighs 80 times as much as a detached house.
+- **The view is measured at street level.** The spot is 1.8 m above the ground just outside the facade. Upper floors and balconies, which look over hedges and cars, are not calculated. *Pushes the result down for flats.*
+- **A tree is seen when its crown top is seen.** The line of sight runs from the top of the crown (the highest surface point within 1.5 m of the tree point) to the spot outside the home. A home that sees only the side of a crown or an overhanging branch, while the top is hidden behind a roof, does not count that tree. A home that sees just the top above a roof does. Measuring from the tree point itself would put the observer inside its own crown; in Delft 35.5% of trees then saw practically nothing.
+- **30 m is counted from the trunk.** The distance runs from the tree point to the spot outside the home, not from the edge of the crown. A large tree with its trunk 32 m away does not count, even if its crown hangs closer.
+- **Every tree counts the same.** A young street tree counts as much as an old oak; the paper's "well-established" is not checked. Trees marked "disappeared, small tree" in the source (21% of those counted) still count ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)). *Pushes the result up.*
+- **Everything in the surface model blocks the view.** Buildings, hedges, fences, bus shelters and other trees' crowns are solid. A dense hedge counts as a wall, also in winter. *Pushes the result down.*
+- **The surroundings are from 2020-2022, the homes from 2026.** A home built since then is scored on the old situation (3 to 5% of homes).
+
+### The 30
+
+- **The buurt is the unit, as the paper asks.** A wijk or gemeente figure is the crown area of all its buurten divided by their total land area. Large green buurten can lift it while other buurten stay far below 30%, so the buurt level is the one to read.
+- **Each 25 cm cell counts once, in one buurt.** A cell belongs to the buurt that holds its centre. Overlapping crowns count once, as the ground under them exists once.
+- **Crown area is divided by land area.** Water is left out of the area, so a buurt with a lake is not marked down for it. A crown over a canal still counts as crown, which lifts buurten with many trees along the water slightly. *Pushes the result up a little.*
+- **What counts as a crown is decided by BKB 2024.** It is made from lidar and covers street and garden trees alike; any minimum tree height comes from how that map was made.
+- **CBS gives land area in whole hectares.** For a small buurt that can shift the percentage by a few points.
+
+### The 300
+
+- **A small park counts.** Green counts from 300 m², where the WHO norm behind the rule is 1 ha. Strips narrower than about 6 m (perimeter / area above 0.35), such as verges, drop out. *Pushes the result up; a 1 ha run is the first planned improvement.*
+- **Touching the zone is enough.** A building counts when any part of it lies in the 5-minute zone. For a long apartment block, one end inside makes all its homes pass. *Pushes the result up.*
+- **Walking starts at an entrance.** An entrance is where an OpenStreetMap path crosses the edge of the green. Green without a path into it gets no entrance and does not count, and a shortcut missing from OSM is missing from the route. *Pushes the result down.*
+- **5 minutes means about 425 m along streets.** Valhalla walks at 5.1 km/h. With the usual detour of streets compared with the straight line, that comes to roughly 300 m as the crow flies, and it does respect water, railways and motorways.
+- **Public access is not checked.** A path into the green is taken as access. *Pushes the result up.*
+- **The homes come from a different BAG copy** (9 December 2025) than the 3 (27 September 2026), so the number of homes per area differs slightly between the two.
+
+### All three
+
+- Only homes are measured. The paper also asks for trees visible from schools and workplaces.
+- The sources are from different years: trees and surface model 2020-2022 (the 3), crowns 2024 (the 30), green 2024 and paths 2025 (the 300).
+- The 3 and the 30 use different tree data (NEO tree points against the BKB crown map), so a tree can count for one and not for the other.
+- A building belongs to the buurt and gemeente that holds its centre point. For the 3 and the 300, areas with fewer than 10 homes get no percentage on the map.
+
 ## Repository layout
 
 ```
