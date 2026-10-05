@@ -70,19 +70,9 @@ Each tile file must stay under GitHub's 100 MB file limit. When the green was st
 
 ## ArcGIS (arcpy) against GDAL
 
-Run times of the viewshed of the 3 in ArcGIS Pro (arcpy, Spatial Analyst) and in GDAL (`gdal.ViewshedGenerate`, this pipeline), on the same machine. Only the study area compares like with like: the same DSM, trees and observers in both tools. The Delft runs differ in elevation model and observer (see [Validation against ArcGIS](validation-arcgis.md)), so read them as orders of magnitude.
+A controlled speed test with ArcGIS's classic Viewshed tool and GDAL on the same inputs, three study areas and 1-6 processes is on its own page: [Speed test ArcGIS against GDAL](speedtest.md). GDAL was 41 to 50 times faster, comparing the fastest setup of each, with the same verdict for 99.4-100% of the homes.
 
-| Run | Trees | ArcGIS (arcpy) | GDAL | Same inputs? |
-|---|---:|---|---|---|
-| Study area Molenbuurt, Delft (BU05031407 + 30 m), the benchmark's AHN5 DSM, trees and observers | 595 | not recorded yet (`studiegebied_arcgis.py` prints it) | 1 s, one process (`studiegebied.py gdal`, 2026-10-05) | yes |
-| Test area in Delft, 528 x 466 m, AHN5 | 1,038-1,039 | Visibility: about 85 s; Viewshed2: 46-58 s per variant (4 variants) | not timed on this area | n/a |
-| All of Delft in one call | 86,488 | Visibility: stopped after 2.5 h, one core | not run this way | n/a |
-| All of Delft in tiles of 500 m | 86,488 (ArcGIS) / 87,837 (GDAL) | Visibility, corrected benchmark: about 55 min, 5 processes, AHN5, point + 1 m | 32 min 24 s for stages 1-3 with 4 workers, of which 17 min for the 180,200 viewsheds (halo included), AHN4, canopy top | no: other DSM and observer |
-| All of Delft, one raster per tree (the original prototype's approach) | 87,837 | about 60 hours (reported for the ArcPy version; not measured here) | n/a | n/a |
-
-Per tree that comes to roughly 12 trees per second for Visibility and 18-23 for Viewshed2 on the test area, about 26 per second for the tiled Visibility run over Delft (5 processes), and 595 per second for GDAL on the study area (one process). The tiled GDAL run over Delft did 177 viewsheds per second with 4 workers including reading and writing the tiles (`BENCHMARKS.md`; the other municipalities ran at 669-1,076 per second).
-
-The ArcGIS scripts are run from the ArcGIS Pro Python Command Prompt with Pro closed; started inside Pro, they crashed it.
+Earlier, less controlled ArcGIS runs on Delft (different elevation model and observer, see [Validation against ArcGIS](validation-arcgis.md)): Visibility over all of Delft in one call was stopped after 2.5 hours; in 500 m tiles with 5 processes it took about 55 minutes, against 32 min 24 s for the pipeline's stages 1-3 with 4 workers. The original prototype's approach (one raster per tree) reportedly took about 60 hours for Delft in ArcPy.
 
 ## Tips
 

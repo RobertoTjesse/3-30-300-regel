@@ -9,6 +9,8 @@ repo_url: https://github.com/RobertoTjesse/3-30-300-regel
 repo_name: RobertoTjesse/3-30-300-regel
 edit_uri: edit/master/docs/
 docs_dir: docs
+exclude_docs: |
+  requirements.txt
 
 theme:
   name: material
@@ -50,6 +52,7 @@ nav:
       - Validation against ArcGIS: validation-arcgis.md
       - QGIS validation project: qgis-validation.md
       - Benchmarks and hardware: benchmarks.md
+      - "Speed test: ArcGIS against GDAL": speedtest.md
       - Known issues: known-issues.md
 
 markdown_extensions:

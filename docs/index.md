@@ -34,5 +34,6 @@ All three are computed for the province of Zuid-Holland and shown on one web map
 | [Another province](another-province.md) | repeat the analysis elsewhere |
 | [Known issues](known-issues.md) | open points and caveats |
 | [Benchmarks and hardware](benchmarks.md) | run times per step, the machine used, memory and disk needs |
+| [Speed test ArcGIS against GDAL](speedtest.md) | the viewshed in ArcGIS and in GDAL on the same inputs: GDAL 41-50 times faster |
 
 For more detail, see the repository's [`README.md`](https://github.com/RobertoTjesse/3-30-300-regel/blob/master/README.md), [`WORKLOG.md`](https://github.com/RobertoTjesse/3-30-300-regel/blob/master/WORKLOG.md) and, for the 3, [`ARCHITECTURE.md`](https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/ARCHITECTURE.md).
