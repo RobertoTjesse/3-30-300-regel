@@ -399,3 +399,14 @@ trees should be excluded, is still open.
   building gets a higher count.
 - Not done yet: the province rerun (stages 2-6, `web/build_tiles.py`) and
   confirming with NEO what the statuses mean (issue #1).
+
+**24. Animations of the 3 for the documentation**
+- New `indicator_3_bomen/etl/explainer_gifs.py` makes four GIFs
+  (3-1 input, 3-2 one tree, 3-3 add up, 3-4 score) for a
+  110 m block of row houses in Delft (x0 83860, y0 446880). It calls the
+  pipeline's own functions (stage 1's NoData fill, stage 2's tree query and
+  viewshed, stage 4's home selection); with `--check` the 132 home scores in
+  the block equal the filtered `Delft_woningen.gpkg`. Shown on the wiki page
+  "The 3 - visible trees", under "Step by step"; the script writes to
+  `data/processed/explainer_gifs/` and the GIFs live in the wiki's `images/`.
+- Province rerun with the tree status filter started 2026-10-08 15:51.
