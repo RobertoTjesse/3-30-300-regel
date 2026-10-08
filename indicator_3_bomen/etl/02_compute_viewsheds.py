@@ -69,7 +69,8 @@ def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
                               xmax: float, ymax: float, layer_name=None):
     """
     Generator that yields (x, y) for every tree whose geometry falls within
-    [xmin,xmax] x [ymin,ymax].
+    [xmin,xmax] x [ymin,ymax], leaving out the statuses in
+    config.TREE_STATUSES_EXCLUDED (disappeared or small trees).
 
     Uses OGR's spatial filter (index-assisted on a GeoPackage), so it is
     safe even for multi-million-row layers. Height is not determined here —
@@ -81,6 +82,7 @@ def iter_tree_points_in_bbox(db_path: Path, xmin: float, ymin: float,
     if layer is None:
         raise RuntimeError(f"Layer '{layer_name}' not found in {db_path}")
     layer.SetSpatialFilterRect(xmin, ymin, xmax, ymax)
+    layer.SetAttributeFilter(config.tree_attribute_filter())
 
     for feat in layer:
         geom = feat.GetGeometryRef()

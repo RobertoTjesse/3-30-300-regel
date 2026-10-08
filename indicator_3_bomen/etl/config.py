@@ -284,6 +284,29 @@ CURVATURE_COEFF   = 0.0    # 0 = flat-earth; 0.85 = standard atmospheric refract
 # Layer name inside the GeoPackage.  None = first layer auto-detected.
 TREES_LAYER        = None
 
+# Trees left out of the analysis by their status in the source registry (NEO,
+# field current_st). Excluded: trees marked as disappeared or small, together
+# 24.5% of the 5.2 million points in Zuid-Holland:
+#   "disappeared, small tree"     1,116,245
+#   "not seen once, small tree"     159,431
+# Kept: "seen" (3,891,042), "not seen once" (13,934; neither gone nor small)
+# and an empty status (24,972). See issue #1. An empty tuple counts every
+# point as a tree, as before 2026-10-08.
+TREE_STATUS_FIELD     = "current_st"
+TREE_STATUSES_EXCLUDED = (
+    "disappeared, small tree",
+    "not seen once, small tree",
+)
+
+
+def tree_attribute_filter():
+    """OGR attribute filter (SQL WHERE) that drops TREE_STATUSES_EXCLUDED,
+    keeping trees with an empty status; None when nothing is excluded."""
+    if not TREE_STATUSES_EXCLUDED:
+        return None
+    values = ", ".join("'" + s.replace("'", "''") + "'" for s in TREE_STATUSES_EXCLUDED)
+    return f'"{TREE_STATUS_FIELD}" IS NULL OR "{TREE_STATUS_FIELD}" NOT IN ({values})'
+
 # ---------------------------------------------------------------------------
 # DEM tiling  (01_tile_dem.py)
 # ---------------------------------------------------------------------------

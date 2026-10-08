@@ -15,7 +15,8 @@ Usage:
 
 Output:
     data/processed/<municipality_name>_tree_heights.gpkg
-    Point layer, same geometry as the source trees, with columns:
+    Point layer, same geometry as the source trees (without the statuses in
+    config.TREE_STATUSES_EXCLUDED, which stage 2 skips), with columns:
       canopy_top_m      — max non-building surface value within
                             TREE_HEIGHT_BUFFER_RADIUS (NAP)
       ground_m          — local ground estimate (min within
@@ -74,6 +75,7 @@ def add_heights_for_municipality(name: str) -> None:
 
     src_ds = ogr.Open(str(trees_path), 0)
     src_layer = src_ds.GetLayer(0)
+    src_layer.SetAttributeFilter(config.tree_attribute_filter())   # as stage 2
     srs = src_layer.GetSpatialRef()
 
     # Group trees by block so each block's DEM + building mask is read once

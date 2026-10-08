@@ -130,6 +130,25 @@ written, and the tiles fit edge to edge without seams.
 
 `TILE_BUFFER_PX` (35 m) exceeds the 30 m radius, so no extra buffer is needed.
 
+### Which trees count
+
+The NEO tree registry records a status per point (`current_st`). Since
+2026-10-08 stage 2 leaves out the trees marked as disappeared or small,
+1,275,676 of the 5.2 million points in Zuid-Holland (24.5%):
+
+| `current_st` | trees | counted |
+|---|---:|---|
+| seen | 3,891,042 | yes |
+| disappeared, small tree | 1,116,245 | no |
+| not seen once, small tree | 159,431 | no |
+| (empty) | 24,972 | yes |
+| not seen once | 13,934 | yes |
+
+The list is `TREE_STATUSES_EXCLUDED` in `config.py`; an empty tuple counts
+every point again. The filter is an attribute filter on the tree query, so
+`province_trees.gpkg` stays complete. `add_tree_heights.py` uses the same
+filter.
+
 ### Per-tree observer height
 
 Each tree's observer sits at its canopy top: the maximum surface value
@@ -176,9 +195,13 @@ plain work folder under `D:\Temp` first.
 
 ## Known data issues
 
-- **[OPEN]** Tree status: 21% of the counted trees are marked "disappeared,
-  small tree" in the source registry (`current_st`), 3% "not seen once";
-  whether to exclude them is open
+- **[DECIDED 2026-10-08]** Tree status: 21% of the trees are marked
+  "disappeared, small tree" in the source registry (`current_st`) and 3%
+  "not seen once, small tree". Both are now left out (see
+  [Which trees count](#which-trees-count)). In Delft the share of homes
+  with >= 3 visible trees falls from 94.9% to 88.1%. The province results
+  still need a rerun of stages 2-6 and `web/build_tiles.py`. What NEO means
+  by these statuses is still to be confirmed
   ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)).
 - **[RESOLVED 2026-10-01]** ArcGIS comparison: the benchmark's observer
   height was wrong (2 x RASTERVALU; reproduced on 100% of cells, also for a
