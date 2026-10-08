@@ -1,6 +1,6 @@
 # 3-30-300-regel: the 3-30-300 rule per home, buurt, wijk and gemeente
 
-*Nederlands: [README.nl.md](README.nl.md)* · Documentation: **https://3-30-300-regel.readthedocs.io**
+*Nederlands: [README.nl.md](README.nl.md)* · Documentation: the [wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki)
 
 The 3-30-300 rule (Konijnendijk, 2023) asks for green in three ways:
 
@@ -28,8 +28,7 @@ All three are computed for the province of Zuid-Holland and published as one web
 ├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 per area) + the earlier FME workbenches
 ├── indicator_300_park/           the 300: FME workbenches + README
 ├── web/                          the web map for all three (published site)
-├── docs/                         the documentation site (MkDocs, built by Read the Docs: mkdocs.yml,
-│                                 .readthedocs.yaml); docs/bronnen/: source documents
+├── docs/bronnen/                 source documents (the Cobra Groeninzicht handbook)
 ├── qgis_validation/              builds the QGIS validation project for all three
 ├── data/                         all data (gitignored), see "Data"
 └── logs/                         run logs (gitignored)
@@ -113,7 +112,6 @@ Everything that differs per province is a setting or an input file, so no code c
 
 | Document | What |
 |---|---|
-| [Documentation site](https://3-30-300-regel.readthedocs.io) | the same pages as the wiki, as a searchable site (from `docs/`) |
 | [Wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki) | overview for new readers: getting started, the three indicators, data, validation, known issues, run times |
 | [`WORKLOG.md`](WORKLOG.md) | chronological log of the work and findings |
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup, pipeline, validation, known data issues |

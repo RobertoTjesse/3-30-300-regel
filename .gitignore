@@ -56,5 +56,3 @@ data/studiegebied/
 data/fme_output/
 data/fme_input/
 
-# Documentation site build output (mkdocs build); Read the Docs builds its own
-site/

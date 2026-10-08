@@ -373,3 +373,10 @@ trees should be excluded, is still open.
   speed test) is built by Read the Docs from `.readthedocs.yaml` on every
   push: https://3-30-300-regel.readthedocs.io. The GitHub wiki stays as it
   is; a short-lived copy of the site on GitHub Pages was removed again.
+
+**23. Documentation in the wiki only**
+- The Read the Docs site is dropped: `docs/` (the MkDocs pages and graphs),
+  `mkdocs.yml`, `.readthedocs.yaml` and the links to it are removed. The
+  GitHub wiki holds the same pages, including the ArcGIS-against-GDAL speed
+  test with its graphs. `docs/bronnen/` (source documents) stays. The Read
+  the Docs project itself is deleted in its own settings.
