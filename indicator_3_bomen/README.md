@@ -109,8 +109,8 @@ per municipality), `add_tree_heights.py <municipality>` (writes every tree's
 canopy top, local ground, height and observer offset as used by stage 2 to
 `data/processed/<name>_tree_heights.gpkg`, for checking in QGIS), and
 `generate_benchmark_report.py`, which turns `logs/benchmark.csv` into
-`BENCHMARKS.md`; the main run times are also on the documentation site,
-[Benchmarks and hardware](https://robertotjesse.github.io/3-30-300-regel/docs/benchmarks/).
+`BENCHMARKS.md`; the main run times are also on the wiki page
+[Benchmarks and hardware](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Benchmarks-and-hardware).
 
 ### Why halo-then-crop
 

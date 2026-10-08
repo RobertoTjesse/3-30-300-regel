@@ -1,4 +1,4 @@
-# To build the documentation site (pip install -r docs/requirements.txt).
+# To build the documentation site (Read the Docs installs these).
 # MkDocs stays below 2.0: Material for MkDocs does not work with it.
 mkdocs>=1.6,<2
 mkdocs-material>=9.5,<10

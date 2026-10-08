@@ -1,11 +1,10 @@
-# Documentation site (MkDocs + Material), published on GitHub Pages next to
-# the web map: https://robertotjesse.github.io/3-30-300-regel/docs/
+# Documentation site (MkDocs + Material), built and hosted by Read the Docs
+# (.readthedocs.yaml). Preview locally:
 #   pip install -r docs/requirements.txt
-#   mkdocs serve                       # preview at http://127.0.0.1:8000
-#   mkdocs build -d <gh-pages>/docs    # publish: into the gh-pages branch
+#   mkdocs serve        # then open http://127.0.0.1:8000
 site_name: 3-30-300-regel
 site_description: The 3-30-300 rule per home, buurt, wijk and gemeente in Zuid-Holland
-site_url: https://robertotjesse.github.io/3-30-300-regel/docs/
+site_url: https://3-30-300-regel.readthedocs.io/
 repo_url: https://github.com/RobertoTjesse/3-30-300-regel
 repo_name: RobertoTjesse/3-30-300-regel
 edit_uri: edit/master/docs/
