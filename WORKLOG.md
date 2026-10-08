@@ -365,3 +365,22 @@ trees should be excluded, is still open.
 - Found but not used: `landbedekking_2024.tif` (land cover 2024, same grid,
   classes 1-9 without names; class 1 looks like water) could give an exact
   land/water split; it needs its legend first.
+
+## 2026-10-08: disappeared and small trees left out of the 3
+
+**22. Tree status filter**
+- Stage 2 no longer counts the trees that NEO's registry marks as
+  disappeared or small (`current_st`): "disappeared, small tree"
+  (1,116,245) and "not seen once, small tree" (159,431), together 24.5% of
+  the 5.2 million points. Still counted: "seen", "not seen once" (13,934)
+  and an empty status (24,972). Setting: `config.TREE_STATUSES_EXCLUDED`,
+  applied as an attribute filter on the tree query, so
+  `province_trees.gpkg` is unchanged. `add_tree_heights.py` uses it too.
+- Checked on a 1 km box in central Delft: 2,303 trees before, 1,694 after,
+  the same as a direct SQL count by status.
+- Delft, stages 1-4 rerun: 149,849 tree viewsheds instead of 180,200. Homes
+  with >= 3 visible trees 94.9% -> 88.1%, buildings 93.5% -> 83.4%, median
+  visible trees 10 -> 6. 3,143 buildings (4,693 homes) drop below 3; no
+  building gets a higher count.
+- Not done yet: the province rerun (stages 2-6, `web/build_tiles.py`) and
+  confirming with NEO what the statuses mean (issue #1).
