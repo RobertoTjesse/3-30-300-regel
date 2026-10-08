@@ -365,3 +365,11 @@ trees should be excluded, is still open.
 - Found but not used: `landbedekking_2024.tif` (land cover 2024, same grid,
   classes 1-9 without names; class 1 looks like water) could give an exact
   land/water split; it needs its legend first.
+
+## 2026-10-08: documentation on Read the Docs
+
+**22. Read the Docs active**
+- The MkDocs site in `docs/` (the 12 wiki pages plus the ArcGIS-against-GDAL
+  speed test) is built by Read the Docs from `.readthedocs.yaml` on every
+  push: https://3-30-300-regel.readthedocs.io. The GitHub wiki stays as it
+  is; a short-lived copy of the site on GitHub Pages was removed again.
