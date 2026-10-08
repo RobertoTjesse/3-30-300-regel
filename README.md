@@ -1,6 +1,6 @@
 # 3-30-300-regel: the 3-30-300 rule per home, buurt, wijk and gemeente
 
-*Nederlands: [README.nl.md](README.nl.md)* · Documentation: **https://3-30-300-regel.readthedocs.io**
+*Nederlands: [README.nl.md](README.nl.md)* · Documentation: **https://robertotjesse.github.io/3-30-300-regel/docs/**
 
 The 3-30-300 rule (Konijnendijk, 2023) asks for green in three ways:
 
@@ -28,8 +28,8 @@ All three are computed for the province of Zuid-Holland and published as one web
 ├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 per area) + the earlier FME workbenches
 ├── indicator_300_park/           the 300: FME workbenches + README
 ├── web/                          the web map for all three (published site)
-├── docs/                         the documentation site (MkDocs, built by Read the Docs: mkdocs.yml,
-│                                 .readthedocs.yaml); docs/bronnen/: source documents
+├── docs/                         the documentation site (MkDocs, mkdocs.yml; on GitHub Pages under
+│                                 /docs/); docs/bronnen/: source documents
 ├── qgis_validation/              builds the QGIS validation project for all three
 ├── data/                         all data (gitignored), see "Data"
 └── logs/                         run logs (gitignored)
@@ -55,6 +55,7 @@ What to run:
 | The 300 | run the workbench in FME; the results go to `data/fme_output/` (see its README) |
 | Web map tiles | `python web/build_tiles.py` (the 3), `python web/build_tiles_30_300.py` (the 30 and 300) and `python web/build_tiles_groen.py` (the 300's green) |
 | Preview the map | `python web/serve.py`, then http://localhost:8000 |
+| Documentation site | `pip install -r docs/requirements.txt`, then `mkdocs serve` (preview) or `mkdocs build -d <gh-pages>/docs` (publish) |
 | QGIS validation project | `C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py` |
 
 ## Data
@@ -89,7 +90,7 @@ A 3 / 30 / 300 switch shows the three indicators on the same areas: gemeenten (z
 
 The 30 comes directly from BKB 2024 on the map's own buurten; wijken and gemeenten are the sums of their buurten. The 300 is recounted per area from the buildings' walking class. From zoom 11 the 300 also shows the parks and woods themselves, selected from the workbench's input `data/fme_input/groenvoorzieningen/groenkaart.gdb` (`config.FME_INPUT_DIR`) the way the workbench does: no TOP10NL water, at least 300 m2, perimeter / area at most 0.35.
 
-To publish, copy `web/` without the `.py` files to the `gh-pages` branch, add an empty `.nojekyll`, and push. GitHub Pages serves that branch at https://robertotjesse.github.io/3-30-300-regel/.
+To publish, copy `web/` without the `.py` files to the `gh-pages` branch, build the documentation site into its `docs/` folder (`mkdocs build -d <gh-pages>/docs`), add an empty `.nojekyll`, and push. GitHub Pages serves that branch at https://robertotjesse.github.io/3-30-300-regel/ (the map) and https://robertotjesse.github.io/3-30-300-regel/docs/ (the documentation).
 
 ## Validation
 
@@ -113,8 +114,7 @@ Everything that differs per province is a setting or an input file, so no code c
 
 | Document | What |
 |---|---|
-| [Documentation site](https://3-30-300-regel.readthedocs.io) | the same pages as the wiki, as a searchable site (from `docs/`) |
-| [Wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki) | overview for new readers: getting started, the three indicators, data, validation, known issues, run times |
+| [Documentation site](https://robertotjesse.github.io/3-30-300-regel/docs/) | overview for new readers: getting started, the three indicators, data, validation, known issues, run times, the speed test (built from `docs/`) |
 | [`WORKLOG.md`](WORKLOG.md) | chronological log of the work and findings |
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup, pipeline, validation, known data issues |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | the 3: design decisions in depth |

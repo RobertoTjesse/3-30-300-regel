@@ -1,6 +1,6 @@
 # Improvements over the original prototype
 
-What changed between the original QGIS/PyQGIS prototype (`bomen_extract.fmw` / `QGIS/Script.py` on the network share) and this pipeline, and why each change mattered. For how the pipeline works today, see `ARCHITECTURE.md`; for current timings, `BENCHMARKS.md` and the wiki page [Benchmarks and hardware](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Benchmarks-and-hardware).
+What changed between the original QGIS/PyQGIS prototype (`bomen_extract.fmw` / `QGIS/Script.py` on the network share) and this pipeline, and why each change mattered. For how the pipeline works today, see `ARCHITECTURE.md`; for current timings, `BENCHMARKS.md` and the documentation site's [Benchmarks and hardware](https://robertotjesse.github.io/3-30-300-regel/docs/benchmarks/).
 
 The original script called QGIS's `gdal:viewshed` Processing algorithm for every tree against the entire municipality DEM, and wrote each result as a separate GeoTIFF file. The ArcPy equivalent of the same approach reportedly took about 60 hours for Delft. This pipeline does Delft (87,837 trees, 180,200 per-tree viewsheds including the tile halos) in about half an hour, and all 52 municipalities of the province in about 16 hours on 4 cores (`BENCHMARKS.md`). The viewshed function underneath is the same (`ViewshedGenerate`), so the difference comes from how the work is organised.
 

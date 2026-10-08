@@ -32,6 +32,8 @@ The walking zones and entrances have a tile file of their own. MapLibre re-proce
 
 1. Build the tiles: `python web/build_tiles.py`, `python web/build_tiles_30_300.py` and `python web/build_tiles_groen.py`.
 2. Check locally: `python web/serve.py`, then open http://localhost:8000.
-3. Copy `web/` without the `.py` files to the `gh-pages` branch, add an empty `.nojekyll`, and push. GitHub Pages serves that branch.
+3. Copy `web/` without the `.py` files to the `gh-pages` branch.
+4. Build this documentation site into the branch's `docs/` folder: `pip install -r docs/requirements.txt`, then `mkdocs build -d <gh-pages>/docs`.
+5. Add an empty `.nojekyll` and push. GitHub Pages serves that branch: the map at https://robertotjesse.github.io/3-30-300-regel/ and the documentation at https://robertotjesse.github.io/3-30-300-regel/docs/.
 
 The tile files are never committed to `master`.

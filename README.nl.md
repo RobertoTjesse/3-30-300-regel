@@ -1,6 +1,6 @@
 # 3-30-300-regel: de 3-30-300-regel per woning, buurt, wijk en gemeente
 
-*English: [README.md](README.md)* · Documentatie (Engels): **https://3-30-300-regel.readthedocs.io**
+*English: [README.md](README.md)* · Documentatie (Engels): **https://robertotjesse.github.io/3-30-300-regel/docs/**
 
 De 3-30-300-regel (Konijnendijk, 2023) vraagt op drie manieren om groen:
 
@@ -30,8 +30,8 @@ De technische documenten in de mappen (`ARCHITECTURE.md`, `WORKLOG.md`, de READM
 ├── indicator_30_kroonbedekking/  de 30: etl/ (BKB 2024 per gebied) + de eerdere FME-workbenches
 ├── indicator_300_park/           de 300: FME-workbenches + README
 ├── web/                          de webkaart voor alle drie (gepubliceerde site)
-├── docs/                         de documentatiesite (MkDocs, gebouwd door Read the Docs: mkdocs.yml,
-│                                 .readthedocs.yaml); docs/bronnen/: brondocumenten
+├── docs/                         de documentatiesite (MkDocs, mkdocs.yml; op GitHub Pages onder
+│                                 /docs/); docs/bronnen/: brondocumenten
 ├── qgis_validation/              bouwt het QGIS-validatieproject voor alle drie
 ├── data/                         alle gegevens (gitignored), zie "Gegevens"
 └── logs/                         logbestanden van runs (gitignored)
@@ -57,6 +57,7 @@ Wat te draaien:
 | De 300 | de workbench in FME draaien; resultaten in `data/fme_output/` (zie de README daar) |
 | Kaarttegels | `python web/build_tiles.py` (de 3), `python web/build_tiles_30_300.py` (de 30 en 300) en `python web/build_tiles_groen.py` (het groen van de 300) |
 | Kaart lokaal bekijken | `python web/serve.py`, dan http://localhost:8000 |
+| Documentatiesite | `pip install -r docs/requirements.txt`, dan `mkdocs serve` (bekijken) of `mkdocs build -d <gh-pages>/docs` (publiceren) |
 | QGIS-validatieproject | `C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py` |
 
 ## Gegevens
@@ -91,7 +92,7 @@ Met een 3 / 30 / 300-schakelaar zie je de drie onderdelen op dezelfde gebieden: 
 
 De 30 komt rechtstreeks uit BKB 2024, op de buurten van de kaart; wijken en gemeenten zijn de som van hun buurten. De 300 is per gebied opnieuw geteld uit de looptijdklasse van de panden. Vanaf zoom 11 toont de 300 ook de parken en bossen zelf, geselecteerd uit de invoer van de workbench `data/fme_input/groenvoorzieningen/groenkaart.gdb` (`config.FME_INPUT_DIR`) zoals de workbench dat doet: geen TOP10NL-water, minstens 300 m², omtrek/oppervlak hoogstens 0,35.
 
-Publiceren: kopieer `web/` zonder de `.py`-bestanden naar de branch `gh-pages`, zet er een lege `.nojekyll` bij en push. GitHub Pages serveert die branch op https://robertotjesse.github.io/3-30-300-regel/.
+Publiceren: kopieer `web/` zonder de `.py`-bestanden naar de branch `gh-pages`, bouw de documentatiesite in de map `docs/` daarvan (`mkdocs build -d <gh-pages>/docs`), zet er een lege `.nojekyll` bij en push. GitHub Pages serveert die branch op https://robertotjesse.github.io/3-30-300-regel/ (de kaart) en https://robertotjesse.github.io/3-30-300-regel/docs/ (de documentatie).
 
 ## Validatie
 
@@ -115,8 +116,7 @@ Alles wat per provincie verschilt is een instelling of een invoerbestand; je hoe
 
 | Document | Wat |
 |---|---|
-| [Documentatiesite](https://3-30-300-regel.readthedocs.io) | dezelfde pagina's als de wiki, als doorzoekbare site (uit `docs/`, Engels) |
-| [Wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki) | overzicht voor nieuwe lezers (Engels): aan de slag, de drie onderdelen, gegevens, validatie, bekende problemen, rekentijden |
+| [Documentatiesite](https://robertotjesse.github.io/3-30-300-regel/docs/) | overzicht voor nieuwe lezers (Engels): aan de slag, de drie onderdelen, gegevens, validatie, bekende problemen, rekentijden, de snelheidstest (gebouwd uit `docs/`) |
 | [`WORKLOG.md`](WORKLOG.md) | logboek van het werk en de bevindingen, in volgorde |
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | de 3: installatie, pipeline, validatie, bekende gegevensproblemen |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | de 3: ontwerpkeuzes in detail |

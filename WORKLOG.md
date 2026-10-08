@@ -365,3 +365,14 @@ trees should be excluded, is still open.
 - Found but not used: `landbedekking_2024.tif` (land cover 2024, same grid,
   classes 1-9 without names; class 1 looks like water) could give an exact
   land/water split; it needs its legend first.
+
+## 2026-10-08: documentation on GitHub Pages
+
+**22. Documentation site instead of the wiki and Read the Docs**
+- The MkDocs site in `docs/` (the 12 wiki pages plus the ArcGIS-against-GDAL
+  speed test) is published on GitHub Pages next to the map:
+  https://robertotjesse.github.io/3-30-300-regel/docs/, built with
+  `mkdocs build -d <gh-pages>/docs`. Read the Docs was dropped (no login
+  possible): `.readthedocs.yaml` removed, links changed.
+- The GitHub wiki is switched off; `docs/` is the single source. Switching
+  the wiki back on in the repository settings brings its pages back.
