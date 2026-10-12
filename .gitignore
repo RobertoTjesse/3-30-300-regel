@@ -56,3 +56,9 @@ data/studiegebied/
 data/fme_output/
 data/fme_input/
 
+
+# Database connection files (credentials), never committed
+*connection_file*.xml
+pg_service.conf
+.pg_service.conf
+pgpass.conf
