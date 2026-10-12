@@ -199,8 +199,8 @@ plain work folder under `D:\Temp` first.
   "disappeared, small tree" in the source registry (`current_st`) and 3%
   "not seen once, small tree". Both are now left out (see
   [Which trees count](#which-trees-count)). In Delft the share of homes
-  with >= 3 visible trees falls from 94.9% to 88.1%. The province results
-  still need a rerun of stages 2-6 and `web/build_tiles.py`. What NEO means
+  with >= 3 visible trees falls from 94.9% to 88.1%, and in the province
+  (rerun 2026-10-08/09) from 94.7% to 85.9%. What NEO means
   by these statuses is still to be confirmed
   ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)).
 - **[RESOLVED 2026-10-01]** ArcGIS comparison: the benchmark's observer

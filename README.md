@@ -18,7 +18,7 @@ Zuid-Holland, latest runs:
 
 | | Result |
 |---|---|
-| 3 | 94.7% of homes see at least 3 trees; 2.0% see none |
+| 3 | 85.9% of homes see at least 3 trees; 5.0% see none |
 | 30 | 8.1% of the land lies under a tree crown. 102 of the 2,509 buurten reach 30%, and no gemeente does (Wassenaar comes closest with 27.9%) |
 | 300 | 78.9% of homes lie within a 5-minute walk of a park or wood; 99.2% within 15 minutes |
 
@@ -35,7 +35,7 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 - **The view is measured at street level.** The spot is 1.8 m above the ground just outside the facade. Upper floors and balconies, which look over hedges and cars, are not calculated. *Pushes the result down for flats.*
 - **A tree is seen when its crown top is seen.** The line of sight runs from the top of the crown (the highest surface point within 1.5 m of the tree point) to the spot outside the home. A home that sees only the side of a crown or an overhanging branch, while the top is hidden behind a roof, does not count that tree. A home that sees just the top above a roof does. Measuring from the tree point itself would put the observer inside its own crown; in Delft 35.5% of trees then saw practically nothing.
 - **30 m is counted from the trunk.** The distance runs from the tree point to the spot outside the home, not from the edge of the crown. A large tree with its trunk 32 m away does not count, even if its crown hangs closer.
-- **Every tree counts the same.** A young street tree counts as much as an old oak; the paper's "well-established" is not checked. Trees marked "disappeared, small tree" in the source (21% of those counted) still count ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)). *Pushes the result up.*
+- **Every tree counts the same.** A young street tree counts as much as an old oak; the paper's "well-established" is not checked. Trees marked "disappeared, small tree" or "not seen once, small tree" in the source (24.5% of the tree points) are left out ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)). *Pushes the result up.*
 - **Everything in the surface model blocks the view.** Buildings, hedges, fences, bus shelters and other trees' crowns are solid. A dense hedge counts as a wall, also in winter. *Pushes the result down.*
 - **The surroundings are from 2020-2022, the homes from 2026.** A home built since then is scored on the old situation (3 to 5% of homes).
 

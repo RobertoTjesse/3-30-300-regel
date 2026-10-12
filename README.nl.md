@@ -18,7 +18,7 @@ Zuid-Holland, laatste runs:
 
 | | Uitkomst |
 |---|---|
-| 3 | 94,7% van de woningen ziet minstens 3 bomen; 2,0% ziet er geen |
+| 3 | 85,9% van de woningen ziet minstens 3 bomen; 5,0% ziet er geen |
 | 30 | 8,1% van het land ligt onder een boomkroon. 102 van de 2.509 buurten halen 30%, geen enkele gemeente (Wassenaar komt het dichtst bij met 27,9%) |
 | 300 | 78,9% van de woningen ligt binnen 5 minuten lopen van een park of bos; 99,2% binnen 15 minuten |
 
@@ -35,7 +35,7 @@ Het artikel laat veel open: vanaf waar je kijkt, hoe ver, wat telt als boom of p
 - **Het zicht wordt op straatniveau berekend.** De plek ligt 1,8 m boven de grond direct voor de gevel. Hogere verdiepingen en balkons, die over heggen en auto's heen kijken, worden niet berekend. *Duwt de uitkomst omlaag voor flats.*
 - **Een boom is zichtbaar als de top van de kroon zichtbaar is.** De zichtlijn loopt van de top van de kroon (het hoogste punt van het oppervlak binnen 1,5 m van het boompunt) naar de plek voor de woning. Een woning die alleen de zijkant van een kroon of een overhangende tak ziet, terwijl de top achter een dak verdwijnt, telt die boom niet. Een woning die net de top boven een dak uit ziet, telt hem wel. Vanaf het boompunt zelf zou de waarnemer in zijn eigen kroon staan; in Delft zag 35,5% van de bomen dan vrijwel niets.
 - **De 30 m wordt vanaf de stam gemeten.** De afstand loopt van het boompunt naar de plek voor de woning, niet vanaf de rand van de kroon. Een grote boom met de stam op 32 m telt niet mee, ook als de kroon dichterbij hangt.
-- **Elke boom telt even zwaar.** Een jonge straatboom telt net zo hard als een oude eik; het "well-established" uit het artikel wordt niet gecontroleerd. Bomen die in de bron als "verdwenen, kleine boom" staan (21% van de getelde) tellen mee ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)). *Duwt de uitkomst omhoog.*
+- **Elke boom telt even zwaar.** Een jonge straatboom telt net zo hard als een oude eik; het "well-established" uit het artikel wordt niet gecontroleerd. Bomen die in de bron als "verdwenen, kleine boom" of "één keer niet gezien, kleine boom" staan (24,5% van de boompunten) tellen niet mee ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)). *Duwt de uitkomst omhoog.*
 - **Alles in het hoogtemodel blokkeert het zicht.** Gebouwen, heggen, schuttingen, bushokjes en de kronen van andere bomen zijn massief. Een dichte heg telt als muur, ook in de winter. *Duwt de uitkomst omlaag.*
 - **De omgeving is van 2020-2022, de woningen van 2026.** Een woning die sindsdien is gebouwd, krijgt een score op de oude situatie (3 tot 5% van de woningen).
 
