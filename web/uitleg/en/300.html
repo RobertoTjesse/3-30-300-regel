@@ -130,6 +130,74 @@ not a measurement on site. Is your home red while a park seems close by? Then it
 </ul>
 <p>Whether a red home lies within 15 minutes is shown in the popup.</p>
 
+<h2 id="open-methode">In development: the 300 with open software</h2>
+<p>The map still shows the FME calculation. A new calculation in Python is in the repository and has been tested on
+Delft. It gives every home a walking distance in metres to the nearest park entrance, instead of only inside or
+outside a zone. So 300 m, 5 minutes and 15 minutes become filters on the same result. The walking distance was
+computed with two routing programs, to see how much the program matters.</p>
+
+<h3>Expansion: what you reach on foot</h3>
+<p><a href="https://github.com/valhalla/valhalla">Valhalla</a>, the route planner the old calculation used as well,
+can return every street and path you reach on foot from a point, with the walking distance to each piece. This is
+called <i>expansion</i>. Below, from the Provinciehuis on the Zuid-Hollandplein in The Hague.</p>
+<figure>
+  <img src="../img/300-expansion.png" alt="Map around the Provinciehuis in The Hague with every street and path within a 15-minute walk, dark blue nearby and light blue further away" loading="lazy">
+  <figcaption>Every street and path within a 15-minute walk (1,275 m at 5.1 km/h) from the Provinciehuis. The darker
+  the line, the shorter the walk. The green on the right is close by, but you only reach the paths inside it after
+  425 m.</figcaption>
+</figure>
+<p>The new calculation runs an expansion from every park entrance and keeps the shortest distance per junction. A home
+gets the distance of the nearest point on a street, plus the short stretch from the home to that street.</p>
+
+<h3>Why no more zones</h3>
+<p>The old calculation drew an area around the streets reached, the isochrone, and counted every home inside it. Such
+an area is coarse: it also covers the inside of blocks, water and railway land, which the walk goes round.</p>
+<figure>
+  <img src="../img/300-isochroon.png" alt="The streets within a 425 m walk from the Provinciehuis, with a much wider orange area over them: the 5-minute isochrone" loading="lazy">
+  <figcaption>Blue: the streets you reach within 5 minutes (425 m). Dashed orange: the 5-minute isochrone Valhalla draws
+  around them. A home inside the area counts, even when its front door is further away.</figcaption>
+</figure>
+<p>In Delft, 94.4% of homes lie inside Valhalla's 300 m zones, but 87.0% are really within a 300 m walk.</p>
+
+<h3>Two routing programs compared</h3>
+<p>Next to Valhalla, <a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html">GRASS
+<code>v.net.distance</code></a>, which comes with QGIS, does the same job. Both get the same park entrances, the same
+homes and the same OpenStreetMap data. Result for Delft, 55,123 homes (BAG addresses with a residential use):</p>
+<div class="table-wrap"><table>
+<tr><th>Method</th><th>Within 300 m</th><th>Within 5 min (425 m)</th></tr>
+<tr><td>GRASS, all walkable ways</td><td>91.5%</td><td>98.9%</td></tr>
+<tr><td>GRASS without cycle paths and bridleways</td><td>84.7%</td><td>96.3%</td></tr>
+<tr><td>Valhalla, expansion</td><td>87.0%</td><td>97.2%</td></tr>
+<tr><td>Valhalla, isochrones (zones)</td><td>94.4%</td><td>98.4%</td></tr>
+<tr><td>Old FME calculation (zones, per building)</td><td>not computed</td><td>94.6%</td></tr>
+</table></div>
+<p>Per home, the distances from GRASS and Valhalla are mostly close: for 56% of homes they differ by 10 m or less, for
+83% by 50 m or less. The large differences come mainly from two choices in the walking network.</p>
+<figure>
+  <img src="../img/300-vergelijking-spreiding.png" alt="Scatter plot of the walking distance per home: GRASS on the horizontal axis, Valhalla on the vertical; most homes lie on the diagonal" loading="lazy">
+  <figcaption>Walking distance per home in Delft. On the diagonal both agree; above it Valhalla's walk is longer.</figcaption>
+</figure>
+<p><b>Cycle paths.</b> Valhalla does not let pedestrians walk on a cycle path; GRASS does. Dutch traffic law allows
+walking on a cycle path where there is no pavement or footpath. Valhalla walked none of 89% of the cycle paths around
+Delft, against 6 to 18% of the other road types. Where a cycle bridge is the only way across the water, Valhalla
+walks round. When GRASS also leaves cycle paths out, the share of homes where Valhalla's walk is more than 50 m longer
+drops from 12% to 3%.</p>
+<figure>
+  <img src="../img/300-fietspad-voorbeeld.png" alt="Example in Delft: GRASS crosses the water over a cycle bridge, Valhalla walks kilometres round" loading="lazy">
+  <figcaption>A home in Delft. GRASS crosses over a cycle bridge: 147 m to the entrance. Valhalla walks round; its
+  nearest entrance is 453 m away.</figcaption>
+</figure>
+<p><b>Private roads.</b> Valhalla also reaches a home over its own private or destination-only road. The network for
+GRASS leaves out roads tagged <code>access=private</code>. Without cycle paths, Valhalla therefore comes out slightly
+more favourable than GRASS (87.0 against 84.7% within 300 m).</p>
+<figure>
+  <img src="../img/300-vergelijking-kaart.png" alt="Map of Delft with the homes where GRASS and Valhalla disagree on 300 m, in clusters along certain streets" loading="lazy">
+  <figcaption>Where GRASS and Valhalla disagree on 300 m. The differences come in clusters along whole streets. Over
+  three quarters of the homes that only GRASS puts within 300 m drop out when GRASS leaves cycle paths out.</figcaption>
+</figure>
+<p>Still to decide: whether cycle paths count as walking routes. After that the calculation can run for the whole
+province. The code is in <a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/etl"><code>indicator_300_park/etl/</code></a>.</p>
+
 <h2>Limitations and open issues</h2>
 <ul>
   <li><b>300 m² is much smaller than the WHO norm of 1 ha.</b> The paper and the WHO mean a large public green space;
@@ -140,8 +208,8 @@ not a measurement on site. Is your home red while a park seems close by? Then it
   <li><b>Green without paths</b> (an open lawn by the street) gets no entrance and therefore does not count.</li>
   <li><b>Made with FME</b>, with an isochrone calculator
       (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) that ran locally for a while. The steps use open data
-      and open software; the workbench is in the repository, but only runs with FME. The plan is to do this fully in
-      Python (see the <a href="./#toekomst">overview</a>).</li>
+      and open software; the workbench is in the repository, but only runs with FME. A calculation in Python is in
+      development (see <a href="#open-methode">above</a>).</li>
 </ul>
 
 <h2>Code and sources</h2>
