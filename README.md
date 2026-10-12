@@ -79,7 +79,7 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 ├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 per area) + the earlier FME workbenches
 ├── indicator_300_park/           the 300: FME workbenches + README
 ├── web/                          the web map for all three (published site)
-├── docs/bronnen/                 source documents (the Cobra Groeninzicht handbook)
+├── docs/bronnen/                 source documents (Konijnendijk 2023, the Cobra Groeninzicht handbook)
 ├── qgis_validation/              builds the QGIS validation project for all three
 ├── data/                         all data (gitignored), see "Data"
 └── logs/                         run logs (gitignored)
@@ -168,7 +168,8 @@ Everything that differs per province is a setting or an input file, so no code c
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup, pipeline, validation, known data issues |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | the 3: design decisions in depth |
 | [`indicator_3_bomen/BENCHMARKS.md`](indicator_3_bomen/BENCHMARKS.md) | the 3: run times (generated) |
-| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | the 3: improvements over the original prototype; planned work, including the 300 in Python |
+| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | the 3: improvements over the original prototype; planned work, including the 300 in Python, multi-storey buildings, values per home |
+| [Comparison with Cobra Groeninzicht](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Comparison-with-Cobra-Groeninzicht) (wiki) | comparison with Cobra Groeninzicht's 3+30+300 and the Yggdrasil handbook: method, mark per building, what each side misses |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | the 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | the 300 |
 | `web/uitleg/` | explanation pages for the public (Dutch; English in `web/uitleg/en/`) |

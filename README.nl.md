@@ -81,7 +81,7 @@ De technische documenten in de mappen (`ARCHITECTURE.md`, `WORKLOG.md`, de READM
 ├── indicator_30_kroonbedekking/  de 30: etl/ (BKB 2024 per gebied) + de eerdere FME-workbenches
 ├── indicator_300_park/           de 300: FME-workbenches + README
 ├── web/                          de webkaart voor alle drie (gepubliceerde site)
-├── docs/bronnen/                 brondocumenten (het handboek van Cobra Groeninzicht)
+├── docs/bronnen/                 brondocumenten (Konijnendijk 2023, het handboek van Cobra Groeninzicht)
 ├── qgis_validation/              bouwt het QGIS-validatieproject voor alle drie
 ├── data/                         alle gegevens (gitignored), zie "Gegevens"
 └── logs/                         logbestanden van runs (gitignored)
@@ -170,7 +170,8 @@ Alles wat per provincie verschilt is een instelling of een invoerbestand; je hoe
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | de 3: installatie, pipeline, validatie, bekende gegevensproblemen |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | de 3: ontwerpkeuzes in detail |
 | [`indicator_3_bomen/BENCHMARKS.md`](indicator_3_bomen/BENCHMARKS.md) | de 3: rekentijden (gegenereerd) |
-| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | de 3: verbeteringen ten opzichte van het oorspronkelijke prototype; gepland werk, ook de 300 in Python |
+| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | de 3: verbeteringen ten opzichte van het oorspronkelijke prototype; gepland werk, ook de 300 in Python, hoogbouw, waarden per woning |
+| [Comparison with Cobra Groeninzicht](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Comparison-with-Cobra-Groeninzicht) (wiki) | vergelijking met de 3+30+300 van Cobra Groeninzicht en het Yggdrasil-handboek: methode, cijfer per pand, wat elk mist (Engels) |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | de 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | de 300 |
 | `web/uitleg/` | uitlegpagina's voor het publiek (Nederlands; Engels in `web/uitleg/en/`) |
