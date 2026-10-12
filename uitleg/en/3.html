@@ -28,12 +28,12 @@ within 30 metres can see it, taking buildings, hedges and terrain into account. 
 trees you can see just outside its facade.</p>
 
 <div class="facts">
-  <div class="fact"><b>94.7%</b><span>of homes see ≥ 3 trees</span></div>
-  <div class="fact"><b>2.0%</b><span>of homes see no tree at all</span></div>
+  <div class="fact"><b>85.9%</b><span>of homes see ≥ 3 trees</span></div>
+  <div class="fact"><b>5.0%</b><span>of homes see no tree at all</span></div>
   <div class="fact"><b>1.8 million</b><span>homes in 978,428 buildings</span></div>
-  <div class="fact"><b>5.2 million</b><span>trees calculated</span></div>
+  <div class="fact"><b>3.9 million</b><span>trees calculated</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland, run of 27–28 September 2026.</p>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, run of 8–9 October 2026.</p>
 
 <h2>What is measured?</h2>
 <p>The 3-30-300 rule (<a href="konijnendijk.html">Konijnendijk, 2023</a>) asks that everyone sees at least three
@@ -44,6 +44,18 @@ window. For homes, we made that concrete as follows:</p>
       <b>1.8 m height</b> (eye height) <b>within 30 m</b> of the tree.</li>
   <li>A home sees <b>N trees</b> when somewhere <b>just outside its facade</b> (within 1.5 m outside the building) there is a
       spot that sees N trees.</li>
+</ul>
+
+<h2 id="aannames">What the result assumes</h2>
+<p>The paper leaves open from where and how far to measure. The choices below fill that in and make the most difference to the figures. Each says which way it pushes the result; the reasons are under "Choices and why".</p>
+<ul>
+  <li><b>One good spot is enough.</b> If one 0.5 × 0.5 m cell in the ring around the building sees three trees, for example in the back garden, the whole building passes, even if the living room looks out on a blank wall. <i>(more favourable)</i></li>
+  <li><b>All homes in a building get the same score.</b> The 80 flats in a block share one number and count 80 times in the area figures.</li>
+  <li><b>The view is at street level.</b> We calculate at 1.8 m above the ground in front of the facade; from upper floors and balconies you often see more. <i>(stricter)</i></li>
+  <li><b>A tree counts when the top of its crown is visible.</b> A home that sees only the side of a crown or an overhanging branch, while the top is hidden behind a roof, does not count that tree. Seeing just the top above a roof does count.</li>
+  <li><b>The 30 m is measured from the trunk,</b> not from the edge of the crown. A large tree with its trunk 32 m away does not count, even if its crown hangs closer. <i>(stricter)</i></li>
+  <li><b>Every tree counts the same.</b> A young street tree counts as much as an old oak, while trees marked &quot;disappeared, small tree&quot; or &quot;not seen once, small tree&quot; in the source are left out (24.5%). <i>(more favourable)</i></li>
+  <li><b>Everything in the elevation model is solid.</b> A dense hedge or fence counts as a wall, also in winter. <i>(stricter)</i></li>
 </ul>
 
 <h2>Steps</h2>
@@ -161,8 +173,9 @@ somewhere around the home, not from which window.</div>
 <ul>
   <li><b>Eye height at street level only.</b> The view from higher floors is not calculated; residents of flats often
       see more (or other) trees in reality.</li>
-  <li><b>Tree status.</b> 21% of the counted trees are marked "disappeared, small tree" in the source, 3% "not seen
-      once". All statuses count for now
+  <li><b>Tree status.</b> Since 8 October 2026 the trees marked "disappeared, small tree" (21%) or "not seen once, small
+      tree" (3%) in the source no longer count. Fewer trees means fewer homes pass, which is safer than counting trees
+      that may be gone. Still open: checking with NEO what the statuses mean exactly
       (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/1">open issue #1</a>).</li>
   <li><b>Dates.</b> Elevation model and trees are from 2020–2022, the homes from 2026. New-build homes appear on the map
       with the surroundings of back then (3 to 5% of homes).</li>
