@@ -127,6 +127,75 @@ meting ter plekke. Is jouw woning rood terwijl er een park vlakbij lijkt te ligg
 </ul>
 <p>Of een rode woning wel binnen 15 minuten ligt, zie je in de pop-up.</p>
 
+<h2 id="open-methode">In ontwikkeling: de 300 met open software</h2>
+<p>De kaart toont nog de berekening met FME. Een nieuwe berekening in Python staat in de repository en is getest op
+Delft. Die geeft elke woning een loopafstand in meters tot de dichtstbijzijnde parkingang, in plaats van alleen
+binnen of buiten een zone. Daarmee zijn 300 m, 5 minuten en 15 minuten filters op dezelfde uitkomst. De loopafstand is
+met twee rekenprogramma's berekend, om te zien hoeveel het programma uitmaakt.</p>
+
+<h3>Expansion: wat je lopend bereikt</h3>
+<p><a href="https://github.com/valhalla/valhalla">Valhalla</a>, de routeplanner die ook de oude berekening gebruikte,
+kan vanaf een punt alle straten en paden teruggeven die je lopend bereikt, met de loopafstand tot elk stuk. Dat heet
+<i>expansion</i>. Hieronder vanaf het Provinciehuis aan het Zuid-Hollandplein in Den Haag.</p>
+<figure>
+  <img src="img/300-expansion.png" alt="Kaart rond het Provinciehuis in Den Haag met alle straten en paden binnen 15 minuten lopen, donkerblauw dichtbij en lichtblauw verder weg" loading="lazy">
+  <figcaption>Alle straten en paden binnen 15 minuten lopen (1.275 m bij 5,1 km/u) vanaf het Provinciehuis. Hoe
+  donkerder de lijn, hoe korter de wandeling. Het groen rechts ligt vlakbij, maar de paden erin bereik je pas na
+  425 m.</figcaption>
+</figure>
+<p>De nieuwe berekening doet een expansion vanaf elke parkingang en houdt per kruispunt de kortste afstand over. Een
+woning krijgt de afstand van het dichtstbijzijnde punt op straat, plus het stukje van de woning naar die straat.</p>
+
+<h3>Waarom geen zones meer</h3>
+<p>De oude berekening tekende rond de bereikte straten een vlak, de isochroon, en telde elke woning in dat vlak mee.
+Zo'n vlak is grof: het dekt ook de binnenkant van bouwblokken, water en spoorterrein, waar de wandeling omheen gaat.</p>
+<figure>
+  <img src="img/300-isochroon.png" alt="De straten binnen 425 m lopen vanaf het Provinciehuis, met daaroverheen een veel ruimer oranje vlak: de isochroon van 5 minuten" loading="lazy">
+  <figcaption>Blauw: de straten die je binnen 5 minuten (425 m) bereikt. Oranje gestippeld: de isochroon van 5 minuten
+  die Valhalla daaromheen tekent. Een woning in het vlak telt mee, ook als haar voordeur verder weg ligt.</figcaption>
+</figure>
+<p>In Delft ligt 94,4% van de woningen in de 300 m-zones van Valhalla, maar 87,0% echt binnen 300 m lopen.</p>
+
+<h3>Twee rekenprogramma's vergeleken</h3>
+<p>Naast Valhalla rekent <a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html">GRASS
+<code>v.net.distance</code></a>, dat met QGIS wordt meegeleverd. Beide krijgen dezelfde parkingangen, dezelfde
+woningen en dezelfde OpenStreetMap-gegevens. Uitkomst voor Delft, 55.123 woningen (BAG-adressen met woonfunctie):</p>
+<div class="table-wrap"><table>
+<tr><th>Methode</th><th>Binnen 300 m</th><th>Binnen 5 min (425 m)</th></tr>
+<tr><td>GRASS, alle looppaden</td><td>91,5%</td><td>98,9%</td></tr>
+<tr><td>GRASS zonder fietspaden en ruiterpaden</td><td>84,7%</td><td>96,3%</td></tr>
+<tr><td>Valhalla, expansion</td><td>87,0%</td><td>97,2%</td></tr>
+<tr><td>Valhalla, isochronen (zones)</td><td>94,4%</td><td>98,4%</td></tr>
+<tr><td>Oude FME-berekening (zones, per pand)</td><td>niet berekend</td><td>94,6%</td></tr>
+</table></div>
+<p>Per woning liggen de afstanden van GRASS en Valhalla meestal dicht bij elkaar: bij 56% van de woningen scheelt het
+hoogstens 10 m, bij 83% hoogstens 50 m. De grote verschillen komen vooral door twee keuzes in het wandelnetwerk.</p>
+<figure>
+  <img src="img/300-vergelijking-spreiding.png" alt="Spreidingsdiagram van de loopafstand per woning: GRASS op de horizontale as, Valhalla op de verticale; de meeste woningen liggen op de diagonaal" loading="lazy">
+  <figcaption>Loopafstand per woning in Delft. Op de diagonaal zijn beide het eens; erboven rekent Valhalla langer.</figcaption>
+</figure>
+<p><b>Fietspaden.</b> Valhalla laat voetgangers niet over een fietspad lopen, GRASS wel. Volgens de verkeersregels
+mag je op een fietspad lopen als er geen trottoir of voetpad is. Van de fietspaden rond Delft heeft Valhalla 89% niet
+belopen, tegen 6 tot 18% van de andere wegen.
+Waar een fietsbrug de enige oversteek over het water is, loopt Valhalla om. Rekent GRASS ook zonder fietspaden, dan
+daalt het aandeel woningen waar Valhalla meer dan 50 m langer rekent van 12% naar 3%.</p>
+<figure>
+  <img src="img/300-fietspad-voorbeeld.png" alt="Voorbeeld in Delft: GRASS steekt het water over via een fietsbrug, Valhalla loopt kilometers om" loading="lazy">
+  <figcaption>Een woning in Delft. GRASS steekt via een fietsbrug over: 147 m tot de ingang. Valhalla loopt om; zijn
+  dichtstbijzijnde ingang ligt op 453 m.</figcaption>
+</figure>
+<p><b>Privéwegen.</b> Valhalla bereikt een woning ook via haar eigen privé- of bestemmingsweg. Het netwerk voor GRASS
+laat wegen met <code>access=private</code> weg. Zonder fietspaden komt Valhalla daardoor iets gunstiger uit dan GRASS
+(87,0 tegen 84,7% binnen 300 m).</p>
+<figure>
+  <img src="img/300-vergelijking-kaart.png" alt="Kaart van Delft met de woningen waar GRASS en Valhalla het oneens zijn over 300 m, in groepjes langs bepaalde straten" loading="lazy">
+  <figcaption>Waar GRASS en Valhalla het oneens zijn over 300 m. De verschillen liggen in groepjes langs hele straten.
+  Ruim driekwart van de woningen die alleen bij GRASS binnen 300 m liggen, valt weg als GRASS zonder fietspaden
+  rekent.</figcaption>
+</figure>
+<p>Nog te kiezen: of fietspaden meetellen als looproute. Daarna kan de berekening voor de hele provincie draaien. De
+code staat in <a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/etl"><code>indicator_300_park/etl/</code></a>.</p>
+
 <h2>Beperkingen en open punten</h2>
 <ul>
   <li><b>300 m² is veel kleiner dan de WHO-norm van 1 ha.</b> Het artikel en de WHO bedoelen een grote openbare
@@ -137,8 +206,8 @@ meting ter plekke. Is jouw woning rood terwijl er een park vlakbij lijkt te ligg
   <li><b>Groen zonder paden</b> (een open grasveld aan de straat) krijgt geen ingang en telt dus niet mee.</li>
   <li><b>Gemaakt met FME</b>, met een isochronencalculator
       (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) die tijdelijk lokaal draaide. De stappen zijn open data en
-      open software; de workbench staat in de repository, maar is alleen met FME te draaien. Het plan is om dit volledig in Python te doen
-      (zie het <a href="./#toekomst">overzicht</a>).</li>
+      open software; de workbench staat in de repository, maar is alleen met FME te draaien. Een berekening in Python
+      is in ontwikkeling (zie <a href="#open-methode">hierboven</a>).</li>
 </ul>
 
 <h2>Code en bronnen</h2>
