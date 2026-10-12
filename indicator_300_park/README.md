@@ -24,3 +24,41 @@ A PostGIS OSM reader (connection `osm_reader_20250509`, one test municipality) i
 - The green itself is not in the results. To show the parks and woods on the map (`web/data/groen.pmtiles`), `web/build_tiles_groen.py` reads them from the input `groenkaart.gdb` with the workbench's own selection: its reader's `bron <> 'top 10 water'` and its Tester's `_area >= 300` and `Shape_Length / Shape_Area <= 0.35`.
 
 Method and caveats: `web/uitleg/300.html` (Dutch) and `web/uitleg/en/300.html` (English).
+
+## The open pipeline (in development)
+
+`etl/` computes the 300 without FME: a walking distance in metres from every home to the nearest park entrance, with two routing engines so their results can be compared. Tested on Delft; the map still shows the FME result.
+
+| Step | Script | What |
+|---|---|---|
+| 1 | `etl/01_prepare.py` | Parks (`PARKS_PATH` in `etl/config.py`), park entrances, the walkable OSM network (cut at shared OSM nodes) and the BAG homes of the 3, for `MUNICIPALITIES` plus a margin |
+| 2 | `etl/02_valhalla.py` | Valhalla expansion from every entrance, Valhalla's own snapping of every home (`locate`), and the classic isochrone polygons for comparison. Calls `etl/valhalla_worker.py` in the pyvalhalla environment |
+| 3 | `etl/03_grass.py` | GRASS `v.net.distance` from all entrances at once, on the network of step 1 |
+| 4 | `etl/04_compare.py` | Both engines, the isochrones and the old FME result per home; summary CSV, scatter plot and a map of where they disagree |
+| | `etl/explainer_expansion.py` | The pictures on the explanation page: expansion from the Provinciehuis, isochrone against expansion, and a cycle-path example |
+
+Entrances: where a walkable way crosses the park edge, OSM gates and entrances on the edge, and for parks with neither, points every 25 m along the edge where a walkable way runs within 10 m.
+
+Run from the repository root with the OSGeo4W Python, after setting `PARKS_*` and `MUNICIPALITIES` (in `etl/config_local_300.py`, gitignored, or in `config.py`):
+
+```
+python indicator_300_park/etl/01_prepare.py
+python indicator_300_park/etl/02_valhalla.py
+python indicator_300_park/etl/03_grass.py
+python indicator_300_park/etl/04_compare.py
+```
+
+`02` and `03` take `--reuse` to skip the routing when its output is newer than step 1's. `GRASS_EXCLUDE=cycleway,bridleway` runs GRASS (and `04`) without cycle paths and bridleways, the network Valhalla walks on; the outputs get the suffix `_zonder_cycleway_bridleway`.
+
+One-time setup:
+
+- OSM: `data/raw/osm/zuid-holland-latest.osm.pbf` from [Geofabrik](https://download.geofabrik.de/europe/netherlands/zuid-holland.html). Step 1 turns it into `data/interim/osm/osm_ways_points.gpkg` once.
+- Valhalla: `python -m venv %USERPROFILE%\valhalla-venv` with the OSGeo4W Python (3.12), then `pip install pyvalhalla==3.9.1`. Build the tiles once, with the package's DLL folder on `PATH` (`python -m valhalla` cannot find the executables on Windows in 3.9.1):
+  ```
+  set PATH=%USERPROFILE%\valhalla-venv\Lib\site-packages\pyvalhalla.libs;%PATH%
+  %USERPROFILE%\valhalla-venv\Lib\site-packages\valhalla\bin\valhalla_build_tiles.exe -c data\interim\valhalla\valhalla.json data\raw\osm\zuid-holland-latest.osm.pbf
+  ```
+  `valhalla.json` comes from `valhalla.get_config(tile_extract="", tile_dir=...)`. Zuid-Holland builds in under a minute (155 MB).
+- GRASS: `grass84.bat` from OSGeo4W, run with `--tmp-project EPSG:28992`; nothing to install.
+
+Delft (55,123 homes), share within 300 m: GRASS 91.5%, GRASS without cycle paths 84.7%, Valhalla expansion 87.0%, Valhalla isochrones 94.4%. The two engines differ mainly because Valhalla's pedestrian profile does not walk on cycle paths, and because Valhalla can reach a home over its own private road while the GRASS network leaves `access=private` out. Run times for Delft: step 1 16 s, step 2 2.5 min, step 3 1 min.

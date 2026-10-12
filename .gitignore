@@ -62,3 +62,4 @@ data/fme_input/
 pg_service.conf
 .pg_service.conf
 pgpass.conf
+indicator_300_park/etl/config_local_300.py
