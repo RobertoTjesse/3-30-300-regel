@@ -409,4 +409,7 @@ trees should be excluded, is still open.
   the block equal the filtered `Delft_woningen.gpkg`. Shown on the wiki page
   "The 3 - visible trees", under "Step by step"; the script writes to
   `data/processed/explainer_gifs/` and the GIFs live in the wiki's `images/`.
-- Province rerun with the tree status filter started 2026-10-08 15:51.
+- Province rerun with the tree status filter started 2026-10-08 15:51 and
+  finished 2026-10-09 02:11: all 50 municipalities, 0 tile errors, new
+  `web/data/3.pmtiles` (85 MB) and `BENCHMARKS.md`. The tiles are not yet
+  published on gh-pages.
