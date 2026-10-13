@@ -435,3 +435,12 @@ trees should be excluded, is still open.
   buildings (3D BAG floors, one target height per floor) and a fixed set of
   values per home, incl. the number of rules met (0-3) and an optional mark
   on Cobra's scale.
+
+## 2026-10-13: issue #1 closed
+
+**27. Tree status settled**
+- GitHub issue #1 closed: the disappeared and small trees stay out of the 3
+  (province 85.9% of homes with >= 3 visible trees, 94.7% before). NEO
+  never confirmed what the statuses mean; if the trees turn out to be
+  there, an empty `TREE_STATUSES_EXCLUDED` and a rerun of stages 2-6
+  restore the old count. README and wiki "Known issues" list it as resolved.

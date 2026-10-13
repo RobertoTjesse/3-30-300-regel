@@ -195,13 +195,13 @@ plain work folder under `D:\Temp` first.
 
 ## Known data issues
 
-- **[DECIDED 2026-10-08]** Tree status: 21% of the trees are marked
+- **[RESOLVED 2026-10-13]** Tree status: 21% of the trees are marked
   "disappeared, small tree" in the source registry (`current_st`) and 3%
   "not seen once, small tree". Both are now left out (see
   [Which trees count](#which-trees-count)). In Delft the share of homes
   with >= 3 visible trees falls from 94.9% to 88.1%, and in the province
-  (rerun 2026-10-08/09) from 94.7% to 85.9%. What NEO means
-  by these statuses is still to be confirmed
+  (rerun 2026-10-08/09) from 94.7% to 85.9%. Issue closed without
+  confirmation from NEO of what the statuses mean
   ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)).
 - **[RESOLVED 2026-10-01]** ArcGIS comparison: the benchmark's observer
   height was wrong (2 x RASTERVALU; reproduced on 100% of cells, also for a
