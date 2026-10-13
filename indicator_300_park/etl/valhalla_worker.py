@@ -81,23 +81,26 @@ def _locate(chunk):
 def main():
     job = json.loads(Path(sys.argv[1]).read_text())
     out = Path(sys.argv[2])
-    best = {}
-    origins = []
-    n = len(job["entrances"])
-    t = time.time()
-    with open(out / "isochrones.jsonl", "w") as iso_out, \
-            Pool(job["workers"], initializer=_init, initargs=(job,)) as pool:
-        for i, (edges, starts, lines) in enumerate(pool.imap_unordered(_one, job["entrances"], chunksize=8), 1):
-            for eid, (d, coords) in edges.items():
-                if eid not in best or d < best[eid][0]:
-                    best[eid] = (d, coords)
-            origins += starts
-            for line in lines:
-                iso_out.write(line + "\n")
-            if i % 500 == 0 or i == n:
-                print(f"  {i:,}/{n:,} entrances, {len(best):,} edges, {time.time() - t:.0f} s", flush=True)
-    (out / "edges.json").write_text(json.dumps({"edges": best, "origins": origins}))
+    if job["entrances"]:   # phase 1: expansion and isochrones from every entrance
+        best = {}
+        origins = []
+        n = len(job["entrances"])
+        t = time.time()
+        with open(out / "isochrones.jsonl", "w") as iso_out, \
+                Pool(job["workers"], initializer=_init, initargs=(job,)) as pool:
+            for i, (edges, starts, lines) in enumerate(pool.imap_unordered(_one, job["entrances"], chunksize=8), 1):
+                for eid, (d, coords) in edges.items():
+                    if eid not in best or d < best[eid][0]:
+                        best[eid] = (d, coords)
+                origins += starts
+                for line in lines:
+                    iso_out.write(line + "\n")
+                if i % 500 == 0 or i == n:
+                    print(f"  {i:,}/{n:,} entrances, {len(best):,} edges, {time.time() - t:.0f} s", flush=True)
+        (out / "edges.json").write_text(json.dumps({"edges": best, "origins": origins}))
     homes = job.get("homes", [])
+    if not homes:   # phase 2 (the homes) not asked for
+        return
     chunks = [homes[i:i + 50] for i in range(0, len(homes), 50)]
     located = []
     t = time.time()

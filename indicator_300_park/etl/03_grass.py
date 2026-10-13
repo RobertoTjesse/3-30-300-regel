@@ -27,7 +27,10 @@ distance, empty beyond config.MAX_DISTANCE_M), gr_snap_m, gr_ent (ent_id of
 the nearest entrance).
 
 Usage (from the repository root, with the OSGeo4W Python):
-    python indicator_300_park/etl/03_grass.py
+    python indicator_300_park/etl/03_grass.py [--reuse | --parks-only | --homes-only]
+
+  --parks-only   phase 1: GRASS only (walking distance to every junction)
+  --homes-only   phase 2: the homes, reusing the GRASS result of phase 1
 """
 import csv
 import os
@@ -158,14 +161,21 @@ def main():
     work = config.WORK_DIR / f"grass{config.VARIANT}"
     work.mkdir(parents=True, exist_ok=True)
     done = work / "arcs.gpkg"
-    if "--reuse" in sys.argv and done.exists() and done.stat().st_mtime > config.PREPARED_GPKG.stat().st_mtime:
+    reuse = "--reuse" in sys.argv or "--homes-only" in sys.argv
+    if reuse and done.exists() and done.stat().st_mtime > config.PREPARED_GPKG.stat().st_mtime:
         print(f"GRASS: reusing {work}")
+    elif "--homes-only" in sys.argv:
+        sys.exit(f"ERROR: no GRASS result in {work} newer than {config.PREPARED_GPKG.name}; run with --parks-only first")
     else:
         run_grass(work)
         print(f"GRASS done in {time.time() - t0:.0f} s")
 
     prepared = ogr.Open(str(config.PREPARED_GPKG))
     nodes = node_distances(work, prepared)
+    if "--parks-only" in sys.argv:
+        print(f"Phase 1 done (parks only): walking distance to {len(nodes):,} junctions in {work}. "
+              f"The homes follow with --homes-only.")
+        return
     x, y, d, e = network_points(work, nodes)
     print(f"Junctions with a distance: {len(nodes):,}; network points every {STEP_M:g} m: {len(d):,}")
     tree = cKDTree(np.column_stack([x, y]))

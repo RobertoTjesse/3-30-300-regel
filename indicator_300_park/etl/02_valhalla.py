@@ -36,7 +36,12 @@ Output config.VALHALLA_GPKG:
   isochrones  the merged isochrone polygons per contour
 
 Usage (from the repository root, with the OSGeo4W Python):
-    python indicator_300_park/etl/02_valhalla.py [--reuse]
+    python indicator_300_park/etl/02_valhalla.py [--reuse | --parks-only | --homes-only]
+
+  --parks-only   phase 1: expansion and isochrones from the entrances only
+  --homes-only   phase 2: Valhalla's snapping of the homes and their distances,
+                 reusing the expansion of phase 1
+  --reuse        skip Valhalla when its output is newer than 01_prepare.py's
 """
 import json
 import subprocess
@@ -84,10 +89,11 @@ def wgs(lyr, id_field=None):
     return out
 
 
-def run_worker(prepared, work):
-    """Write the job and run valhalla_worker.py in the pyvalhalla Python."""
-    entrances = wgs(prepared.GetLayerByName("entrances"), "ent_id")
-    homes = wgs(prepared.GetLayerByName("homes"))
+def run_worker(prepared, work, parks=True, homes=True):
+    """Write the job and run valhalla_worker.py in the pyvalhalla Python: the expansion and
+    isochrones from the entrances (parks), Valhalla's snapping of the homes (homes), or both."""
+    entrances = wgs(prepared.GetLayerByName("entrances"), "ent_id") if parks else []
+    homes = wgs(prepared.GetLayerByName("homes")) if homes else []
     job = {"config": str(config.VALHALLA_DIR / "valhalla.json"), "max_km": config.MAX_DISTANCE_M / 1000,
            "contours": contours(), "workers": config.VALHALLA_WORKERS, "entrances": entrances, "homes": homes}
     work.mkdir(parents=True, exist_ok=True)
@@ -249,14 +255,18 @@ def main():
     prepared = ogr.Open(str(config.PREPARED_GPKG))
     work = config.WORK_DIR / "valhalla"
     done = work / "homes.json"
-    if "--reuse" in sys.argv and done.exists() and done.stat().st_mtime > config.PREPARED_GPKG.stat().st_mtime:
+    expanded = work / "edges.json"
+    parks_only = "--parks-only" in sys.argv
+    if "--homes-only" in sys.argv:   # phase 2: the expansion of phase 1 stays, only the homes are added
+        if not expanded.exists():
+            sys.exit(f"ERROR: {expanded} is missing; run with --parks-only first")
+        run_worker(prepared, work, parks=False, homes=True)
+    elif "--reuse" in sys.argv and done.exists() and done.stat().st_mtime > config.PREPARED_GPKG.stat().st_mtime:
         print(f"Valhalla: reusing {work}")
     else:
-        run_worker(prepared, work)
-    walk = Walk(json.loads((work / "edges.json").read_text()))
-    located = {r[0]: r for r in json.loads(done.read_text())}
-    print(f"Streets reached: {len(walk.shapes):,}; junctions with a distance: {len(walk.best):,}; "
-          f"homes located: {len(located):,}")
+        run_worker(prepared, work, parks=True, homes=not parks_only)
+    walk = Walk(json.loads(expanded.read_text()))
+    print(f"Streets reached: {len(walk.shapes):,}; junctions with a distance: {len(walk.best):,}")
 
     if config.VALHALLA_GPKG.exists():
         config.VALHALLA_GPKG.unlink()
@@ -273,6 +283,14 @@ def main():
     out.StartTransaction()
     merged = merged_isochrones(work / "isochrones.jsonl", il)
     out.CommitTransaction()
+    for name, geom in merged.items():
+        print(f"  isochrones {name:>5}: {geom.GetArea() / 1e6:,.1f} km2")
+    if parks_only:
+        print(f"Phase 1 done (parks only): wrote edges and isochrones to {config.VALHALLA_GPKG} "
+              f"in {time.time() - t0:.0f} s. The homes follow with --homes-only.")
+        return
+    located = {r[0]: r for r in json.loads(done.read_text())}
+    print(f"Homes located on the network: {len(located):,}")
 
     tree, tree_d = walk.points()
     homes = prepared.GetLayerByName("homes")

@@ -54,7 +54,7 @@ python indicator_300_park/etl/03_grass.py
 python indicator_300_park/etl/04_compare.py
 ```
 
-`02` and `03` take `--reuse` to skip the routing when its output is newer than step 1's. `GRASS_EXCLUDE=cycleway` runs GRASS (and `04`) without cycle paths, for comparison; the outputs get the suffix `_zonder_cycleway`.
+For the province the work comes in two phases. `02` and `03` with `--parks-only` do the parks: entrances, expansion, isochrones and the distance to every junction. With `--homes-only` they add the homes later, reusing that work. `02` and `03` also take `--reuse` to skip the routing when its output is newer than step 1's. `GRASS_EXCLUDE=cycleway` runs GRASS (and `04`) without cycle paths, for comparison; the outputs get the suffix `_zonder_cycleway`.
 
 One-time setup:
 
