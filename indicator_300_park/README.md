@@ -31,34 +31,34 @@ Method and caveats: `web/uitleg/300.html` (Dutch) and `web/uitleg/en/300.html` (
 
 | Step | Script | What |
 |---|---|---|
+| | `sde_export/export_parken_sde.py` | arcpy, run once from the ArcGIS Pro Python: copies the recreation areas of the draft omgevingsbeleid (`Geo.OMGEVINGSBELEID_ONTWERP.Recreatiegebied`) and the green kinds of TOP10NL functioneel gebied (`Geo.TOPOGRAFIE.PDOK_TOP10NL_FUNCTIONEEL_GEBIED_VLAK_PZH`: botanische tuin, heemtuin, landgoed, nationaal park, natuurgebied, recreatiegebied, park) to `data/raw/groen_300/groen_300.gdb`, and puts both in one layer `parken_300` (bron, type, naam) |
+| 0 | `etl/00_valhalla_tiles.py` | Valhalla's walking network from the OSM extract, with `valhalla/graph_fietspad.lua`: Valhalla's own tag rules with cycle paths open to pedestrians. Once per extract |
 | 1 | `etl/01_prepare.py` | Parks (`PARKS_PATH` in `etl/config.py`), park entrances, the walkable OSM network (cut at shared OSM nodes) and the BAG homes of the 3, for `MUNICIPALITIES` plus a margin |
 | 2 | `etl/02_valhalla.py` | Valhalla expansion from every entrance, Valhalla's own snapping of every home (`locate`), and the classic isochrone polygons for comparison. Calls `etl/valhalla_worker.py` in the pyvalhalla environment |
 | 3 | `etl/03_grass.py` | GRASS `v.net.distance` from all entrances at once, on the network of step 1 |
 | 4 | `etl/04_compare.py` | Both engines, the isochrones and the old FME result per home; summary CSV, scatter plot and a map of where they disagree |
 | | `etl/explainer_expansion.py` | The pictures on the explanation page: expansion from the Provinciehuis, isochrone against expansion, and a cycle-path example |
 
+Cycle paths count as walking routes in both engines: Dutch traffic law (RVV 1990, art. 4) lets pedestrians use one where there is no footpath or pavement. Bridleways do not count.
+
 Entrances: where a walkable way crosses the park edge, OSM gates and entrances on the edge, and for parks with neither, points every 25 m along the edge where a walkable way runs within 10 m.
 
 Run from the repository root with the OSGeo4W Python, after setting `PARKS_*` and `MUNICIPALITIES` (in `etl/config_local_300.py`, gitignored, or in `config.py`):
 
 ```
+python indicator_300_park/etl/00_valhalla_tiles.py
 python indicator_300_park/etl/01_prepare.py
 python indicator_300_park/etl/02_valhalla.py
 python indicator_300_park/etl/03_grass.py
 python indicator_300_park/etl/04_compare.py
 ```
 
-`02` and `03` take `--reuse` to skip the routing when its output is newer than step 1's. `GRASS_EXCLUDE=cycleway,bridleway` runs GRASS (and `04`) without cycle paths and bridleways, the network Valhalla walks on; the outputs get the suffix `_zonder_cycleway_bridleway`.
+`02` and `03` take `--reuse` to skip the routing when its output is newer than step 1's. `GRASS_EXCLUDE=cycleway` runs GRASS (and `04`) without cycle paths, for comparison; the outputs get the suffix `_zonder_cycleway`.
 
 One-time setup:
 
 - OSM: `data/raw/osm/zuid-holland-latest.osm.pbf` from [Geofabrik](https://download.geofabrik.de/europe/netherlands/zuid-holland.html). Step 1 turns it into `data/interim/osm/osm_ways_points.gpkg` once.
-- Valhalla: `python -m venv %USERPROFILE%\valhalla-venv` with the OSGeo4W Python (3.12), then `pip install pyvalhalla==3.9.1`. Build the tiles once, with the package's DLL folder on `PATH` (`python -m valhalla` cannot find the executables on Windows in 3.9.1):
-  ```
-  set PATH=%USERPROFILE%\valhalla-venv\Lib\site-packages\pyvalhalla.libs;%PATH%
-  %USERPROFILE%\valhalla-venv\Lib\site-packages\valhalla\bin\valhalla_build_tiles.exe -c data\interim\valhalla\valhalla.json data\raw\osm\zuid-holland-latest.osm.pbf
-  ```
-  `valhalla.json` comes from `valhalla.get_config(tile_extract="", tile_dir=...)`. Zuid-Holland builds in under a minute (155 MB).
+- Valhalla: `python -m venv %USERPROFILE%\valhalla-venv` with the OSGeo4W Python (3.12), then `pip install pyvalhalla==3.9.1`. Step 0 builds the tiles (Zuid-Holland: under a minute, 161 MB). It calls `valhalla_build_tiles.exe` directly, because `python -m valhalla` cannot find the executables on Windows in 3.9.1.
 - GRASS: `grass84.bat` from OSGeo4W, run with `--tmp-project EPSG:28992`; nothing to install.
 
-Delft (55,123 homes), share within 300 m: GRASS 91.5%, GRASS without cycle paths 84.7%, Valhalla expansion 87.0%, Valhalla isochrones 94.4%. The two engines differ mainly because Valhalla's pedestrian profile does not walk on cycle paths, and because Valhalla can reach a home over its own private road while the GRASS network leaves `access=private` out. Run times for Delft: step 1 16 s, step 2 2.5 min, step 3 1 min.
+Delft (55,123 homes, old green layer), share within 300 m: GRASS 91.5%, Valhalla expansion 91.4%, Valhalla isochrones 96.7%. The engines agree on 98% of homes; the distance differs by 10 m or less for 71% and by 50 m or less for 94%. What is left comes mainly from private roads: Valhalla can reach a home over its own private road, while the GRASS network leaves `access=private` out. With Valhalla's default profile (cycle paths closed), only 87.0% was within 300 m. Run times for Delft: step 0 45 s, step 1 16 s, step 2 4 min, step 3 1 min.

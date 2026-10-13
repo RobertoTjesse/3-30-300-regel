@@ -9,6 +9,11 @@ Hollandplein 1, The Hague) Valhalla walks out over the OSM network:
   300-isochroon.png   the same walk up to 5 minutes (425 m), with the 5-minute
                       isochrone polygon over it: the polygon also covers blocks
                       and water the walk never reaches
+  300-fietspad-voorbeeld.png  one Delft home where GRASS crosses the water over
+                      a cycle bridge and Valhalla walks round. Only true for
+                      tiles built with Valhalla's default graph.lua, which
+                      closes cycle paths to pedestrians; the published figure
+                      was made that way, before 00_valhalla_tiles.py opened them
 
 Background: BAG buildings (the 3's province_buildings.gpkg), OSM water and the
 parks of 01_prepare.py's source. Written to data/processed/explainer/; copy

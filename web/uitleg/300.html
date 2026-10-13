@@ -154,47 +154,50 @@ Zo'n vlak is grof: het dekt ook de binnenkant van bouwblokken, water en spoorter
   <figcaption>Blauw: de straten die je binnen 5 minuten (425 m) bereikt. Oranje gestippeld: de isochroon van 5 minuten
   die Valhalla daaromheen tekent. Een woning in het vlak telt mee, ook als haar voordeur verder weg ligt.</figcaption>
 </figure>
-<p>In Delft ligt 94,4% van de woningen in de 300 m-zones van Valhalla, maar 87,0% echt binnen 300 m lopen.</p>
+<p>In Delft ligt 96,7% van de woningen in de 300 m-zones van Valhalla, maar 91,4% echt binnen 300 m lopen.</p>
+
+<h3>Fietspaden tellen als looproute</h3>
+<p>Volgens de verkeersregels mag je op een fietspad lopen als er geen trottoir of voetpad is. De berekening laat
+voetgangers daarom over fietspaden lopen; ruiterpaden tellen niet mee. Het standaardprofiel van Valhalla sluit
+fietspaden voor voetgangers af. Daarom bouwt de berekening Valhalla's netwerk met zijn eigen regels, met één
+wijziging: fietspaden zijn open voor voetgangers, tenzij ze in OpenStreetMap <code>foot=no</code> hebben.</p>
+<p>Dat maakt veel uit. Met het standaardprofiel valt in Delft 87,0% van de woningen binnen 300 m, met fietspaden
+91,4%. Waar een fietsbrug de enige oversteek over het water is, loopt het standaardprofiel om:</p>
+<figure>
+  <img src="img/300-fietspad-voorbeeld.png" alt="Voorbeeld in Delft: GRASS steekt het water over via een fietsbrug, Valhalla zonder fietspaden loopt kilometers om" loading="lazy">
+  <figcaption>Een woning in Delft. Over de fietsbrug is het 147 m tot de ingang. Zonder fietspaden loopt Valhalla om;
+  de dichtstbijzijnde ingang ligt dan op 453 m.</figcaption>
+</figure>
 
 <h3>Twee rekenprogramma's vergeleken</h3>
 <p>Naast Valhalla rekent <a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html">GRASS
 <code>v.net.distance</code></a>, dat met QGIS wordt meegeleverd. Beide krijgen dezelfde parkingangen, dezelfde
-woningen en dezelfde OpenStreetMap-gegevens. Uitkomst voor Delft, 55.123 woningen (BAG-adressen met woonfunctie):</p>
+woningen en dezelfde OpenStreetMap-gegevens, met fietspaden. Uitkomst voor Delft, 55.123 woningen (BAG-adressen met
+woonfunctie):</p>
 <div class="table-wrap"><table>
 <tr><th>Methode</th><th>Binnen 300 m</th><th>Binnen 5 min (425 m)</th></tr>
-<tr><td>GRASS, alle looppaden</td><td>91,5%</td><td>98,9%</td></tr>
-<tr><td>GRASS zonder fietspaden en ruiterpaden</td><td>84,7%</td><td>96,3%</td></tr>
-<tr><td>Valhalla, expansion</td><td>87,0%</td><td>97,2%</td></tr>
-<tr><td>Valhalla, isochronen (zones)</td><td>94,4%</td><td>98,4%</td></tr>
-<tr><td>Oude FME-berekening (zones, per pand)</td><td>niet berekend</td><td>94,6%</td></tr>
+<tr><td>GRASS, loopafstand</td><td>91,5%</td><td>98,9%</td></tr>
+<tr><td>Valhalla, loopafstand (expansion)</td><td>91,4%</td><td>99,0%</td></tr>
+<tr><td>Valhalla, zones (isochronen)</td><td>96,7%</td><td>99,6%</td></tr>
+<tr><td>Valhalla standaardprofiel, zonder fietspaden</td><td>87,0%</td><td>97,2%</td></tr>
+<tr><td>Oude FME-berekening (zones, per pand, ander groen)</td><td>niet berekend</td><td>94,6%</td></tr>
 </table></div>
-<p>Per woning liggen de afstanden van GRASS en Valhalla meestal dicht bij elkaar: bij 56% van de woningen scheelt het
-hoogstens 10 m, bij 83% hoogstens 50 m. De grote verschillen komen vooral door twee keuzes in het wandelnetwerk.</p>
+<p>GRASS en Valhalla zijn het voor 98% van de woningen eens of die binnen 300 m van een park wonen. Bij 71% van de
+woningen scheelt de afstand hoogstens 10 m, bij 94% hoogstens 50 m.</p>
 <figure>
-  <img src="img/300-vergelijking-spreiding.png" alt="Spreidingsdiagram van de loopafstand per woning: GRASS op de horizontale as, Valhalla op de verticale; de meeste woningen liggen op de diagonaal" loading="lazy">
+  <img src="img/300-vergelijking-spreiding.png" alt="Spreidingsdiagram van de loopafstand per woning: GRASS op de horizontale as, Valhalla op de verticale; bijna alle woningen liggen op de diagonaal" loading="lazy">
   <figcaption>Loopafstand per woning in Delft. Op de diagonaal zijn beide het eens; erboven rekent Valhalla langer.</figcaption>
 </figure>
-<p><b>Fietspaden.</b> Valhalla laat voetgangers niet over een fietspad lopen, GRASS wel. Volgens de verkeersregels
-mag je op een fietspad lopen als er geen trottoir of voetpad is. Van de fietspaden rond Delft heeft Valhalla 89% niet
-belopen, tegen 6 tot 18% van de andere wegen.
-Waar een fietsbrug de enige oversteek over het water is, loopt Valhalla om. Rekent GRASS ook zonder fietspaden, dan
-daalt het aandeel woningen waar Valhalla meer dan 50 m langer rekent van 12% naar 3%.</p>
+<p>Het verschil dat overblijft komt vooral door privéwegen. Valhalla bereikt een woning ook via haar eigen privé- of
+bestemmingsweg; het netwerk voor GRASS laat wegen met <code>access=private</code> weg en verbindt de woning in een
+rechte lijn met de dichtstbijzijnde openbare weg.</p>
 <figure>
-  <img src="img/300-fietspad-voorbeeld.png" alt="Voorbeeld in Delft: GRASS steekt het water over via een fietsbrug, Valhalla loopt kilometers om" loading="lazy">
-  <figcaption>Een woning in Delft. GRASS steekt via een fietsbrug over: 147 m tot de ingang. Valhalla loopt om; zijn
-  dichtstbijzijnde ingang ligt op 453 m.</figcaption>
+  <img src="img/300-vergelijking-kaart.png" alt="Kaart van Delft met de 1.100 woningen waar GRASS en Valhalla het oneens zijn over 300 m" loading="lazy">
+  <figcaption>Waar GRASS en Valhalla het oneens zijn over 300 m: 1.100 van de 55.123 woningen.</figcaption>
 </figure>
-<p><b>Privéwegen.</b> Valhalla bereikt een woning ook via haar eigen privé- of bestemmingsweg. Het netwerk voor GRASS
-laat wegen met <code>access=private</code> weg. Zonder fietspaden komt Valhalla daardoor iets gunstiger uit dan GRASS
-(87,0 tegen 84,7% binnen 300 m).</p>
-<figure>
-  <img src="img/300-vergelijking-kaart.png" alt="Kaart van Delft met de woningen waar GRASS en Valhalla het oneens zijn over 300 m, in groepjes langs bepaalde straten" loading="lazy">
-  <figcaption>Waar GRASS en Valhalla het oneens zijn over 300 m. De verschillen liggen in groepjes langs hele straten.
-  Ruim driekwart van de woningen die alleen bij GRASS binnen 300 m liggen, valt weg als GRASS zonder fietspaden
-  rekent.</figcaption>
-</figure>
-<p>Nog te kiezen: of fietspaden meetellen als looproute. Daarna kan de berekening voor de hele provincie draaien. De
-code staat in <a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/etl"><code>indicator_300_park/etl/</code></a>.</p>
+<p>Volgende stap: de nieuwe parkenkaart (recreatiegebieden uit het ontwerp-omgevingsbeleid en het groen uit TOP10NL)
+en de berekening voor de hele provincie. De code staat in
+<a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/etl"><code>indicator_300_park/etl/</code></a>.</p>
 
 <h2>Beperkingen en open punten</h2>
 <ul>

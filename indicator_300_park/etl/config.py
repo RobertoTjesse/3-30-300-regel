@@ -37,15 +37,22 @@ HOMES_GPKG = PROCESSED_DIR / f"{PROVINCE_SLUG}_woningen.gpkg"      # the homes o
 # ---------------------------------------------------------------------------
 # Input: the parks
 # ---------------------------------------------------------------------------
-# Any polygon layer GDAL can read. Until the new park dataset is set here (in
-# config_local_300.py), the green of the old FME workbench is used, with the
-# workbench's own selection.
-PARKS_PATH = FME_INPUT_DIR / "groenvoorzieningen" / "groenkaart.gdb"
-PARKS_LAYER = "groen_uit_osm_top10_2024"
-PARKS_WHERE = ("\"bron\" <> 'top 10 water' AND \"_area\" >= 300 "
-               "AND \"Shape_Length\" <= 0.35 * \"Shape_Area\"")
-PARKS_NAME_FIELD = None        # optional field with the park's name, copied to the entrances
+# Any polygon layer GDAL can read. Default: the recreation areas of the draft
+# omgevingsbeleid and the green kinds of TOP10NL functioneel gebied, copied from
+# the provincial SDE by indicator_300_park/sde_export/export_parken_sde.py
+# (arcpy). The green of the old FME workbench, for comparison, in
+# config_local_300.py (which needs full paths: it cannot see the names here):
+#   from pathlib import Path
+#   PARKS_PATH = Path(r"D:\Repositories\330300regel\data\fme_input\groenvoorzieningen\groenkaart.gdb")
+#   PARKS_LAYER = "groen_uit_osm_top10_2024"
+#   PARKS_WHERE = "\"bron\" <> 'top 10 water'"
+PARKS_PATH = RAW_DIR / "groen_300" / "groen_300.gdb"
+PARKS_LAYER = "parken_300"
+PARKS_WHERE = None
 MIN_PARK_AREA_M2 = 300         # parks smaller than this are left out (WHO: 10,000)
+# Narrow strips are left out: perimeter / area at most this (1/m). 0.35 keeps a
+# strip of about 6 m wide or more, as the old FME workbench did. None = keep all.
+MAX_EDGE_RATIO = 0.35
 
 # ---------------------------------------------------------------------------
 # Input: OpenStreetMap
@@ -55,12 +62,14 @@ MIN_PARK_AREA_M2 = 300         # parks smaller than this are left out (WHO: 10,0
 OSM_PBF = RAW_DIR / "osm" / "zuid-holland-latest.osm.pbf"
 OSM_GPKG = INTERIM_DIR / "osm" / "osm_ways_points.gpkg"   # made from OSM_PBF by 01_prepare.py
 
-# Ways a pedestrian can use. Motorways, trunk roads and their slip roads are
-# left out; so are ways tagged access=no/private or foot=no, unless foot= says
-# walking is allowed.
+# Ways a pedestrian can use. Cycle paths count: Dutch traffic law (RVV 1990,
+# art. 4) lets pedestrians use one where there is no footpath or pavement.
+# Bridleways (horses only), motorways, trunk roads and their slip roads are left
+# out, unless foot= says walking is allowed; so are ways tagged access=no/private
+# or foot=no.
 WALKABLE_HIGHWAYS = (
     "footway", "path", "pedestrian", "living_street", "steps", "track",
-    "residential", "service", "unclassified", "road", "cycleway", "bridleway",
+    "residential", "service", "unclassified", "road", "cycleway",
     "tertiary", "tertiary_link", "secondary", "secondary_link",
     "primary", "primary_link",
 )
@@ -108,13 +117,14 @@ AREA_MARGIN_M = MAX_DISTANCE_M + 250
 VALHALLA_DIR = INTERIM_DIR / "valhalla"           # valhalla.json and the tiles
 VALHALLA_PYTHON = Path.home() / "valhalla-venv" / "Scripts" / "python.exe"
 VALHALLA_WORKERS = 6
+# Valhalla's tag rules: its own graph.lua with cycle paths open to pedestrians,
+# so Valhalla walks the same ways as GRASS. Used by 00_valhalla_tiles.py.
+VALHALLA_LUA = BASE_DIR / "indicator_300_park" / "valhalla" / "graph_fietspad.lua"
 GRASS_BAT = Path(OSGEO4W_ROOT) / "bin" / "grass84.bat"
 
-# Road types GRASS leaves out of its network. Empty = every walkable way of
-# 01_prepare.py. Valhalla's pedestrian profile does not walk on cycleways and
-# bridleways; set ("cycleway", "bridleway") to give GRASS the same network
-# (the env var GRASS_EXCLUDE="cycleway,bridleway" does this for one run). Dutch
-# traffic law lets pedestrians use a cycle path where there is no footpath.
+# Road types GRASS leaves out of its network, for a test run. Empty = every
+# walkable way of 01_prepare.py. The env var GRASS_EXCLUDE="cycleway" does this
+# for one run; its outputs get the suffix _zonder_cycleway.
 GRASS_EXCLUDE_HIGHWAYS = ()
 
 try:

@@ -88,7 +88,8 @@ def new_layer(ds, name, geom_type, fields):
 
 
 def write_parks(out, margin):
-    """Copy the parks inside the margin to layer parks; returns their count."""
+    """Copy the parks inside the margin to layer parks; returns their count. Leaves out parks
+    under config.MIN_PARK_AREA_M2 and narrow strips (perimeter / area > config.MAX_EDGE_RATIO)."""
     src = ogr.Open(str(config.PARKS_PATH))
     lyr = src.GetLayerByName(config.PARKS_LAYER) if config.PARKS_LAYER else src.GetLayer(0)
     if config.PARKS_WHERE:
@@ -119,6 +120,8 @@ def write_parks(out, margin):
         if to_rd:
             g.Transform(to_rd)
         if not g.Intersects(margin) or g.GetArea() < config.MIN_PARK_AREA_M2:
+            continue
+        if config.MAX_EDGE_RATIO and g.Boundary().Length() > config.MAX_EDGE_RATIO * g.GetArea():
             continue
         if not g.IsValid():
             fixed = g.MakeValid()
@@ -342,6 +345,9 @@ def write_homes(out, area):
 
 def main():
     t0 = time.time()
+    if not config.PARKS_PATH.exists():
+        sys.exit(f"ERROR: {config.PARKS_PATH} is missing. Run indicator_300_park/sde_export/export_parken_sde.py "
+                 "from the ArcGIS Pro Python first, or set PARKS_PATH in config_local_300.py")
     config.WORK_DIR.mkdir(parents=True, exist_ok=True)
     if config.PREPARED_GPKG.exists():
         config.PREPARED_GPKG.unlink()
