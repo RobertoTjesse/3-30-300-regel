@@ -34,6 +34,9 @@ the map). For information, the 15-minute zone was calculated too.</p>
 </div>
 <p style="font-size:14px;color:var(--muted)">Zuid-Holland, weighted by the number of homes per building. Per municipality
 from 51.0% (Nieuwkoop) to 95.1% (Zoeterwoude) within 5 minutes.</p>
+<p class="note">These are the map's figures, computed with FME. There is now a new calculation with open software only,
+a walking distance per home and stricter green: 36.8% of homes within 300 m, 56.1% within 5 minutes. See
+<a href="#open-methode">the new calculation</a>.</p>
 
 <h2>What is measured?</h2>
 <p>The <a href="konijnendijk.html">paper</a> asks for a large public green space within 300 m of every home,
@@ -130,24 +133,51 @@ not a measurement on site. Is your home red while a park seems close by? Then it
 </ul>
 <p>Whether a red home lies within 15 minutes is shown in the popup.</p>
 
-<h2 id="open-methode">In development: the 300 with open software</h2>
-<p>The map still shows the FME calculation. A new calculation in Python is in the repository and has been tested on
-Delft. It gives every home a walking distance in metres to the nearest park entrance, instead of only inside or
-outside a zone. So 300 m, 5 minutes and 15 minutes become filters on the same result. The walking distance was
-computed with two routing programs, to see how much the program matters.</p>
+<h2 id="open-methode">New: the 300 with open software</h2>
+<p>The 300 has been computed again for the whole province, now entirely with <a href="https://www.osgeo.org/">OSGeo</a>
+software from <a href="https://trac.osgeo.org/osgeo4w/">OSGeo4W</a>, the same installation as QGIS. GDAL finds the
+entrances of the green and builds the walking network from OpenStreetMap, GRASS GIS computes the walking distances,
+and QGIS shows the result. Every home gets a walking distance in metres to the nearest entrance of a park or other
+public green, so 300 m, 5 minutes and 15 minutes become filters on one result. As a check,
+<a href="https://github.com/valhalla/valhalla">Valhalla</a>, the route planner of the old calculation, computes the
+same again.</p>
+<p>The map still shows the FME calculation described above. It moves to the new method once open water has been cut
+out of the green (see "Still to do" at the end of this part).</p>
+
+<h3>Which green counts</h3>
+<p>Three sources: the parks of the provincial facilities map (OpenStreetMap and TOP10NL, peildatum 17 September 2025);
+from TOP10NL the functional areas park, recreation area, nature area, national park, estate, heemtuin and botanical
+garden; and from TOP10NL also cemeteries and allotments. Duck decoys do not count: most are closed to visitors. Pieces
+under 300 m² and narrow strips drop out. What overlaps or touches becomes one green area, so a path from one piece of
+green into the next is not an entrance. This gives 1,891 green areas with 11,270 entrances.</p>
+<figure>
+  <img src="../img/300-isochronen-provincie.png" alt="Map of Zuid-Holland with the green areas and, in blue around them, what lies within a 300 m, 5- and 15-minute walk" loading="lazy">
+  <figcaption>Green areas (green) and what lies within a 300 m, 5- and 15-minute walk of them (blue, Valhalla's
+  isochrones). The large green area in the southwest is nature area on the water; see "Still to do".</figcaption>
+</figure>
+
+<h3>Result for Zuid-Holland</h3>
+<div class="table-wrap"><table>
+<tr><th>Share of homes within</th><th>GRASS</th><th>Valhalla</th><th>Valhalla, zones</th><th>FME (on the map)</th></tr>
+<tr><td>300 m</td><td>36.8%</td><td>38.1%</td><td>46.4%</td><td>not computed</td></tr>
+<tr><td>5 minutes (425 m)</td><td>56.1%</td><td>57.1%</td><td>64.1%</td><td>79.1%</td></tr>
+<tr><td>15 minutes (1,275 m)</td><td>97.9%</td><td>98.1%</td><td>98.2%</td><td>99.2%</td></tr>
+</table></div>
+<p>1,797,970 homes (BAG addresses with a residential use, the same as for the 3). Per municipality, between 11%
+(Hardinxveld-Giessendam, Lisse) and 60% (Oegstgeest) of homes lie within 300 m of green.</p>
 
 <h3>Expansion: what you reach on foot</h3>
-<p><a href="https://github.com/valhalla/valhalla">Valhalla</a>, the route planner the old calculation used as well,
-can return every street and path you reach on foot from a point, with the walking distance to each piece. This is
-called <i>expansion</i>. Below, from the Provinciehuis on the Zuid-Hollandplein in The Hague.</p>
+<p>Valhalla can return every street and path you reach on foot from a point, with the walking distance to each piece.
+This is called <i>expansion</i>. Below, from the Provinciehuis on the Zuid-Hollandplein in The Hague.</p>
 <figure>
   <img src="../img/300-expansion.png" alt="Map around the Provinciehuis in The Hague with every street and path within a 15-minute walk, dark blue nearby and light blue further away" loading="lazy">
   <figcaption>Every street and path within a 15-minute walk (1,275 m at 5.1 km/h) from the Provinciehuis. The darker
   the line, the shorter the walk. The green on the right is close by, but you only reach the paths inside it after
   425 m.</figcaption>
 </figure>
-<p>The new calculation runs an expansion from every park entrance and keeps the shortest distance per junction. A home
-gets the distance of the nearest point on a street, plus the short stretch from the home to that street.</p>
+<p>GRASS does essentially the same, from all entrances at once: every junction of the walking network gets the
+shortest walking distance to an entrance. A home gets the distance of the nearest point on a street, plus the short
+stretch from the home to that street.</p>
 
 <h3>Why no more zones</h3>
 <p>The old calculation drew an area around the streets reached, the isochrone, and counted every home inside it. Such
@@ -157,50 +187,63 @@ an area is coarse: it also covers the inside of blocks, water and railway land, 
   <figcaption>Blue: the streets you reach within 5 minutes (425 m). Dashed orange: the 5-minute isochrone Valhalla draws
   around them. A home inside the area counts, even when its front door is further away.</figcaption>
 </figure>
-<p>In Delft, 96.7% of homes lie inside Valhalla's 300 m zones, but 91.4% are really within a 300 m walk.</p>
+<p>In the province, 46.4% of homes lie inside the 300 m zones, but 38.1% are really within a 300 m walk.</p>
 
 <h3>Cycle paths count as walking routes</h3>
 <p>Dutch traffic law lets pedestrians use a cycle path where there is no pavement or footpath. The calculation
-therefore lets pedestrians walk on cycle paths; bridleways do not count. Valhalla's default profile closes cycle paths
-to pedestrians, so the calculation builds Valhalla's network with its own rules and one change: cycle paths are open
-to pedestrians, unless OpenStreetMap tags them <code>foot=no</code>.</p>
-<p>This matters a lot. With the default profile, 87.0% of homes in Delft are within 300 m; with cycle paths, 91.4%.
-Where a cycle bridge is the only way across the water, the default profile walks round:</p>
+therefore lets pedestrians walk on cycle paths; bridleways do not count. Valhalla's default profile closes cycle paths,
+so Valhalla gets its own rules with one change: cycle paths are open to pedestrians, unless OpenStreetMap tags them
+<code>foot=no</code>. This matters: in Delft, with the old green, 87% of homes are within 300 m with the default profile
+and 91% with cycle paths.</p>
 <figure>
   <img src="../img/300-fietspad-voorbeeld.png" alt="Example in Delft: GRASS crosses the water over a cycle bridge, Valhalla without cycle paths walks kilometres round" loading="lazy">
   <figcaption>A home in Delft. Over the cycle bridge it is 147 m to the entrance. Without cycle paths Valhalla walks
   round; its nearest entrance is then 453 m away.</figcaption>
 </figure>
 
-<h3>Two routing programs compared</h3>
-<p>Next to Valhalla, <a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html">GRASS
-<code>v.net.distance</code></a>, which comes with QGIS, does the same job. Both get the same park entrances, the same
-homes and the same OpenStreetMap data, cycle paths included. Result for Delft, 55,123 homes (BAG addresses with a
-residential use):</p>
-<div class="table-wrap"><table>
-<tr><th>Method</th><th>Within 300 m</th><th>Within 5 min (425 m)</th></tr>
-<tr><td>GRASS, walking distance</td><td>91.5%</td><td>98.9%</td></tr>
-<tr><td>Valhalla, walking distance (expansion)</td><td>91.4%</td><td>99.0%</td></tr>
-<tr><td>Valhalla, zones (isochrones)</td><td>96.7%</td><td>99.6%</td></tr>
-<tr><td>Valhalla default profile, without cycle paths</td><td>87.0%</td><td>97.2%</td></tr>
-<tr><td>Old FME calculation (zones, per building, other green)</td><td>not computed</td><td>94.6%</td></tr>
-</table></div>
-<p>GRASS and Valhalla agree for 98% of homes on whether they live within 300 m of a park. For 71% of homes the
-distance differs by 10 m or less, for 94% by 50 m or less.</p>
+<h3>GRASS and Valhalla compared</h3>
+<p>Both get the same entrances, the same homes and the same OpenStreetMap data. They agree for 97.8% of homes on
+whether they live within 300 m of green. For 71% of homes the distance differs by 10 m or less, for 93% by 50 m or
+less.</p>
 <figure>
-  <img src="../img/300-vergelijking-spreiding.png" alt="Scatter plot of the walking distance per home: GRASS on the horizontal axis, Valhalla on the vertical; nearly all homes lie on the diagonal" loading="lazy">
-  <figcaption>Walking distance per home in Delft. On the diagonal both agree; above it Valhalla's walk is longer.</figcaption>
+  <img src="../img/300-vergelijking-spreiding.png" alt="Scatter plot of the walking distance per home in Zuid-Holland: GRASS on the horizontal axis, Valhalla on the vertical; nearly all homes lie on the diagonal" loading="lazy">
+  <figcaption>Walking distance per home in Zuid-Holland. On the diagonal both agree; above it Valhalla's walk is longer.</figcaption>
 </figure>
-<p>The difference that is left comes mainly from private roads. Valhalla also reaches a home over its own private or
+<p>Where they differ, Valhalla's walk is shorter more often. Valhalla also reaches a home over its own private or
 destination-only road; the network for GRASS leaves out roads tagged <code>access=private</code> and links the home
 to the nearest public way in a straight line.</p>
 <figure>
-  <img src="../img/300-vergelijking-kaart.png" alt="Map of Delft with the 1,100 homes where GRASS and Valhalla disagree on 300 m" loading="lazy">
-  <figcaption>Where GRASS and Valhalla disagree on 300 m: 1,100 of the 55,123 homes.</figcaption>
+  <img src="../img/300-vergelijking-kaart.png" alt="Map of Delft with the 1,337 homes where GRASS and Valhalla disagree on 300 m" loading="lazy">
+  <figcaption>Delft: the 1,337 of 55,123 homes where GRASS and Valhalla disagree on 300 m.</figcaption>
 </figure>
-<p>Next: the new park map (recreation areas from the draft omgevingsbeleid and the green of TOP10NL) and the run for
-the whole province. The code is in
-<a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/etl"><code>indicator_300_park/etl/</code></a>.</p>
+
+<h3>Compared with the FME calculation</h3>
+<p>FME counted 79.1% of homes within 5 minutes, GRASS 56.1%. Per home they agree for 69%. Most of the difference is the
+green: the FME calculation counted everything on its green map, including small woods, scrub, gardens, golf courses
+and sports grounds. The new sources only hold parks, nature, recreation areas, estates, cemeteries and allotments. The
+rest of the difference comes from the zones.</p>
+
+<h3>Run time</h3>
+<div class="table-wrap"><table>
+<tr><th>Step (whole province)</th><th>GRASS</th><th>Valhalla</th></tr>
+<tr><td>Green: distance to every junction, or expansion and isochrones</td><td>18.5 min</td><td>11 min</td></tr>
+<tr><td>Homes: 1.8 million addresses</td><td>4.8 min</td><td>12.1 min</td></tr>
+<tr><td>Total</td><td>23 min</td><td>23 min</td></tr>
+</table></div>
+<p>On a workstation with 6 cores and 64 GB of memory. Preparing the green, entrances, network and homes takes another
+8 minutes. Both programs are equally fast. The calculation continues with GRASS, because it comes with QGIS and needs
+nothing extra.</p>
+
+<h3>Still to do</h3>
+<ul>
+  <li><b>Water now counts as green.</b> Nature area and national park in TOP10NL contain a lot of open water
+      (Haringvliet, Hollands Diep, Voordelta, Biesbosch). A path along such a shore then becomes a park entrance. Open
+      water will be cut out of the green first; after that the map moves to this calculation.</li>
+  <li>99 green areas in the province have no entrance, mostly allotments and cemeteries without a path in and without a
+      street within 10 m.</li>
+</ul>
+<p>The code is in
+<a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park"><code>indicator_300_park/</code></a>.</p>
 
 <h2>Limitations and open issues</h2>
 <ul>
@@ -212,8 +255,8 @@ the whole province. The code is in
   <li><b>Green without paths</b> (an open lawn by the street) gets no entrance and therefore does not count.</li>
   <li><b>Made with FME</b>, with an isochrone calculator
       (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) that ran locally for a while. The steps use open data
-      and open software; the workbench is in the repository, but only runs with FME. A calculation in Python is in
-      development (see <a href="#open-methode">above</a>).</li>
+      and open software; the workbench is in the repository, but only runs with FME. The new calculation with open
+      software only is <a href="#open-methode">above</a>.</li>
 </ul>
 
 <h2>Code and sources</h2>

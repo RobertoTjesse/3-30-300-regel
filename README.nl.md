@@ -8,9 +8,9 @@ De 3-30-300-regel (Konijnendijk, 2023) vraagt op drie manieren om groen:
 |---|---|---|---|---|
 | 3 | 3 bomen zichtbaar vanuit elke woning | bomen zichtbaar vanaf direct voor de gevel (straal 30 m, AHN-oppervlaktemodel) | Python + GDAL, deze repository | [`indicator_3_bomen/`](indicator_3_bomen/) |
 | 30 | 30% boomkronen in elke buurt | oppervlak onder kronen (BKB 2024, Friedenau Society, uit lidar) / landoppervlak per CBS-buurt, -wijk en gemeente (2025) | Python + GDAL, deze repository | [`indicator_30_kroonbedekking/`](indicator_30_kroonbedekking/) |
-| 300 | een park binnen 300 m van elke woning | woning binnen 5 minuten lopen (Valhalla-isochroon) van een park of bos van ≥ 300 m² | FME + PostGIS + Valhalla | [`indicator_300_park/`](indicator_300_park/) |
+| 300 | een park binnen 300 m van elke woning | loopafstand van de woning tot de dichtstbijzijnde ingang van een park of ander openbaar groen van ≥ 300 m² | GDAL + GRASS (OSGeo4W), gecontroleerd met Valhalla; de kaart toont nog de eerdere FME-uitkomst | [`indicator_300_park/`](indicator_300_park/) |
 
-Alle drie zijn berekend voor de provincie Zuid-Holland en samen gepubliceerd als één webkaart met een 3 / 30 / 300-schakelaar, per gemeente, wijk, buurt en woning: **https://robertotjesse.github.io/3-30-300-regel/**. De site en de uitlegpagina's zijn Nederlands, met een Engelse versie ([kaart](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). De 3 en de 30 zijn zonder codewijzigingen voor een andere provincie te draaien ([Andere provincie](#andere-provincie)). De 300 hangt nog van FME af; die naar open-source Python overzetten staat gepland (`indicator_3_bomen/IMPROVEMENTS.md`).
+Alle drie zijn berekend voor de provincie Zuid-Holland en samen gepubliceerd als één webkaart met een 3 / 30 / 300-schakelaar, per gemeente, wijk, buurt en woning: **https://robertotjesse.github.io/3-30-300-regel/**. De site en de uitlegpagina's zijn Nederlands, met een Engelse versie ([kaart](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). De 3 en de 30 zijn zonder codewijzigingen voor een andere provincie te draaien ([Andere provincie](#andere-provincie)). De 300 is nu ook met open software berekend: GDAL en GRASS uit OSGeo4W, gecontroleerd met Valhalla ([`indicator_300_park/`](indicator_300_park/)). De kaart houdt de eerdere FME-uitkomst tot open water uit het groen is geknipt.
 
 ## Wat de uitkomsten zeggen
 
@@ -20,7 +20,7 @@ Zuid-Holland, laatste runs:
 |---|---|
 | 3 | 85,9% van de woningen ziet minstens 3 bomen; 5,0% ziet er geen |
 | 30 | 8,1% van het land ligt onder een boomkroon. 102 van de 2.509 buurten halen 30%, geen enkele gemeente (Wassenaar komt het dichtst bij met 27,9%) |
-| 300 | 78,9% van de woningen ligt binnen 5 minuten lopen van een park of bos; 99,2% binnen 15 minuten |
+| 300 | Op de kaart (FME): 78,9% van de woningen ligt binnen 5 minuten lopen van een park of bos; 99,2% binnen 15 minuten. De open methode, met strenger groen en een loopafstand per woning: 36,8% binnen 300 m, 56,1% binnen 5 minuten, 97,9% binnen 15 minuten |
 
 De cijfers per gemeente, wijk en buurt zijn betrouwbaar. Voor één woning geeft de kaart een indicatie, en de aannames hieronder verklaren de meeste gevallen waarin die afwijkt van wat een bewoner ziet.
 
@@ -79,7 +79,7 @@ De technische documenten in de mappen (`ARCHITECTURE.md`, `WORKLOG.md`, de READM
 │   ├── fme/                      de oorspronkelijke FME-workbenches van de 3
 │   └── README.md, ARCHITECTURE.md, BENCHMARKS.md, IMPROVEMENTS.md
 ├── indicator_30_kroonbedekking/  de 30: etl/ (BKB 2024 per gebied) + de eerdere FME-workbenches
-├── indicator_300_park/           de 300: FME-workbenches + README
+├── indicator_300_park/           de 300: etl/ (GDAL + GRASS, Valhalla als controle) + de eerdere FME-workbenches
 ├── web/                          de webkaart voor alle drie (gepubliceerde site)
 ├── docs/bronnen/                 brondocumenten (Konijnendijk 2023, het handboek van Cobra Groeninzicht)
 ├── qgis_validation/              bouwt het QGIS-validatieproject voor alle drie
@@ -104,7 +104,7 @@ Wat te draaien:
 |---|---|
 | De 3, alle stappen | `indicator_3_bomen/etl/01_tile_dem.py` t/m `06_area_summaries.py`; zie [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md#pipeline) |
 | De 30 | `python indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py` (na stap 6 van de 3, die de gebieden maakt); zie [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) |
-| De 300 | de workbench in FME draaien; resultaten in `data/fme_output/` (zie de README daar) |
+| De 300 | `bash indicator_300_park/etl/run_300.sh` met de stappen uit [de README daar](indicator_300_park/README.md); de kaarttegels lezen nog de FME-resultaten in `data/fme_output/` |
 | Kaarttegels | `python web/build_tiles.py` (de 3), `python web/build_tiles_30_300.py` (de 30 en 300) en `python web/build_tiles_groen.py` (het groen van de 300) |
 | Kaart lokaal bekijken | `python web/serve.py`, dan http://localhost:8000 |
 | QGIS-validatieproject | `C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py` |
@@ -145,7 +145,7 @@ Publiceren: kopieer `web/` zonder de `.py`-bestanden naar de branch `gh-pages`, 
 
 ## Validatie
 
-- Het QGIS-validatieproject (`qgis_validation/build_project.py` maakt `qgis_validation/330300regel_validatie.qgz`, gitignored) bevat de 3 per gemeente (zichtbaarheid en woningen), alle bomen, het hoogtemodel, 3D BAG, achtergrondkaarten, de experimenten (de gecorrigeerde en de oorspronkelijke ArcGIS-benchmark), de vergelijking op één boom en een groepje bomen, en het studiegebied. Opnieuw draaien voegt alleen nieuwe lagen toe en haalt lagen weg waarvan het bestand weg is, dus wat je in QGIS aanpast blijft staan; verwijder de `.qgz` om hem opnieuw op te bouwen.
+- Het QGIS-validatieproject (`qgis_validation/build_project.py` maakt `qgis_validation/330300regel_validatie.qgz`, gitignored) bevat de 3 per gemeente (zichtbaarheid en woningen), alle bomen, het hoogtemodel, 3D BAG, achtergrondkaarten, de experimenten (de gecorrigeerde en de oorspronkelijke ArcGIS-benchmark), de vergelijking op één boom en een groepje bomen, het studiegebied, en de open 300 (groengebieden, ingangen, isochronen, loopafstand per woning, en de vergelijking met Valhalla en FME). Opnieuw draaien voegt alleen nieuwe lagen toe en haalt lagen weg waarvan het bestand weg is, dus wat je in QGIS aanpast blijft staan; verwijder de `.qgz` om hem opnieuw op te bouwen.
 - De ArcGIS-benchmark van de 3 had zijn waarnemers op twee keer de bedoelde hoogte. Met de bedoelde waarnemer komen ArcGIS en de GDAL-rekenkern van deze pipeline goed overeen (issue #2, opgelost). Zie [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md#validation-against-arcgis).
 - De 30 uit BKB 2024 is vergeleken met de eerdere FME-berekening, voor Delft en per gemeente; zie [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md).
 
@@ -157,7 +157,7 @@ Alles wat per provincie verschilt is een instelling of een invoerbestand; je hoe
 2. Zet in `indicator_3_bomen/etl/config_local.py` `PROVINCE` (precies zoals in de bestuurlijke gebieden van PDOK, bijv. `"Utrecht"`), `VIEWANALYSE_DIR`, `OSGEO4W_ROOT`, `MUNICIPALITIES = []`, en `FME_OUTPUT_DIR` / `FME_INPUT_DIR` als je resultaten van de 300 hebt. De uitvoer krijgt de naam van de provincie (`Utrecht_woningen.gpkg`).
 3. Download de BAG met `python indicator_3_bomen/etl/download_bag_pdok.py`. Het commando voor de gemeenten en provincies staat in `05_merge_province.py`, en dat voor de CBS-wijken en -buurten in `06_area_summaries.py`, met de omgrenzing van je provincie als `spatFilter`.
 4. Draai de stappen `01` t/m `06`, daarna de 30 (`kroonbedekking_gebieden.py`; BKB 2024 dekt heel Nederland) en `web/build_tiles.py`.
-5. De 300 heeft nog FME-resultaten voor die provincie nodig. Zonder die resultaten laat je de 300 weg.
+5. De 300: draai `indicator_300_park/etl/` met groenbronnen voor die provincie (zie de README daar). De kaarttegels van de 300 lezen nog FME-resultaten; zonder die resultaten laat je de 300 van de kaart weg.
 6. Zet op de kaart `PROVINCE` en `REPO` bovenin het script in `web/index.html`; de kaart opent op het gebied van `data/3.pmtiles`.
 7. Publiceer `web/` zoals hierboven. De uitlegpagina's (Nederlands en Engels) beschrijven de run van Zuid-Holland, dus pas de cijfers daar aan.
 
@@ -170,7 +170,7 @@ Alles wat per provincie verschilt is een instelling of een invoerbestand; je hoe
 | [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | de 3: installatie, pipeline, validatie, bekende gegevensproblemen |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | de 3: ontwerpkeuzes in detail |
 | [`indicator_3_bomen/BENCHMARKS.md`](indicator_3_bomen/BENCHMARKS.md) | de 3: rekentijden (gegenereerd) |
-| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | de 3: verbeteringen ten opzichte van het oorspronkelijke prototype; gepland werk, ook de 300 in Python, hoogbouw, waarden per woning |
+| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | de 3: verbeteringen ten opzichte van het oorspronkelijke prototype; gepland werk: hoogbouw, waarden per woning, de 3 voor scholen en werkplekken |
 | [Comparison with Cobra Groeninzicht](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Comparison-with-Cobra-Groeninzicht) (wiki) | vergelijking met de 3+30+300 van Cobra Groeninzicht en het Yggdrasil-handboek: methode, cijfer per pand, wat elk mist (Engels) |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | de 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | de 300 |

@@ -28,6 +28,12 @@ First run creates the project with:
   - De 300          the FME result (data/fme_output/300.gdb): home buildings
                     within / beyond 5 and 15 minutes' walk of green, the
                     walking isochrones and the park entrances
+  - De 300: open methode
+                    the open 300 (indicator_300_park/etl, province run): the
+                    merged green areas, the green per source and the entrances;
+                    the Valhalla isochrones (300 m, 5 and 15 min); the walking
+                    distance per home from GRASS; and per home GRASS against
+                    Valhalla (300 m) and GRASS and Valhalla against FME (5 min)
   - Experimenten    anything in data/processed/experiments/: rasters get the
                     viewshed styling, vectors (e.g. BAG footprints) a plain
                     outline; all switched off by default

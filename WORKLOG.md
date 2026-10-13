@@ -444,3 +444,37 @@ trees should be excluded, is still open.
   never confirmed what the statuses mean; if the trees turn out to be
   there, an empty `TREE_STATUSES_EXCLUDED` and a rerun of stages 2-6
   restore the old count. README and wiki "Known issues" list it as resolved.
+
+## 2026-10-12 / 13: the 300 with open software
+
+**28. Walking distance per home with GRASS and Valhalla**
+- `indicator_300_park/etl/`: the 300 without FME, on OSGeo4W. GDAL takes the
+  green, finds the park entrances (paths crossing the edge, OSM gates, open
+  edge along a street) and builds the walkable network from the Geofabrik
+  OSM extract, cut at shared OSM nodes. GRASS `v.net.distance` gives every
+  junction its walking distance to the nearest entrance; every BAG address
+  of the 3 then takes the nearest point on the network. Valhalla (pyvalhalla
+  3.9.1, local, no Docker) computes the same as a check, with its expansion
+  and its own placing of the homes (`locate`).
+- Cycle paths count as walking routes (RVV 1990 art. 4); Valhalla gets its
+  own `graph.lua` with that one change. Without it, Delft dropped from 91%
+  to 87% within 300 m, mostly where a cycle bridge is the only crossing.
+- Green: `parken_vlakken` of the provincial voorzieningen map, TOP10NL
+  functioneel gebied (park, recreatiegebied, natuurgebied, nationaal park,
+  landgoed, heemtuin, botanische tuin) and TOP10NL cemeteries and
+  allotments; duck decoys left out. Merged where they overlap or touch:
+  1,891 green areas, 11,270 entrances.
+- Province, 1,797,970 homes: 36.8% within 300 m, 56.1% within 5 minutes,
+  97.9% within 15 minutes (GRASS). GRASS and Valhalla agree for 97.8% of
+  homes on 300 m; distances differ by at most 10 m for 71%. Isochrone zones
+  count 8-10 points more homes. The old FME run had 79.1% within 5 minutes,
+  mainly because its green also held woods, scrub, gardens and sports
+  grounds.
+- Run time per engine about 23 minutes for the province (GRASS 18.5 min
+  for the green, 4.8 min for the homes; Valhalla 11 and 12 min). The work
+  continues with GRASS, which comes with QGIS.
+- Explanation pages (expansion from the Provinciehuis, zones against
+  walking distance, the cycle path, the comparisons), READMEs, wiki and the
+  QGIS project (group "De 300: open methode") updated. The map keeps the
+  FME result until open water (Haringvliet, Voordelta, Biesbosch) has been
+  cut out of the green.

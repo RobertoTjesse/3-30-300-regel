@@ -70,10 +70,9 @@ It took three attempts to get this right. The first fill used `maxSearchDist=300
 
 The 3 is in this repository (Python + GDAL), and since 2026-10-04 so is the 30 (`indicator_30_kroonbedekking/etl/`). It computes canopy cover from the BKB 2024 crown raster (Friedenau Society, lidar, 0.25 m), assigns every pixel to the buurt that holds its centre, and works directly on the map's gemeenten, wijken and buurten 2025. It replaced the FME workbench (`indicator_30_kroonbedekking/fme/30_2024.fmw`), which looked up 2023 codes in the 2022 CBS map (so 114 buurten and 19 wijken got no crowns) and counted a crown in full in every buurt it touched (one buurt reached 282%).
 
-The 300 is still an FME workbench (`indicator_300_park/fme/300_2025 regel.fmw`) that reads a PostGIS road network, so others can read it but not rerun it. The aim is the same pipeline shape for all three, so any province can repeat the whole rule:
+Since 2026-10-13 the 300 has an open pipeline too (`indicator_300_park/etl/`), on the same OSGeo4W installation: GDAL finds the park entrances and builds the walking network from OpenStreetMap, and GRASS `v.net.distance` gives every home a walking distance in metres to the nearest entrance, using the same BAG addresses as the 3. Valhalla computes the same distances as a check; the two agree for 98% of homes. It replaces the FME workbench (`indicator_300_park/fme/300_2025 regel.fmw`), which needed a PostGIS road network and a Valhalla server and only gave inside or outside a 5- or 15-minute zone. What is left before the map switches over: cutting open water out of the green (see `indicator_300_park/README.md`).
 
-- 300 (`etl/300_walk.py`): green from OSM + TOP10NL with the same filters (>= 300 m2, perimeter/area <= 0.35) and an option for the WHO's 1 ha; entrances where walkable OSM ways cross the edge of the green (GDAL); 5- and 15-minute pedestrian isochrones from a local Valhalla (already open source; its matrix API could replace one request per entrance); BAG homes classified from the same BAG download as the 3.
-- The 3 also for schools and workplaces, as the paper asks.
+Still planned: the 3 also for schools and workplaces, as the paper asks.
 
 ## Planned: multi-storey buildings (future work)
 
@@ -106,7 +105,7 @@ surface cannot express this, but the facade ring can be lifted per floor.
 ## Planned: values per home and a mark (future work)
 
 Today a building has `bomen_zichtbaar` and `klasse` for the 3; the 30 and
-the 300 come from FME and are only joined in `web/build_tiles_30_300.py`. A
+the 300 are only joined in `web/build_tiles_30_300.py`. A
 fixed set of values per building makes the three rules comparable and
 allows a combined result, as the Yggdrasil handbook and Cobra Groeninzicht
 do (wiki page "Comparison with Cobra Groeninzicht"). Proposed fields in `<Province>_woningen.gpkg`:
@@ -121,7 +120,7 @@ do (wiki page "Comparison with Cobra Groeninzicht"). Proposed fields in `<Provin
 | `woningen_3` | homes that see >= 3 trees, summed over floors (homes spread over floors) |
 | `kroon_30_buurt` | canopy % of the buurt (the paper's neighbourhood) |
 | `kroon_30_500m` | canopy % of the land within 500 m of the building (handbook, Cobra), for comparison |
-| `loop_300_min` | walking minutes to the nearest entrance of green >= the chosen size (needs the Python 300 with times, not only 5/15-minute zones) |
+| `loop_300_m` | walking distance in metres to the nearest entrance of green >= the chosen size (`gr_m` from `indicator_300_park/etl/03_grass.py`) |
 | `voldoet_3`, `voldoet_30`, `voldoet_300` | 0/1 per rule |
 | `regels_voldaan` | 0–3, the number of rules met (the handbook's simple combined score) |
 | `cijfer_3`, `cijfer_30`, `cijfer_300`, `cijfer_totaal` | optional mark 0–10, 6 = just meets the rule, on Cobra's scale so results can be compared: 30 = % / 5; 300 = 10 − 0.02 × (metres − 100); 3 = 0→1, 1→3, 2→5, 3→6, 4→7, 5→8, 6→9, 7+→10. Total with equal weights by default (Cobra: 0.25 / 0.5 / 0.25), the weights in `config.py` |
