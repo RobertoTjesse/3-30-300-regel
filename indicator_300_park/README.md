@@ -31,7 +31,7 @@ Method and caveats: `web/uitleg/300.html` (Dutch) and `web/uitleg/en/300.html` (
 
 | Step | Script | What |
 |---|---|---|
-| | `sde_export/export_parken_sde.py` | arcpy, run once from the ArcGIS Pro Python: copies the recreation areas of the draft omgevingsbeleid (`Geo.OMGEVINGSBELEID_ONTWERP.Recreatiegebied`) and the green kinds of TOP10NL functioneel gebied (`Geo.TOPOGRAFIE.PDOK_TOP10NL_FUNCTIONEEL_GEBIED_VLAK_PZH`: botanische tuin, heemtuin, landgoed, nationaal park, natuurgebied, recreatiegebied, park) to `data/raw/groen_300/groen_300.gdb`, and puts both in one layer `parken_300` (bron, type, naam) |
+| | `sde_export/export_parken_sde.py` (local only, not in the repository) | arcpy, run once from the ArcGIS Pro Python: copies the recreation areas of the draft omgevingsbeleid and the green kinds of TOP10NL functioneel gebied (botanische tuin, heemtuin, landgoed, nationaal park, natuurgebied, recreatiegebied, park) from the provincial SDE to `data/raw/groen_300/groen_300.gdb`, layer `parken_300` (bron, type, naam) |
 | 0 | `etl/00_valhalla_tiles.py` | Valhalla's walking network from the OSM extract, with `valhalla/graph_fietspad.lua`: Valhalla's own tag rules with cycle paths open to pedestrians. Once per extract |
 | 1 | `etl/01_prepare.py` | Parks (`PARKS_PATH` in `etl/config.py`), park entrances, the walkable OSM network (cut at shared OSM nodes) and the BAG homes of the 3, for `MUNICIPALITIES` plus a margin |
 | 2 | `etl/02_valhalla.py` | Valhalla expansion from every entrance, Valhalla's own snapping of every home (`locate`), and the classic isochrone polygons for comparison. Calls `etl/valhalla_worker.py` in the pyvalhalla environment |
