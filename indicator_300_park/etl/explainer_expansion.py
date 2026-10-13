@@ -150,7 +150,8 @@ def base_map(ax, x0, y0, half):
     ax.set_facecolor(SURFACE)
     layers = [
         (polygons(WATER, None, box), WATER_C),
-        (polygons(config.PARKS_PATH, config.PARKS_LAYER, box, config.PARKS_WHERE), PARK),
+        ([r for src in config.PARKS_SOURCES
+          for r in polygons(src["path"], src.get("layer"), box, src.get("where"))], PARK),
         (polygons(BUILDINGS, None, box), BUILDING),
     ]
     for rs, c in layers:
@@ -195,7 +196,7 @@ def figure_expansion(segs, x0, y0, name, path):
     fig.suptitle(f"Valhalla expansion from the {name}", x=0.05, ha="left", fontsize=14, fontweight="bold", color=INK)
     fig.text(0.05, 0.925, f"Every street and path reachable on foot within 15 minutes ({BANDS[-1][1]:,} m at "
              f"{config.WALK_SPEED_KMH} km/h), coloured by walking distance.", fontsize=9.5, color=MUTED)
-    fig.text(0.05, 0.03, "Network: OpenStreetMap (Geofabrik, Zuid-Holland). Buildings: BAG. Parks: groenkaart 2024.",
+    fig.text(0.05, 0.03, "Network: OpenStreetMap (Geofabrik, Zuid-Holland). Buildings: BAG. Parks: voorzieningen and TOP10NL.",
              fontsize=8, color=MUTED)
     fig.subplots_adjust(left=0.04, right=0.96, top=0.9, bottom=0.06)
     fig.savefig(path, facecolor=SURFACE)
@@ -225,7 +226,7 @@ def figure_isochrone(segs, iso, x0, y0, name, path):
     fig.text(0.05, 0.925, "The polygon is drawn around the reached streets, so it also covers the inside of blocks, "
              "water and\nrailway land. Homes there count as reached even when their door is further away.",
              fontsize=9.5, color=MUTED, va="top")
-    fig.text(0.05, 0.03, "Network: OpenStreetMap (Geofabrik, Zuid-Holland). Buildings: BAG. Parks: groenkaart 2024.",
+    fig.text(0.05, 0.03, "Network: OpenStreetMap (Geofabrik, Zuid-Holland). Buildings: BAG. Parks: voorzieningen and TOP10NL.",
              fontsize=8, color=MUTED)
     fig.subplots_adjust(left=0.04, right=0.96, top=0.88, bottom=0.06)
     fig.savefig(path, facecolor=SURFACE)

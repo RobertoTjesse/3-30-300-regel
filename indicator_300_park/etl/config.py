@@ -37,18 +37,30 @@ HOMES_GPKG = PROCESSED_DIR / f"{PROVINCE_SLUG}_woningen.gpkg"      # the homes o
 # ---------------------------------------------------------------------------
 # Input: the parks
 # ---------------------------------------------------------------------------
-# Any polygon layer GDAL can read. Default: the parks of the provincial
-# voorzieningen geodatabase (layer parken_vlakken: OpenStreetMap and TOP10NL,
-# peildatum 17 September 2025), copied to data/raw/voorzieningen/ (gitignored).
-# The green of the old FME workbench, for comparison, in config_local_300.py
-# (which needs full paths: it cannot see the names here):
+# One or more polygon layers GDAL can read. Step 1 keeps the polygons of at least
+# MIN_PARK_AREA_M2 that are not narrow strips, and merges overlapping and
+# touching polygons of all sources into one green area. Per source: bron (a
+# label), path, layer, optional where (SQL), and the type and name: a field
+# (type_field, name_field) or a fixed type.
+#   voorzieningen  layer parken_vlakken of the provincial voorzieningen
+#                  geodatabase (OpenStreetMap and TOP10NL parks, peildatum
+#                  17 September 2025), copied to data/raw/voorzieningen/
+#   top10nl        TOP10NL functioneel gebied, the green kinds (botanische tuin,
+#                  heemtuin, landgoed, nationaal park, natuurgebied,
+#                  recreatiegebied, park), exported from the provincial SDE to
+#                  data/raw/top10_groen/ by a local arcpy script
+# Both are gitignored. The green of the old FME workbench, for comparison, as
+# the only source in config_local_300.py (which needs full paths):
 #   from pathlib import Path
-#   PARKS_PATH = Path(r"D:\Repositories\330300regel\data\fme_input\groenvoorzieningen\groenkaart.gdb")
-#   PARKS_LAYER = "groen_uit_osm_top10_2024"
-#   PARKS_WHERE = "\"bron\" <> 'top 10 water'"
-PARKS_PATH = RAW_DIR / "voorzieningen" / "voorzieningen.gdb"
-PARKS_LAYER = "parken_vlakken"
-PARKS_WHERE = None
+#   PARKS_SOURCES = [dict(bron="fme groen", layer="groen_uit_osm_top10_2024", type_field="type",
+#                         path=Path(r"D:\Repositories\330300regel\data\fme_input\groenvoorzieningen\groenkaart.gdb"),
+#                         where="\"bron\" <> 'top 10 water'")]
+PARKS_SOURCES = [
+    dict(bron="voorzieningen", path=RAW_DIR / "voorzieningen" / "voorzieningen.gdb",
+         layer="parken_vlakken", type="park", name_field="naam"),
+    dict(bron="top10nl", path=RAW_DIR / "top10_groen" / "top10_groen.gdb",
+         layer="functioneel_gebied_groen", type_field="typefunctioneelgebied", name_field="naamnl"),
+]
 MIN_PARK_AREA_M2 = 300         # parks smaller than this are left out (WHO: 10,000)
 # Narrow strips are left out: perimeter / area at most this (1/m). 0.35 keeps a
 # strip of about 6 m wide or more, as the old FME workbench did. None = keep all.

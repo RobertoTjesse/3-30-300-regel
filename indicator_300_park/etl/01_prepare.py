@@ -1,12 +1,14 @@
 """
 01_prepare.py — Parks, park entrances, walking network and homes for the 300.
 
-Reads the parks (config.PARKS_*), the OpenStreetMap extract (config.OSM_PBF)
+Reads the parks (config.PARKS_SOURCES), the OpenStreetMap extract (config.OSM_PBF)
 and the BAG addresses of the 3, for the study area (config.MUNICIPALITIES plus
 a margin), and writes one GeoPackage, config.PREPARED_GPKG, in RD New:
 
   area       the study area (the municipalities, without the margin)
-  parks      the parks that count: park_id, m2, plus the source fields
+  park_sources  the source polygons that count (at least 300 m2, not a strip)
+  parks      those polygons of all sources merged where they overlap or touch:
+             park_id, m2, bronnen, soorten, namen
   network    walkable OSM ways, cut at every junction (shared OSM node), so
              a path over a bridge does not meet the street below it.
              Used by GRASS; Valhalla builds its own network from the same file.
@@ -87,13 +89,34 @@ def new_layer(ds, name, geom_type, fields):
     return lyr
 
 
-def write_parks(out, margin):
-    """Copy the parks inside the margin to layer parks; returns their count. Leaves out parks
-    under config.MIN_PARK_AREA_M2 and narrow strips (perimeter / area > config.MAX_EDGE_RATIO)."""
-    src = ogr.Open(str(config.PARKS_PATH))
-    lyr = src.GetLayerByName(config.PARKS_LAYER) if config.PARKS_LAYER else src.GetLayer(0)
-    if config.PARKS_WHERE:
-        lyr.SetAttributeFilter(config.PARKS_WHERE)
+def polygons_only(g):
+    """A MultiPolygon with only the polygon parts of g (MakeValid can return a collection)."""
+    out = ogr.Geometry(ogr.wkbMultiPolygon)
+    t = ogr.GT_Flatten(g.GetGeometryType())
+    if t == ogr.wkbPolygon:
+        out.AddGeometry(g)
+    elif t in (ogr.wkbMultiPolygon, ogr.wkbGeometryCollection):
+        for i in range(g.GetGeometryCount()):
+            part = polygons_only(g.GetGeometryRef(i))
+            for j in range(part.GetGeometryCount()):
+                out.AddGeometry(part.GetGeometryRef(j))
+    return out
+
+
+def keeps(g):
+    """True when a polygon is large enough and not a narrow strip (config.MIN_PARK_AREA_M2, MAX_EDGE_RATIO)."""
+    area = g.GetArea()
+    if area < config.MIN_PARK_AREA_M2:
+        return False
+    return not (config.MAX_EDGE_RATIO and g.Boundary().Length() > config.MAX_EDGE_RATIO * area)
+
+
+def read_source(src, margin):
+    """[(RD geometry, type, name)] of one park source inside the margin, filtered by keeps()."""
+    ds = ogr.Open(str(src["path"]))
+    lyr = ds.GetLayerByName(src["layer"]) if src.get("layer") else ds.GetLayer(0)
+    if src.get("where"):
+        lyr.SetAttributeFilter(src["where"])
     to_rd = None
     srs = lyr.GetSpatialRef()
     if srs and not srs.IsSame(RD):
@@ -104,14 +127,7 @@ def write_parks(out, margin):
         lyr.SetSpatialFilter(back)
     else:
         lyr.SetSpatialFilter(margin)
-    defn = lyr.GetLayerDefn()
-    keep = [defn.GetFieldDefn(i) for i in range(defn.GetFieldCount())
-            if defn.GetFieldDefn(i).GetName().lower() not in ("park_id", "m2", "shape_length", "shape_area")]
-    parks = new_layer(out, "parks", ogr.wkbMultiPolygon, [("park_id", ogr.OFTInteger), ("m2", ogr.OFTInteger)])
-    for fd in keep:
-        parks.CreateField(ogr.FieldDefn(fd.GetName(), fd.GetType()))
-    n = 0
-    out.StartTransaction()
+    out = []
     for f in lyr:
         g = f.GetGeometryRef()
         if g is None:
@@ -119,30 +135,74 @@ def write_parks(out, margin):
         g = ogr.ForceToMultiPolygon(g.Clone())
         if to_rd:
             g.Transform(to_rd)
-        if not g.Intersects(margin) or g.GetArea() < config.MIN_PARK_AREA_M2:
-            continue
-        if config.MAX_EDGE_RATIO and g.Boundary().Length() > config.MAX_EDGE_RATIO * g.GetArea():
-            continue
         if not g.IsValid():
-            fixed = g.MakeValid()
-            g = ogr.Geometry(ogr.wkbMultiPolygon)
-            parts = [fixed] if fixed.GetGeometryCount() == 0 else [fixed.GetGeometryRef(i) for i in range(fixed.GetGeometryCount())]
-            for part in parts:   # keep only the polygon parts of the repaired shape
-                if ogr.GT_Flatten(part.GetGeometryType()) == ogr.wkbPolygon:
-                    g.AddGeometry(part)
-                elif ogr.GT_Flatten(part.GetGeometryType()) == ogr.wkbMultiPolygon:
-                    for j in range(part.GetGeometryCount()):
-                        g.AddGeometry(part.GetGeometryRef(j))
-            if g.IsEmpty():
-                continue
+            g = polygons_only(g.MakeValid())
+        if g.IsEmpty() or not g.Intersects(margin) or not keeps(g):
+            continue
+        kind = f.GetField(src["type_field"]) if src.get("type_field") else src.get("type")
+        name = f.GetField(src["name_field"]) if src.get("name_field") else None
+        out.append((g, kind or "", (name or "").strip()))
+    return out
+
+
+def write_parks(out, margin):
+    """Read every park source (config.PARKS_SOURCES), keep polygons of at least
+    config.MIN_PARK_AREA_M2 that are not narrow strips, and merge overlapping and
+    touching polygons of all sources into one green area each: a path that enters
+    one of them from another does not count as an entrance. Writes layers
+    park_sources (the kept source polygons) and parks (the merged areas: park_id,
+    m2, bronnen, soorten, namen). Returns the number of parks."""
+    src_lyr = new_layer(out, "park_sources", ogr.wkbMultiPolygon,
+                        [("bron", ogr.OFTString), ("soort", ogr.OFTString), ("naam", ogr.OFTString)])
+    found = []
+    out.StartTransaction()
+    for src in config.PARKS_SOURCES:
+        polys = read_source(src, margin)
+        print(f"  {src['bron']}: {len(polys):,} polygons ({Path(src['path']).name}, {src.get('layer') or 'first layer'})")
+        for g, kind, name in polys:
+            f = ogr.Feature(src_lyr.GetLayerDefn())
+            f.SetField("bron", src["bron"])
+            f.SetField("soort", kind)
+            f.SetField("naam", name[:250])
+            f.SetGeometry(g)
+            src_lyr.CreateFeature(f)
+            found.append((g, src["bron"], kind, name))
+    out.CommitTransaction()
+
+    every = ogr.Geometry(ogr.wkbMultiPolygon)
+    for g, *_ in found:
+        for i in range(g.GetGeometryCount()):
+            every.AddGeometry(g.GetGeometryRef(i))
+    merged = polygons_only(every.UnionCascaded()) if every.GetGeometryCount() else every
+
+    parks = new_layer(out, "parks", ogr.wkbMultiPolygon,
+                      [("park_id", ogr.OFTInteger), ("m2", ogr.OFTInteger), ("bronnen", ogr.OFTString),
+                       ("soorten", ogr.OFTString), ("namen", ogr.OFTString)])
+    boxes = [(g.GetEnvelope(), g, b, k, nm) for g, b, k, nm in found]
+    n = 0
+    out.StartTransaction()
+    for i in range(merged.GetGeometryCount()):
+        part = merged.GetGeometryRef(i).Clone()
+        if part.GetArea() < config.MIN_PARK_AREA_M2:
+            continue
+        x0, x1, y0, y1 = part.GetEnvelope()
+        bronnen, soorten, namen = set(), set(), []
+        for (a0, a1, b0, b1), g, b, k, nm in boxes:   # which source polygons make up this area
+            if a0 <= x1 and a1 >= x0 and b0 <= y1 and b1 >= y0 and g.Intersects(part):
+                bronnen.add(b)
+                if k:
+                    soorten.add(k)
+                if nm and nm not in namen:
+                    namen.append(nm)
         n += 1
-        nf = ogr.Feature(parks.GetLayerDefn())
-        nf.SetField("park_id", n)
-        nf.SetField("m2", round(g.GetArea()))
-        for fd in keep:
-            nf.SetField(fd.GetName(), f.GetField(fd.GetName()))
-        nf.SetGeometry(g)
-        parks.CreateFeature(nf)
+        f = ogr.Feature(parks.GetLayerDefn())
+        f.SetField("park_id", n)
+        f.SetField("m2", round(part.GetArea()))
+        f.SetField("bronnen", ", ".join(sorted(bronnen)))
+        f.SetField("soorten", ", ".join(sorted(soorten)))
+        f.SetField("namen", "; ".join(namen)[:250])
+        f.SetGeometry(ogr.ForceToMultiPolygon(part))
+        parks.CreateFeature(f)
     out.CommitTransaction()
     return n
 
@@ -345,9 +405,9 @@ def write_homes(out, area):
 
 def main():
     t0 = time.time()
-    if not config.PARKS_PATH.exists():
-        sys.exit(f"ERROR: {config.PARKS_PATH} is missing. Copy the voorzieningen geodatabase there, "
-                 "or set PARKS_PATH in config_local_300.py")
+    missing = [str(src["path"]) for src in config.PARKS_SOURCES if not Path(src["path"]).exists()]
+    if missing:
+        sys.exit("ERROR: park source missing: " + ", ".join(missing) + " (see PARKS_SOURCES in config.py)")
     config.WORK_DIR.mkdir(parents=True, exist_ok=True)
     if config.PREPARED_GPKG.exists():
         config.PREPARED_GPKG.unlink()
@@ -360,7 +420,8 @@ def main():
     f.SetGeometry(ogr.ForceToMultiPolygon(area))
     al.CreateFeature(f)
 
-    print(f"Parks: {write_parks(out, margin):,} from {config.PARKS_PATH.name}")
+    print("Parks:")
+    print(f"Parks: {write_parks(out, margin):,} green areas after merging overlapping and touching polygons")
     t = time.time()
     ways, gates = read_osm(margin)
     print(f"OSM: {len(ways):,} walkable ways, {len(gates):,} gates/entrances ({time.time() - t:.0f} s)")
