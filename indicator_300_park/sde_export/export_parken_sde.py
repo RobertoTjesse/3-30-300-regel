@@ -134,7 +134,7 @@ def main():
                     if shape is None:
                         continue
                     out.insertRow([shape, bron, kind if kind_field else "recreatiegebied",
-                                   naam if nf else None])
+                                   str(naam)[:200] if nf and naam else None])
                     n += 1
     print(f"parken_300: {n:,} polygons ({sr.name})")
     print(f"Done in {time.time() - t0:.0f} s")
