@@ -44,6 +44,7 @@ import config  # noqa: E402
 
 import numpy as np  # noqa: E402
 from scipy.spatial import cKDTree  # noqa: E402  nearest-point lookup only; the routing is GRASS's
+from sampling import along  # noqa: E402
 from osgeo import gdal, ogr, osr  # noqa: E402
 gdal.UseExceptions()
 ogr.UseExceptions()
@@ -136,22 +137,15 @@ def network_points(work, nodes):
         b = nodes.get(key(g.GetX(n - 1), g.GetY(n - 1)))
         if a is None and b is None:
             continue   # an arc that reaches no entrance
-        length = g.Length()
-        steps = max(int(length // STEP_M), 1)
-        for i in range(steps + 1):
-            s = length * i / steps
-            via_a = a[0] + s if a else np.inf
-            via_b = b[0] + length - s if b else np.inf
-            p = g.Value(s)
-            xs.append(p.GetX())
-            ys.append(p.GetY())
-            if via_a <= via_b:
-                ds.append(via_a)
-                es.append(a[1])
-            else:
-                ds.append(via_b)
-                es.append(b[1])
-    return np.array(xs), np.array(ys), np.array(ds), np.array(es)
+        x, y, s, length = along(g, STEP_M)
+        via_a = a[0] + s if a else np.full_like(s, np.inf)
+        via_b = b[0] + length - s if b else np.full_like(s, np.inf)
+        first = via_a <= via_b
+        xs.append(x)
+        ys.append(y)
+        ds.append(np.where(first, via_a, via_b))
+        es.append(np.where(first, a[1] if a and a[1] is not None else -1, b[1] if b and b[1] is not None else -1))
+    return np.concatenate(xs), np.concatenate(ys), np.concatenate(ds), np.concatenate(es)
 
 
 def main():
@@ -208,7 +202,7 @@ def main():
             f.SetField("gr_snap_m", round(float(snap[i]), 1))
         if np.isfinite(walk[i]):
             f.SetField("gr_m", round(float(walk[i]), 1))
-            if e[idx[i]] is not None:
+            if e[idx[i]] >= 0:
                 f.SetField("gr_ent", int(e[idx[i]]))
         g = ogr.Geometry(ogr.wkbPoint)
         g.AddPoint_2D(px, py)

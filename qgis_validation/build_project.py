@@ -99,6 +99,13 @@ GROUP_STUDY = "Studiegebied: benchmark vs ArcGIS vs GDAL (arcgis_tests/studiegeb
 GROUP_AREAS_3 = "De 3 per gemeente / wijk / buurt (% woningen met >= 3 bomen)"
 GROUP_30 = "De 30: kroonbedekking per wijk / buurt 2023 (FME)"
 GROUP_300 = "De 300: groen op loopafstand (FME)"
+GROUP_300_OPEN = "De 300: open methode (OSGeo4W: GDAL en GRASS; Valhalla ter vergelijking)"
+
+# The open 300 (indicator_300_park/etl), province run
+OPEN_300_DIR = REPO / "data" / "interim" / "300" / "ZuidHolland"
+OPEN_PREPARED = OPEN_300_DIR / "prepared.gpkg"
+OPEN_VALHALLA = OPEN_300_DIR / "valhalla.gpkg"
+OPEN_RESULT = REPO / "data" / "processed" / "ZuidHolland_300.gpkg"
 
 # The FME results of the 30 and the 300 (config.FME_OUTPUT_DIR's default)
 FME_OUTPUT_DIR = REPO / "data" / "fme_output"
@@ -455,6 +462,100 @@ def _add_300(project, root, have):
     return added
 
 
+def _style_point_rules(layer, rules, size="1.8"):
+    """rules: [(expression, colour, label)] for point layers — the first matching rule wins."""
+    root_rule = QgsRuleBasedRenderer.Rule(None)
+    for expr, colour, label in rules:
+        symbol = QgsMarkerSymbol.createSimple({"name": "circle", "color": colour, "outline_style": "no",
+                                               "size": size})
+        root_rule.appendChild(QgsRuleBasedRenderer.Rule(symbol, filterExp=expr, label=label))
+    layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+
+
+def _zoomed_in(layer, scale=25000):
+    layer.setScaleBasedVisibility(True)
+    layer.setMinimumScale(scale)
+    layer.setMaximumScale(0)
+
+
+def _add_300_open(project, root, have):
+    """The 300 computed with open software (indicator_300_park/etl, province run):
+    the green areas and entrances, the Valhalla isochrones, the walking distance
+    per home from GRASS, and the comparison GRASS / Valhalla / FME per home."""
+    added = 0
+    group = _group(root, GROUP_300_OPEN, 0)
+    inputs = _group(group, "Invoer: groen en ingangen")
+    if OPEN_PREPARED.exists() and OPEN_PREPARED.resolve() not in have:
+        parks = QgsVectorLayer(f"{OPEN_PREPARED}|layername=parks", "groengebieden (samengevoegd)", "ogr")
+        if _add(project, inputs, parks):
+            parks.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
+                {"color": "47,125,50,160", "outline_color": "#1b5e20", "outline_width": "0.2"})))
+            added += 1
+        sources = QgsVectorLayer(f"{OPEN_PREPARED}|layername=park_sources", "groen per bron", "ogr")
+        if _add(project, inputs, sources, visible=False):
+            cats = [QgsRendererCategory(b, QgsFillSymbol.createSimple(
+                {"color": "0,0,0,0", "outline_color": c, "outline_width": "0.4"}), b)
+                for b, c in (("voorzieningen", "#1b5e20"), ("top10nl", "#7b3294"),
+                             ("top10nl recreatie", "#c4521f"))]
+            sources.setRenderer(QgsCategorizedSymbolRenderer("bron", cats))
+            added += 1
+        entrances = QgsVectorLayer(f"{OPEN_PREPARED}|layername=entrances", "ingangen", "ogr")
+        if _add(project, inputs, entrances):
+            cats = [QgsRendererCategory(s, QgsMarkerSymbol.createSimple(
+                {"name": "circle", "color": c, "outline_color": "#ffffff", "size": "2"}), label)
+                for s, c, label in (("pad", "#c4521f", "pad kruist de rand"), ("poort", "#7b3294", "OSM-poort"),
+                                    ("rand", "#e6a100", "open rand langs straat"))]
+            entrances.setRenderer(QgsCategorizedSymbolRenderer("soort", cats))
+            _zoomed_in(entrances, 50000)
+            added += 1
+    iso_group = _group(group, "Valhalla isochronen")
+    if OPEN_VALHALLA.exists() and OPEN_VALHALLA.resolve() not in have:
+        for contour, label, colour in (("15min", "15 minuten (1.275 m)", "205,226,251,150"),
+                                       ("5min", "5 minuten (425 m)", "109,167,236,150"),
+                                       ("300m", "300 m", "28,92,171,150")):
+            layer = QgsVectorLayer(f"{OPEN_VALHALLA}|layername=isochrones", f"isochroon {label}", "ogr")
+            if _add(project, iso_group, layer, visible=contour == "300m"):
+                layer.setSubsetString(f"\"contour\" = '{contour}'")
+                layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
+                    {"color": colour, "outline_style": "no"})))
+                added += 1
+    homes_group = _group(group, "Woningen: loopafstand tot een park (GRASS)")
+    compare_group = _group(group, "Vergelijking GRASS / Valhalla / FME per woning")
+    if OPEN_RESULT.exists() and OPEN_RESULT.resolve() not in have:
+        homes = QgsVectorLayer(f"{OPEN_RESULT}|layername=homes", "loopafstand per woning (GRASS)", "ogr")
+        if _add(project, homes_group, homes):
+            _style_point_rules(homes, [('"gr_m" <= 300', "#1a9850", "binnen 300 m"),
+                                       ('"gr_m" <= 425', "#91cf60", "300 m - 5 min"),
+                                       ('"gr_m" <= 1275', "#fdae61", "5 - 15 min"),
+                                       ("ELSE", "#d7301f", "verder dan 15 min")])
+            _zoomed_in(homes)
+            added += 1
+        for name, expr_rules, visible in (
+                ("GRASS tegen Valhalla, 300 m",
+                 [("\"agree_300m\" = 'alleen_grass'", "#2a78d6", "alleen GRASS binnen 300 m"),
+                  ("\"agree_300m\" = 'alleen_valhalla'", "#eb6834", "alleen Valhalla binnen 300 m"),
+                  ("\"agree_300m\" = 'beide'", "#c9c7c0", "beide binnen 300 m"),
+                  ("ELSE", "#efeeea", "beide verder")], True),
+                ("GRASS tegen FME, 5 minuten",
+                 [('"fme_5min" IS NULL', "#d9d9d9", "pand niet in FME-resultaat"),
+                  ('"gr_m" <= 425 AND "fme_5min" = 0', "#2a78d6", "alleen GRASS binnen 5 min"),
+                  ('("gr_m" IS NULL OR "gr_m" > 425) AND "fme_5min" = 1', "#eb6834", "alleen FME binnen 5 min"),
+                  ('"gr_m" <= 425 AND "fme_5min" = 1', "#c9c7c0", "beide binnen 5 min"),
+                  ("ELSE", "#efeeea", "beide verder")], False),
+                ("Valhalla tegen FME, 5 minuten",
+                 [('"fme_5min" IS NULL', "#d9d9d9", "pand niet in FME-resultaat"),
+                  ('"vh_m" <= 425 AND "fme_5min" = 0', "#2a78d6", "alleen Valhalla binnen 5 min"),
+                  ('("vh_m" IS NULL OR "vh_m" > 425) AND "fme_5min" = 1', "#eb6834", "alleen FME binnen 5 min"),
+                  ('"vh_m" <= 425 AND "fme_5min" = 1', "#c9c7c0", "beide binnen 5 min"),
+                  ("ELSE", "#efeeea", "beide verder")], False)):
+            layer = QgsVectorLayer(f"{OPEN_RESULT}|layername=homes", name, "ogr")
+            if _add(project, compare_group, layer, visible=False):
+                _style_point_rules(layer, expr_rules)
+                _zoomed_in(layer)
+                added += 1
+    return added
+
+
 def _add(project, group, layer, visible=True):
     """Add a layer to a group (collapsed, on or off); returns the layer, or
     None with a warning when the source can't be loaded."""
@@ -588,6 +689,7 @@ def main():
         added += _add_areas_3(project, root, have)
         added += _add_30(project, root, have)
         added += _add_300(project, root, have)
+        added += _add_300_open(project, root, have)
         added += _add_one_tree(project, root, have)
         added += _add_study_areas(project, root, have)
 

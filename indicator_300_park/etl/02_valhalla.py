@@ -54,6 +54,7 @@ import config  # noqa: E402
 
 import numpy as np  # noqa: E402
 from scipy.spatial import cKDTree  # noqa: E402  nearest-point lookup only; the routing is Valhalla's
+from sampling import along  # noqa: E402
 from osgeo import gdal, ogr, osr  # noqa: E402
 gdal.UseExceptions()
 ogr.UseExceptions()
@@ -188,17 +189,17 @@ class Walk:
     def points(self, step=2.0):
         """Points every step metres along the reached streets, with their walking distance."""
         xs, ys, ds = [], [], []
-        for k, (g, length) in self.shapes.items():
-            n = max(int(length // step), 1)
-            for i in range(n + 1):
-                s = length * i / n
-                p = g.Value(s)
-                d = self.at(k, length, s)
-                if np.isfinite(d):
-                    xs.append(p.GetX())
-                    ys.append(p.GetY())
-                    ds.append(d)
-        return cKDTree(np.column_stack([xs, ys])), np.array(ds)
+        for k, (g, _) in self.shapes.items():
+            x, y, s, length = along(g, step)
+            d = np.minimum(self.best.get(k[0], np.inf) + s, self.best.get(k[1], np.inf) + length - s)
+            for e in self.starts.get(k, []):
+                d = np.minimum(d, np.abs(s - e))
+            ok = np.isfinite(d)
+            xs.append(x[ok])
+            ys.append(y[ok])
+            ds.append(d[ok])
+        x, y, d = np.concatenate(xs), np.concatenate(ys), np.concatenate(ds)
+        return cKDTree(np.column_stack([x, y])), d
 
     def write_edges(self, lyr):
         for k, (g, length) in self.shapes.items():
