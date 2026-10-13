@@ -478,3 +478,21 @@ trees should be excluded, is still open.
   QGIS project (group "De 300: open methode") updated. The map keeps the
   FME result until open water (Haringvliet, Voordelta, Biesbosch) has been
   cut out of the green.
+
+**29. Water out of the green; the map moves to GRASS**
+- Open water is cut out of every green polygon before the entrances are
+  found: the water parts of the CBS municipal map 2025 and the OSM water
+  polygons, 103,076 ha in the province (Haringvliet, Voordelta, Biesbosch).
+  Paths along those shores were park entrances. Province: 3,660 green areas,
+  14,924 entrances; 36.7% of homes within 300 m, 56.0% within 5 minutes,
+  97.8% within 15 minutes (before the cut 36.8 / 56.1 / 97.9%).
+- The web map's 300 now comes from GRASS: a building takes the class of its
+  nearest home and shows that walking distance; the shares per area count
+  every home, and gained a 300 m share. Green tiles from the merged green
+  areas, entrances and zones from the new run (`build_tiles_30_300.py`,
+  `build_tiles_groen.py`).
+- 1,063 green areas in the province get no entrance (1.7% of the green):
+  open issue #3.
+- Documentation (explanation pages, READMEs, wiki) rewritten around the new
+  method, stressing that only QGIS and its components are needed; FME is
+  described as the earlier calculation.

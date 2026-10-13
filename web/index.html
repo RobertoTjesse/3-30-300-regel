@@ -181,7 +181,8 @@ const CLASSES_300 = [
 const POPUP_300 = { "5": L("Binnen 5 min lopen van groen", "Within a 5-minute walk of green"),
                     "15": L("Verder dan 5 min lopen (wel binnen 15 min)", "More than a 5-minute walk (but within 15 min)"),
                     "ver": L("Verder dan 15 min lopen van groen", "More than a 15-minute walk from green") };
-const VALHALLA = '(<a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a>)';
+const GRASS = '(<a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html" target="_blank" rel="noopener">GRASS GIS</a>, meegeleverd met QGIS)';
+const GRASS_EN = '(<a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html" target="_blank" rel="noopener">GRASS GIS</a>, part of QGIS)';
 const STEPS_300 = [
   [0,  "#d7301f", "< 50%"],
   [50, "#fdae6b", "50-70%"],
@@ -216,16 +217,18 @@ const THEMES = {
               "Every bit of crown counts in exactly one neighbourhood; districts and municipalities are the sum of their neighbourhoods. Grey: no land."),
   },
   "300": {
-    intro: L("Woont iedereen binnen 300 m van een park of bos? Looptijd over het wegennet van elke woning tot de dichtstbijzijnde ingang van groen.",
-             "Does everyone live within 300 m of a park or wood? Walking time over the street network from every home to the nearest entrance of green."),
-    method: L("Rond elke ingang van een park of bos (OSM- en TOP10NL-groen van minstens 300 m², waar een voetpad het groen in gaat) " +
-              `is met een netwerkanalyse ${VALHALLA} berekend wat binnen 5 en binnen 15 minuten lopen bereikbaar is. 5 minuten lopen is ongeveer 300 m hemelsbreed. ` +
-              "De kleuren gaan over de 5 minuten: een pand (BAG, met woonfunctie) in die zone is groen. Per gebied: het aandeel woningen binnen 5 minuten. " +
-              "De 15 minuten staan in de pop-ups en bij de looptijdzones. Donkergroen omlijnd: de parken en bossen die meetellen.",
-              "Around every entrance of a park or wood (OSM and TOP10NL green of at least 300 m², where a footpath enters the green), " +
-              `a network analysis ${VALHALLA} calculated what can be reached within a 5 and a 15-minute walk. A 5-minute walk is about 300 m as the crow flies. ` +
-              "The colours are about the 5 minutes: a building (BAG, with homes) in that zone is green. Per area: the share of homes within 5 minutes. " +
-              "The 15 minutes are in the popups and the walking zones. Dark green outlines: the parks and woods that count."),
+    intro: L("Woont iedereen binnen 300 m van een park? Loopafstand over straten en paden van elke woning tot de dichtstbijzijnde ingang van openbaar groen.",
+             "Does everyone live within 300 m of a park? Walking distance over streets and paths from every home to the nearest entrance of public green."),
+    method: L("Groen: parken, natuur, recreatiegebieden, landgoederen, begraafplaatsen en volkstuinen van minstens 300 m², zonder open water. " +
+              "Een ingang ligt waar een pad of straat het groen in gaat. " +
+              `Voor elke woning is met een netwerkanalyse ${GRASS} de loopafstand tot de dichtstbijzijnde ingang berekend, ook over fietspaden. ` +
+              "De kleuren gaan over 5 minuten lopen (425 m, ongeveer 300 m hemelsbreed): een pand waarvan een woning zo dichtbij ligt is groen. " +
+              "Per gebied: het aandeel woningen binnen 5 minuten; 300 m en 15 minuten staan in de pop-ups. Donkergroen omlijnd: het groen dat meetelt.",
+              "Green: parks, nature, recreation areas, estates, cemeteries and allotments of at least 300 m², without open water. " +
+              "An entrance is where a path or street enters the green. " +
+              `For every home, a network analysis ${GRASS_EN} calculated the walking distance to the nearest entrance, cycle paths included. ` +
+              "The colours are about a 5-minute walk (425 m, about 300 m as the crow flies): a building with a home that close is green. " +
+              "Per area: the share of homes within 5 minutes; 300 m and 15 minutes are in the popups. Dark green outlines: the green that counts."),
   },
 };
 
@@ -245,22 +248,22 @@ const SOURCES = {
     [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
   "300": [
-    [L("Groen", "Green"), L("OpenStreetMap- en TOP10NL-groen (parken, bossen)", "OpenStreetMap and TOP10NL green (parks, woods)"), "2024"],
-    [L("Paden (ingangen)", "Paths (entrances)"), L("OpenStreetMap, extract Zuid-Holland (Geofabrik)", "OpenStreetMap, Zuid-Holland extract (Geofabrik)"), "2025"],
-    [L("Looptijd", "Walking time"), L(`Isochronencalculator ${VALHALLA}, voetganger, over het OSM-wegennet`,
-                                      `Isochrone calculator ${VALHALLA}, pedestrian, over the OSM street network`), "2025"],
-    [L("Woningen", "Homes"), L("BAG-panden met een woonfunctie", "BAG buildings with homes"), L("9 december 2025", "9 December 2025")],
+    [L("Parken", "Parks"), L("Provinciale voorzieningenkaart (OpenStreetMap en TOP10NL)", "Provincial facilities map (OpenStreetMap and TOP10NL)"), L("17 september 2025", "17 September 2025")],
+    [L("Overig groen", "Other green"), L("TOP10NL functioneel gebied: recreatiegebied, natuurgebied, landgoed, begraafplaats, volkstuinen e.a.",
+                                         "TOP10NL functional areas: recreation area, nature area, estate, cemetery, allotments and more"), "2025"],
+    [L("Water", "Water"), L("CBS Wijk- en Buurtkaart 2025 en OpenStreetMap (uit het groen geknipt)", "CBS district and neighbourhood map 2025 and OpenStreetMap (cut out of the green)"), "2025–2026"],
+    [L("Paden en straten", "Paths and streets"), L("OpenStreetMap, extract Zuid-Holland (Geofabrik)", "OpenStreetMap, Zuid-Holland extract (Geofabrik)"), L("12 oktober 2026", "12 October 2026")],
+    [L("Loopafstand", "Walking distance"), L(`Netwerkanalyse ${GRASS}`, `Network analysis ${GRASS_EN}`), "2026"],
+    [L("Woningen", "Homes"), L("Zelfde als de 3 (BAG)", "Same as the 3 (BAG)"), L("27 september 2026", "27 September 2026")],
     [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
 };
 const CAVEATS = L("Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 meet kronen in 2024; het landoppervlak " +
-  "van het CBS staat in hele hectares, wat bij een kleine buurt het percentage een paar punten kan verschuiven. De woningen van de 3 (BAG 2026) en " +
-  "de 300 (BAG 2025) zijn apart geteld, dus het aantal woningen per gebied kan iets verschillen. De 300 meet looptijd tot een ingang, niet " +
-  "hemelsbreed tot de rand van het groen.",
+  "van het CBS staat in hele hectares, wat bij een kleine buurt het percentage een paar punten kan verschuiven. De 3 en de 300 gebruiken dezelfde " +
+  "woningen (BAG 2026). De 300 meet de loopafstand tot een ingang, niet hemelsbreed tot de rand van het groen.",
   "All tabs show the same municipalities, districts (CBS 2025) and neighbourhoods (CBS 2025). The 30 measures crowns in 2024; the CBS land area is " +
-  "in whole hectares, which can shift the percentage of a small neighbourhood by a few points. The homes of the 3 (BAG 2026) and the 300 (BAG 2025) " +
-  "were counted separately, so the number of homes per area can differ slightly. The 300 measures walking time to an entrance, not the straight-line " +
-  "distance to the edge of the green.");
+  "in whole hectares, which can shift the percentage of a small neighbourhood by a few points. The 3 and the 300 use the same homes " +
+  "(BAG 2026). The 300 measures the walking distance to an entrance, not the straight-line distance to the edge of the green.");
 // Second background: aerial photo (WMS), highest resolution available nationwide
 const AERIAL_WMS = "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0";
 const AERIAL_LAYER = "Actueel_orthoHR";      // latest complete year, 8 cm
@@ -532,14 +535,14 @@ function updateLegend() {
                                    [...STEPS_30.map(([, c, l]) => [c, l]), [NO_DATA, L("geen gegevens", "no data")]]));
   } else {
     if (i < 0) {
-      legend.appendChild(legendBlock(L("Looptijd naar park of bos", "Walking time to a park or wood"), [...CLASSES_300.map(([, c, l]) => [c, l])]));
+      legend.appendChild(legendBlock(L("Loopafstand tot groen", "Walking distance to green"), [...CLASSES_300.map(([, c, l]) => [c, l])]));
       legend.appendChild(homeNote(UITLEG + "300.html#mijn-woning"));
     } else {
       legend.appendChild(legendBlock(L(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`, `Homes within a 5-min walk of green, per ${LEVELS[i].name}`),
                                      [...STEPS_300.map(([, c, l]) => [c, l]), few]));
     }
     if (z >= GROEN_300.from) {
-      legend.appendChild(legendBlock(L("Groen", "Green"), [[GROEN_300.line, L("park of bos (≥ 300 m²)", "park or wood (≥ 300 m²)"), "solid"]]));
+      legend.appendChild(legendBlock(L("Groen", "Green"), [[GROEN_300.line, L("park of ander openbaar groen (≥ 300 m²)", "park or other public green (≥ 300 m²)"), "solid"]]));
     }
     if (isoBox.checked) {
       legend.appendChild(legendBlock(L("Looptijdzones", "Walking zones"), [["#006d2c", L("5 minuten", "5 minutes"), "solid"], ["#e6550d", L("15 minuten", "15 minutes"), "dashed"]]));
@@ -614,10 +617,10 @@ for (const lv of LEVELS) {
 map.on("click", "300-groen-fill", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [
-    [null, L("Park of bos", "Park or wood")],
-    [L("Soort", "Type"), p.type ?? "–"],
-    [L("Bron", "Source"), p.bron === "osm groen" ? "OpenStreetMap" : p.bron === "top 10 groen" ? "TOP10NL" : (p.bron ?? "–")],
-    [L("Oppervlak", "Area"), `${fmt(p.m2)} m²`],
+    [null, p.namen || L("Groen", "Green")],
+    [L("Soort", "Type"), p.soorten || "–"],
+    [L("Bron", "Source"), (p.bronnen || "–").replace("voorzieningen", L("voorzieningenkaart", "facilities map")).replace("top10nl recreatie", "TOP10NL").replace("top10nl", "TOP10NL")],
+    [L("Oppervlak (land)", "Area (land)"), `${fmt(p.m2)} m²`],
   ], [L("Hoe telt dit groen mee?", "How does this green count?"), UITLEG + "300.html"]);
 });
 map.on("click", "300-woningen", (e) => {
@@ -625,7 +628,7 @@ map.on("click", "300-woningen", (e) => {
   popup(e.lngLat, [
     [null, POPUP_300[p.klasse] ?? L("onbekend", "unknown")],
     [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
-    [L("Bouwjaar", "Year built"), p.bouwjaar ?? "–"],
+    [L("Loopafstand tot groen", "Walking distance to green"), p.afstand == null ? L("meer dan 1.275 m", "more than 1,275 m") : `${fmt(p.afstand)} m`],
   ], p.klasse !== "5" ? [L("Er is wel groen dichtbij: waarom rood?", "But there is green nearby: why red?"), UITLEG + "300.html#mijn-woning"] : null);
 });
 for (const lv of LEVELS) {
@@ -638,7 +641,8 @@ for (const lv of LEVELS) {
         [L("Kroonbedekking (30)", "Canopy cover (30)"), pct(p.groen)],
         [L("Kroonoppervlak", "Crown area"), p.kroon_m2 == null ? "–" : `${fmt(p.kroon_m2)} m²`],
         [L("Woningen", "Homes"), fmt(p.woningen)],
-        [L("Binnen 5 min lopen van groen (300)", "Within a 5-min walk of green (300)"), few ? "–" : pct(p.pct_5)],
+        [L("Binnen 300 m lopen van groen (300)", "Within a 300 m walk of green (300)"), few ? "–" : pct(p.pct_300)],
+        [L("Binnen 5 min lopen", "Within a 5-min walk"), few ? "–" : pct(p.pct_5)],
         [L("Binnen 15 min lopen", "Within a 15-min walk"), few ? "–" : pct(p.pct_15)],
       ]);
     });

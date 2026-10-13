@@ -1,23 +1,21 @@
 """
 build_tiles_groen.py — Build the web map's tiles of the green the 300 walks to
-(web/data/groen.pmtiles): the parks and woods themselves, shown on the 300 tab.
+(web/data/groen.pmtiles): the green areas themselves, shown on the 300 tab.
 A file of its own so 30-300.pmtiles stays under GitHub's 100 MB limit.
 
 Layer:
-  groen   zoom 11-14 (the map over-zooms beyond): type, bron and m2 per polygon
+  groen   zoom 11-14 (the map over-zooms beyond): soorten, bronnen, namen and
+          m2 per green area
 
 Input:
-  config.FME_INPUT_DIR / groenvoorzieningen/groenkaart.gdb
-          layer groen_uit_osm_top10_2024: OSM and TOP10NL green (2024), the
-          input of indicator_300_park/fme/300_2025 regel.fmw. The FME results
-          hold only the entrances, so the green is read here with the
-          workbench's own selection: its reader leaves out bron
-          'top 10 water' (lakes, watercourses, the sea) and its Tester keeps
-          _area >= 300 m2 with perimeter / area <= 0.35 (no narrow strips).
+  data/interim/300/<Province>/prepared.gpkg, layer parks
+          (indicator_300_park/etl/01_prepare.py): the green areas of the 300,
+          from the provincial voorzieningen map and TOP10NL, without open
+          water, at least 300 m2 and no narrow strips, merged where they
+          overlap or touch.
 
 Usage:
-    python web/build_tiles_groen.py [--groen GDB]
-(default: the path in indicator_3_bomen/etl/config.py / config_local.py)
+    python web/build_tiles_groen.py [--prepared GPKG]
 """
 
 import argparse
@@ -33,16 +31,12 @@ gdal.UseExceptions()
 ogr.UseExceptions()
 
 _args = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-_args.add_argument("--groen", type=Path,
-                   default=config.FME_INPUT_DIR / "groenvoorzieningen" / "groenkaart.gdb",
-                   help="groenkaart.gdb, the green input of the 300 workbench")
+_args.add_argument("--prepared", type=Path,
+                   default=config.INTERIM_DIR / "300" / config.PROVINCE_SLUG / "prepared.gpkg",
+                   help="prepared.gpkg of the 300 (indicator_300_park/etl/01_prepare.py)")
 ARGS = _args.parse_args()
 OUT = Path(__file__).resolve().parent / "data" / "groen.pmtiles"
 ZOOMS = {"groen": (11, 14)}
-# The workbench's selection (FeatureReader WHERE + Tester); field names quoted,
-# OGR SQL does not accept a bare name starting with "_"
-WHERE = ("\"bron\" <> 'top 10 water' AND \"_area\" >= 300 "
-         "AND \"Shape_Length\" <= 0.35 * \"Shape_Area\"")
 
 # RD New (the Dutch grid, metres), with x = easting first
 RD = osr.SpatialReference()
@@ -51,26 +45,22 @@ RD.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
 
 def groen(dst):
-    """Copy the selected green polygons (2D) with type, source and area."""
-    gdb = ogr.Open(str(ARGS.groen))           # keep a reference: the layer dies with it
-    src = gdb.GetLayerByName("groen_uit_osm_top10_2024")
-    src.SetAttributeFilter(WHERE)
+    """Copy the green areas with their kinds, sources, names and area."""
+    src_ds = ogr.Open(str(ARGS.prepared))          # keep a reference: the layer dies with it
+    src = src_ds.GetLayerByName("parks")
     out = dst.CreateLayer("groen", RD, ogr.wkbMultiPolygon)
-    for fname in ("type", "bron"):
+    for fname in ("soorten", "bronnen", "namen"):
         out.CreateField(ogr.FieldDefn(fname, ogr.OFTString))
     out.CreateField(ogr.FieldDefn("m2", ogr.OFTInteger64))
     dst.StartTransaction()
     for f in src:
         nf = ogr.Feature(out.GetLayerDefn())
-        nf.SetField("type", f.GetField("type"))
-        nf.SetField("bron", f.GetField("bron"))
-        nf.SetField("m2", round(f.GetField("_area")))
-        g = f.GetGeometryRef().Clone()
-        g.FlattenTo2D()
-        nf.SetGeometry(g)
+        for fname in ("soorten", "bronnen", "namen", "m2"):
+            nf.SetField(fname, f.GetField(fname))
+        nf.SetGeometry(f.GetGeometryRef().Clone())
         out.CreateFeature(nf)
     dst.CommitTransaction()
-    print(f"groen: {out.GetFeatureCount():,} parks and woods")
+    print(f"groen: {out.GetFeatureCount():,} green areas")
 
 
 def main():

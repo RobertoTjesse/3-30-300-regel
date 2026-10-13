@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
 <title>De 300: groen op loopafstand</title>
-<meta name="description" content="Hoe is berekend welke woningen binnen 5 minuten lopen van een park of bos liggen, en waarom zo?">
+<meta name="description" content="Hoe is berekend hoe ver elke woning moet lopen naar een park of ander openbaar groen, en waarom zo?">
 <link rel="alternate" hreflang="en" href="en/300.html">
 <link rel="stylesheet" href="uitleg.css">
 </head>
@@ -23,253 +23,194 @@
 
 <main>
 <h1>De 300: een park binnen 300 meter</h1>
-<p class="lead">Woont iedereen op loopafstand van een park of bos? Vanaf elke ingang van een park of bos is berekend
-hoe ver je in 5 minuten loopt over echte wegen en paden. Elke woning in die zone voldoet (groen op de kaart). Ter
-informatie is ook de zone van 15 minuten berekend.</p>
+<p class="lead">Woont iedereen op loopafstand van een park? Voor elke woning is de loopafstand over straten en paden
+berekend tot de dichtstbijzijnde ingang van een park of ander openbaar groen. Een woning binnen 5 minuten lopen voldoet
+(groen op de kaart).</p>
 
 <div class="facts">
-  <div class="fact"><b>78,9%</b><span>van de woningen binnen 5 min lopen van groen</span></div>
-  <div class="fact"><b>99,2%</b><span>binnen 15 min lopen</span></div>
-  <div class="fact"><b>27.111</b><span>ingangen van parken en bossen</span></div>
+  <div class="fact"><b>36,7%</b><span>van de woningen binnen 300 m lopen van groen</span></div>
+  <div class="fact"><b>56,0%</b><span>binnen 5 min lopen (425 m)</span></div>
+  <div class="fact"><b>97,8%</b><span>binnen 15 min lopen</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland, gewogen naar het aantal woningen per pand. Per gemeente van
-51,0% (Nieuwkoop) tot 95,1% (Zoeterwoude) binnen 5 minuten.</p>
-<p class="note">Dit zijn de cijfers van de kaart, berekend met FME. Er is nu een nieuwe berekening met alleen open
-software, een loopafstand per woning en strenger groen: 36,8% van de woningen binnen 300 m, 56,1% binnen 5 minuten.
-Zie <a href="#open-methode">de nieuwe berekening</a>.</p>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1.797.970 woningen. Per gemeente van 20,3% (Voorne aan Zee) tot
+86,7% (Oegstgeest) binnen 5 minuten.</p>
+<p class="note ok">De hele berekening is gemaakt met <b>QGIS en de onderdelen die QGIS meelevert</b>: GDAL voor de
+gegevens, de ingangen en het wandelnetwerk, GRASS GIS voor de loopafstanden, en de Python van QGIS voor de stappen
+ertussen. Er is geen andere software nodig. Iedereen met QGIS kan het herhalen.</p>
 
 <h2>Wat wordt er gemeten?</h2>
 <p>Het <a href="konijnendijk.html">artikel</a> vraagt een grote openbare groenvoorziening binnen 300 m van elke
-woning, "ongeveer 5 minuten lopen". Wij meten die 5 minuten lopen over het netwerk van wegen en paden, gerekend vanaf
-de ingangen van het groen.</p>
+woning, "ongeveer 5 minuten lopen". Wij meten de loopafstand over het netwerk van straten en paden, van de woning tot
+een ingang van het groen. Elke woning krijgt een afstand in meters; 300 m, 5 minuten en 15 minuten zijn grenzen op
+diezelfde uitkomst.</p>
 
 <h2 id="aannames">Wat de uitkomst aanneemt</h2>
-<p>Het artikel laat open vanaf waar en hoe ver je meet. De keuzes hieronder vullen dat in en maken het meeste verschil voor de cijfers. Achter elke keuze staat de kant waarop ze de uitkomst duwt; de redenen staan onder "Keuzes en waarom".</p>
+<p>Het artikel laat open wat groen is en hoe je meet. De keuzes hieronder maken het meeste verschil voor de cijfers.
+Achter elke keuze staat de kant waarop ze de uitkomst duwt.</p>
 <ul>
   <li><b>Een klein park telt mee.</b> Groen telt vanaf 300 m²; de WHO-norm achter de regel is 1 ha. <i>(gunstiger)</i></li>
-  <li><b>De zone raken is genoeg.</b> Ligt een deel van een pand in de 5-minutenzone, dan halen alle woningen erin de norm, ook bij een lange flat waarvan alleen één uiteinde erin ligt. <i>(gunstiger)</i></li>
-  <li><b>Lopen vanaf een ingang.</b> Groen zonder pad erin heeft geen ingang en telt niet, en een kortere route die niet in OpenStreetMap staat ontbreekt. <i>(strenger)</i></li>
-  <li><b>5 minuten is ongeveer 425 m langs de straat,</b> ongeveer 300 m hemelsbreed, met water, spoor en snelwegen als barrière.</li>
-  <li><b>Openbare toegang is niet gecontroleerd.</b> Een pad het groen in geldt als toegang. <i>(gunstiger)</i></li>
+  <li><b>Alleen parken, natuur, recreatiegebieden, landgoederen, begraafplaatsen en volkstuinen.</b> Bosjes, bermen,
+      sportvelden en golfbanen tellen niet. <i>(strenger)</i></li>
+  <li><b>Lopen tot een ingang.</b> Een ingang ligt waar een pad of straat het groen in gaat. Groen zonder pad erin en
+      zonder straat ernaast telt niet. <i>(strenger)</i></li>
+  <li><b>Fietspaden tellen als looproute,</b> want volgens de verkeersregels mag je daar lopen als er geen voetpad is.
+      <i>(gunstiger)</i></li>
+  <li><b>De dichtstbijzijnde woning telt voor het hele pand</b> op de kaart. De cijfers per gebied tellen wel elke
+      woning apart.</li>
+  <li><b>Openbare toegang is niet gecontroleerd</b>, behalve dat eendenkooien en paden met <code>access=private</code>
+      niet meetellen. Begraafplaatsen gaan 's avonds dicht, en sommige volkstuinen zijn afgesloten. <i>(gunstiger)</i></li>
 </ul>
 
 <h2>Stappen</h2>
 <ol class="steps">
   <li><strong>Groen verzamelen.</strong>
-    Parken en bossen uit OpenStreetMap en uit TOP10NL (Kadaster), samengevoegd (stand 2024).</li>
-  <li><strong>Te kleine en te smalle stukken weglaten.</strong>
-    Alleen groen van minstens 300 m² én met een verhouding omtrek/oppervlak van hoogstens 0,35 blijft over. Die tweede
-    eis haalt lange smalle stroken weg, zoals bermen: een strook moet ongeveer 6 m of breder zijn.
-    Dit groen staat op de kaart (vanaf buurtniveau): donkergroene randen, ingekleurd zodra de woningen te zien zijn.
-    Klik erop voor de soort, de bron en het oppervlak.</li>
+    Uit de provinciale voorzieningenkaart de parken (OpenStreetMap en TOP10NL, peildatum 17 september 2025). Uit
+    TOP10NL de functionele gebieden park, recreatiegebied, natuurgebied, nationaal park, landgoed, heemtuin, botanische
+    tuin, begraafplaats en volkstuinen.</li>
+  <li><strong>Water eruit knippen.</strong>
+    Natuurgebieden als het Haringvliet en de Biesbosch bestaan grotendeels uit open water. Zonder deze stap zou elk pad
+    langs zo'n oever een parkingang zijn. Het water van de CBS-wijkenkaart en van OpenStreetMap gaat eruit: 103.076 ha.</li>
+  <li><strong>Te klein en te smal weglaten, en samenvoegen.</strong>
+    Stukken kleiner dan 300 m² en stroken smaller dan ongeveer 6 m vallen af. Wat overlapt of elkaar raakt wordt één
+    groengebied: 3.660 in totaal. Dit groen staat op de kaart; klik erop voor de soort, de bron en het oppervlak.</li>
   <li><strong>Ingangen bepalen.</strong>
-    Alle paden en wegen waarover je mag lopen (OpenStreetMap, binnen 300 m rond elke gemeente) worden gesneden met de
-    rand van het groen. Waar een pad het groen in gaat, ligt een ingang: 27.111 in totaal.</li>
-  <li><strong>Loopzones berekenen.</strong>
-    Vanaf elke ingang berekent een isochronencalculator
-    (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) met een netwerkanalyse over de wegen en paden van
-    OpenStreetMap (profiel voetganger) het gebied dat je in 5 en in 15 minuten lopend bereikt. Alle zones worden
-    samengevoegd.</li>
-  <li><strong>Woningen indelen.</strong>
-    Een BAG-pand met een woonfunctie dat in of op de rand van een 5-minutenzone ligt, voldoet: groen op de kaart.
-    Alle andere woningen zijn rood. Of een rode woning wel binnen 15 minuten ligt, staat in de pop-up.</li>
+    Waar een pad of straat uit OpenStreetMap de rand van het groen kruist, en waar OpenStreetMap een hek of ingang op
+    de rand heeft. Groen zonder pad erin krijgt een ingang langs de rand waar een straat binnen 10 m loopt. Samen
+    14.924 ingangen.</li>
+  <li><strong>Loopafstanden berekenen.</strong>
+    GRASS GIS (<code>v.net.distance</code>, met QGIS meegeleverd) berekent in één keer vanaf alle ingangen de
+    kortste loopafstand tot elk kruispunt van het wandelnetwerk. Het netwerk komt uit OpenStreetMap: voetpaden,
+    fietspaden, straten en wegen, zonder snelwegen en privéwegen.</li>
+  <li><strong>Woningen koppelen.</strong>
+    Elke woning (BAG-adres met woonfunctie, dezelfde als bij de 3) neemt het dichtstbijzijnde punt op het netwerk.
+    Haar loopafstand is de afstand van dat punt tot de ingang, plus het stukje van de woning naar de straat.</li>
   <li><strong>Per gemeente, wijk en buurt.</strong>
-    Het aandeel woningen binnen 5 (en 15) minuten, op dezelfde gebieden als de 3 en de 30. Een pand telt voor zoveel
-    woningen als het adressen met woonfunctie heeft.</li>
+    Het aandeel woningen binnen 300 m, 5 en 15 minuten, op dezelfde gebieden als de 3 en de 30.</li>
 </ol>
+<figure>
+  <img src="img/300-isochronen-provincie.png" alt="Kaart van Zuid-Holland met de groengebieden en daaromheen in blauw wat binnen 300 m, 5 en 15 minuten lopen ligt" loading="lazy">
+  <figcaption>De groengebieden (groen) en wat er binnen 300 m, 5 en 15 minuten lopen omheen ligt (blauw).</figcaption>
+</figure>
 
 <h2>Keuzes en waarom</h2>
 <div class="table-wrap"><table>
 <tr><th>Keuze</th><th>Waarom</th><th>Alternatief dat we niet kozen</th></tr>
-<tr><td>Looptijd over het netwerk</td>
+<tr><td>Loopafstand over het netwerk</td>
     <td>300 m hemelsbreed kan in werkelijkheid een lange omweg zijn, door water, spoor of een snelweg zonder
         oversteek. Het artikel spreekt zelf van "ongeveer 5 minuten lopen".</td>
-    <td>Een cirkel van 300 m (buffer): eenvoudiger, maar negeert barrières.</td></tr>
-<tr><td>5 minuten</td>
-    <td>De netwerkanalyse (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) rekent voor voetgangers standaard met 5,1 km/u: 5 minuten is ongeveer 425 m over de weg. Met de
-        gebruikelijke omweg van wegen ten opzichte van hemelsbreed komt dat rond de 300 m hemelsbreed uit.</td>
-    <td>Precies 300 m over het netwerk: strenger dan de 300 m hemelsbreed van de WHO.</td></tr>
-<tr><td>Kleur alleen op 5 minuten</td>
-    <td>De regel is 300 m, ongeveer 5 minuten lopen: een woning voldoet of niet. De kaart kleurt daarom alleen groen
-        (binnen 5 minuten) en rood (verder).</td>
-    <td>Een aparte kleur voor 5–15 minuten: suggereert een tussencategorie die de regel niet kent.</td></tr>
-<tr><td>15 minuten als extra informatie</td>
-    <td>Laat zien of woningen die de 300 niet halen er net naast zitten of echt ver van groen wonen. Te zien in de
-        pop-ups en als looptijdzone, niet in de kleuren.</td>
-    <td>Helemaal weglaten.</td></tr>
+    <td>Een cirkel van 300 m: eenvoudiger, maar negeert barrières.</td></tr>
+<tr><td>Een afstand per woning</td>
+    <td>Elke woning krijgt meters, dus 300 m, 5 minuten en 15 minuten zijn filters op één uitkomst.</td>
+    <td>Zones (isochronen) rond de ingangen. Zo'n zone dekt ook de binnenkant van bouwblokken en water; zie
+        <a href="#vergelijking">de vergelijking</a>.</td></tr>
+<tr><td>Kleur op 5 minuten</td>
+    <td>5 minuten (425 m bij 5,1 km/u) komt met de gebruikelijke omweg van straten neer op ongeveer 300 m hemelsbreed.
+        De 300 m langs de straat staat in de pop-ups.</td>
+    <td>Kleuren op 300 m langs de straat: strenger dan de 300 m hemelsbreed van de WHO.</td></tr>
 <tr><td>Vanaf de ingangen</td>
     <td>Je gaat een park in via een pad. Rekenen vanaf de rand zou ook hekken, water en dichte bosranden als toegang
         tellen.</td>
     <td>Afstand tot de rand van het groen.</td></tr>
-<tr><td>Minstens 300 m², niet te smal</td>
-    <td>Plantsoentjes en bermstroken zijn geen plek om te recreëren; de vormeis haalt stroken weg die wel groot zijn.</td>
-    <td>De WHO-grens van 1 ha (zie beperkingen).</td></tr>
-<tr><td>OSM én TOP10NL</td>
-    <td>Beide bronnen missen stukken: OSM is sterk in parken en paden, TOP10NL in bos en terreinen buiten de stad.</td>
-    <td>Eén bron: meer gaten.</td></tr>
-<tr><td>Pand telt als het de zone raakt</td>
-    <td>De voordeur ligt ergens aan de gevel; als een deel van het pand in de zone ligt, is het groen binnen bereik.</td>
-    <td>Alleen het middelpunt van het pand: strenger bij grote panden.</td></tr>
-<tr><td>Open-source isochronencalculator</td>
-    <td>Gratis, reproduceerbaar en met een voetgangersprofiel over OpenStreetMap.</td>
-    <td>Commerciële routediensten: kosten en niet te herhalen.</td></tr>
+<tr><td>Fietspaden lopen mee</td>
+    <td>Volgens de verkeersregels mag je op een fietspad lopen als er geen voetpad is. Waar een fietsbrug de enige
+        oversteek is, scheelt dat honderden meters.</td>
+    <td>Alleen voetpaden en straten.</td></tr>
+<tr><td>Minstens 300 m², niet te smal, zonder water</td>
+    <td>Plantsoentjes en bermstroken zijn geen plek om te recreëren, en open water is geen park.</td>
+    <td>De WHO-grens van 1 ha (zie open punten).</td></tr>
+<tr><td>Alleen QGIS-onderdelen</td>
+    <td>GDAL en GRASS komen met QGIS mee. De berekening is daarmee voor iedereen te herhalen, zonder licenties of servers.</td>
+    <td>FME met een routeserver, zoals de eerdere berekening.</td></tr>
 </table></div>
 
 <h2 id="mijn-woning">Klopt dit voor mijn woning?</h2>
 <p>Per buurt, wijk en gemeente geeft de kaart een betrouwbaar beeld. Per woning is het een goede indicatie, maar geen
-meting ter plekke. Is jouw woning rood terwijl er een park vlakbij lijkt te liggen? Dan kan dat hierdoor komen:</p>
+meting ter plekke. In de pop-up staat de loopafstand in meters. Is jouw woning rood terwijl er een park vlakbij lijkt
+te liggen? Dan kan dat hierdoor komen:</p>
 <ul>
-  <li><b>De route is langer dan hemelsbreed.</b> We rekenen met 5 minuten lopen over bestaande wegen en paden. Ligt
-      er water, spoor of een drukke weg zonder oversteek tussen, dan kan een park dat dichtbij lijkt toch verder lopen zijn.</li>
+  <li><b>De route is langer dan hemelsbreed.</b> Ligt er water, spoor of een drukke weg zonder oversteek tussen, dan kan
+      een park dat dichtbij lijkt toch verder lopen zijn.</li>
   <li><b>De ingang ligt aan de andere kant.</b> We rekenen tot een ingang waar een pad het groen in gaat, niet tot de
-      rand. Een park met een hek of sloot aan jouw kant telt vanaf de dichtstbijzijnde ingang.</li>
-  <li><b>Het groen telt niet mee.</b> Een grasveld zonder paden, een smalle groenstrook of een privétuin is geen park
-      in deze berekening. Nieuw aangelegd groen kan nog ontbreken in de kaartbronnen.</li>
-  <li><b>Een pad ontbreekt in OpenStreetMap.</b> Een doorsteek die je zelf altijd neemt, maar die niet op de kaart
-      staat, kent de netwerkanalyse niet.</li>
+      rand.</li>
+  <li><b>Het groen telt niet mee.</b> Een sportveld, een bosje zonder parkstatus, een smalle groenstrook of een
+      privétuin is geen park in deze berekening. Nieuw aangelegd groen kan nog ontbreken in de bronnen.</li>
+  <li><b>Een pad ontbreekt in OpenStreetMap.</b> Een doorsteek die niet op de kaart staat, kent de netwerkanalyse niet.</li>
 </ul>
-<p>Of een rode woning wel binnen 15 minuten ligt, zie je in de pop-up.</p>
 
-<h2 id="open-methode">Nieuw: de 300 met open software</h2>
-<p>De 300 is opnieuw berekend voor de hele provincie, nu volledig met software van
-<a href="https://www.osgeo.org/">OSGeo</a> uit <a href="https://trac.osgeo.org/osgeo4w/">OSGeo4W</a>, dezelfde
-installatie als QGIS. GDAL zoekt de ingangen van het groen en bouwt het wandelnetwerk uit OpenStreetMap, GRASS GIS
-berekent de loopafstanden, en QGIS toont de uitkomst. Elke woning krijgt een loopafstand in meters tot de
-dichtstbijzijnde ingang van een park of ander openbaar groen. Daarmee zijn 300 m, 5 minuten en 15 minuten filters op
-dezelfde uitkomst. Ter controle berekent <a href="https://github.com/valhalla/valhalla">Valhalla</a>, de routeplanner
-van de oude berekening, hetzelfde nog een keer.</p>
-<p>De kaart toont nog de FME-berekening van hierboven. Die gaat over op de nieuwe methode zodra open water uit het
-groen is geknipt (zie "Nog te doen" onderaan dit deel).</p>
-
-<h3>Welk groen telt</h3>
-<p>Drie bronnen: de parken uit de provinciale voorzieningenkaart (OpenStreetMap en TOP10NL, peildatum 17 september
-2025); uit TOP10NL de functionele gebieden park, recreatiegebied, natuurgebied, nationaal park, landgoed, heemtuin en
-botanische tuin; en uit TOP10NL ook begraafplaatsen en volkstuinen. Eendenkooien tellen niet mee: die zijn meestal
-afgesloten. Stukken kleiner dan 300 m² en smalle stroken vallen af. Wat overlapt of elkaar raakt wordt één
-groengebied, zodat een pad van het ene stuk groen het volgende in geen ingang is. Zo ontstaan 1.891 groengebieden met
-11.270 ingangen.</p>
-<figure>
-  <img src="img/300-isochronen-provincie.png" alt="Kaart van Zuid-Holland met de groengebieden en daaromheen in blauw de gebieden binnen 300 m, 5 en 15 minuten lopen" loading="lazy">
-  <figcaption>Groengebieden (groen) en wat je er binnen 300 m, 5 en 15 minuten lopend vandaan bent (blauw, de
-  isochronen van Valhalla). Het grote groene vlak in het zuidwesten is natuurgebied op het water; zie "Nog te doen".</figcaption>
-</figure>
-
-<h3>Uitkomst voor Zuid-Holland</h3>
-<div class="table-wrap"><table>
-<tr><th>Aandeel woningen binnen</th><th>GRASS</th><th>Valhalla</th><th>Valhalla, zones</th><th>FME (op de kaart)</th></tr>
-<tr><td>300 m</td><td>36,8%</td><td>38,1%</td><td>46,4%</td><td>niet berekend</td></tr>
-<tr><td>5 minuten (425 m)</td><td>56,1%</td><td>57,1%</td><td>64,1%</td><td>79,1%</td></tr>
-<tr><td>15 minuten (1.275 m)</td><td>97,9%</td><td>98,1%</td><td>98,2%</td><td>99,2%</td></tr>
-</table></div>
-<p>1.797.970 woningen (BAG-adressen met woonfunctie, dezelfde als bij de 3). Per gemeente ligt binnen 300 m van groen
-11% (Hardinxveld-Giessendam, Lisse) tot 60% (Oegstgeest).</p>
-
-<h3>Expansion: wat je lopend bereikt</h3>
-<p>Valhalla kan vanaf een punt alle straten en paden teruggeven die je lopend bereikt, met de loopafstand tot elk stuk.
-Dat heet <i>expansion</i>. Hieronder vanaf het Provinciehuis aan het Zuid-Hollandplein in Den Haag.</p>
+<h2 id="vergelijking">Gecontroleerd met een tweede programma</h2>
+<p>Ter controle is alles nog een keer berekend met <a href="https://github.com/valhalla/valhalla">Valhalla</a>, een
+open-source routeplanner (niet uit QGIS, alleen voor deze controle). Valhalla kan vanaf een punt alle straten en
+paden teruggeven die je lopend bereikt: de <i>expansion</i>. Hieronder vanaf het Provinciehuis in Den Haag.</p>
 <figure>
   <img src="img/300-expansion.png" alt="Kaart rond het Provinciehuis in Den Haag met alle straten en paden binnen 15 minuten lopen, donkerblauw dichtbij en lichtblauw verder weg" loading="lazy">
-  <figcaption>Alle straten en paden binnen 15 minuten lopen (1.275 m bij 5,1 km/u) vanaf het Provinciehuis. Hoe
-  donkerder de lijn, hoe korter de wandeling. Het groen rechts ligt vlakbij, maar de paden erin bereik je pas na
-  425 m.</figcaption>
+  <figcaption>Alle straten en paden binnen 15 minuten lopen vanaf het Provinciehuis. Hoe donkerder de lijn, hoe korter
+  de wandeling.</figcaption>
 </figure>
-<p>GRASS doet in wezen hetzelfde, vanaf alle ingangen tegelijk: elk kruispunt van het wandelnetwerk krijgt de kortste
-loopafstand tot een ingang. Een woning krijgt de afstand van het dichtstbijzijnde punt op straat, plus het stukje van
-de woning naar die straat.</p>
-
-<h3>Waarom geen zones meer</h3>
-<p>De oude berekening tekende rond de bereikte straten een vlak, de isochroon, en telde elke woning in dat vlak mee.
-Zo'n vlak is grof: het dekt ook de binnenkant van bouwblokken, water en spoorterrein, waar de wandeling omheen gaat.</p>
+<div class="table-wrap"><table>
+<tr><th>Aandeel woningen binnen</th><th>GRASS (de kaart)</th><th>Valhalla</th><th>Valhalla, zones</th><th>FME (eerder)</th></tr>
+<tr><td>300 m</td><td>36,7%</td><td>38,0%</td><td>46,4%</td><td>niet berekend</td></tr>
+<tr><td>5 minuten (425 m)</td><td>56,0%</td><td>57,0%</td><td>64,0%</td><td>79,1%</td></tr>
+<tr><td>15 minuten (1.275 m)</td><td>97,8%</td><td>98,0%</td><td>98,2%</td><td>99,2%</td></tr>
+</table></div>
+<p>GRASS en Valhalla zijn het voor 97,8% van de woningen eens of die binnen 300 m van groen wonen. Bij
+71% van de woningen scheelt de afstand hoogstens 10 m, bij 93% hoogstens 50 m. Waar ze verschillen,
+rekent Valhalla vaker korter: het kan een woning ook over haar eigen privéweg bereiken.</p>
+<figure>
+  <img src="img/300-vergelijking-spreiding.png" alt="Spreidingsdiagram van de loopafstand per woning: GRASS op de horizontale as, Valhalla op de verticale; bijna alle woningen liggen op de diagonaal" loading="lazy">
+  <figcaption>Loopafstand per woning in Zuid-Holland, GRASS tegen Valhalla. Op de diagonaal zijn beide het eens.</figcaption>
+</figure>
+<p><b>Waarom geen zones.</b> Een zone (isochroon) rond de bereikte straten dekt ook de binnenkant van bouwblokken,
+water en spoorterrein, waar de wandeling omheen gaat. Met zones ligt 46,4% van de woningen binnen 300 m, met de
+werkelijke loopafstand 38,0%.</p>
 <figure>
   <img src="img/300-isochroon.png" alt="De straten binnen 425 m lopen vanaf het Provinciehuis, met daaroverheen een veel ruimer oranje vlak: de isochroon van 5 minuten" loading="lazy">
-  <figcaption>Blauw: de straten die je binnen 5 minuten (425 m) bereikt. Oranje gestippeld: de isochroon van 5 minuten
-  die Valhalla daaromheen tekent. Een woning in het vlak telt mee, ook als haar voordeur verder weg ligt.</figcaption>
+  <figcaption>Blauw: de straten binnen 5 minuten lopen. Oranje gestippeld: de zone die daaromheen getekend wordt.</figcaption>
 </figure>
-<p>In de provincie ligt 46,4% van de woningen in de 300 m-zones, maar 38,1% echt binnen 300 m lopen.</p>
-
-<h3>Fietspaden tellen als looproute</h3>
-<p>Volgens de verkeersregels mag je op een fietspad lopen als er geen trottoir of voetpad is. De berekening laat
-voetgangers daarom over fietspaden lopen; ruiterpaden tellen niet mee. Het standaardprofiel van Valhalla sluit
-fietspaden af. Daarom krijgt Valhalla zijn eigen regels met één wijziging: fietspaden zijn open voor voetgangers,
-tenzij ze in OpenStreetMap <code>foot=no</code> hebben. Dat scheelt veel: in Delft valt met het standaardprofiel 87%
-van de woningen binnen 300 m van het oude groen, met fietspaden 91%.</p>
+<p><b>Fietspaden.</b> Het standaardprofiel van Valhalla laat voetgangers niet over fietspaden lopen. Voor deze controle
+zijn ze opengezet, zodat beide programma's over hetzelfde netwerk lopen.</p>
 <figure>
-  <img src="img/300-fietspad-voorbeeld.png" alt="Voorbeeld in Delft: GRASS steekt het water over via een fietsbrug, Valhalla zonder fietspaden loopt kilometers om" loading="lazy">
-  <figcaption>Een woning in Delft. Over de fietsbrug is het 147 m tot de ingang. Zonder fietspaden loopt Valhalla om;
-  de dichtstbijzijnde ingang ligt dan op 453 m.</figcaption>
+  <img src="img/300-fietspad-voorbeeld.png" alt="Voorbeeld in Delft: over een fietsbrug is het 147 m tot de ingang, zonder fietspaden loopt Valhalla kilometers om" loading="lazy">
+  <figcaption>Een woning in Delft. Over de fietsbrug is het 147 m tot de ingang; zonder fietspaden 453 m tot de
+  dichtstbijzijnde andere ingang.</figcaption>
 </figure>
+<p><b>De eerdere FME-berekening</b> telde 79,1% van de woningen binnen 5 minuten. Per woning zijn GRASS en FME
+het voor 69% eens. Het verschil zit vooral in het groen: FME telde ook bosjes, struweel, tuinen, golfbanen en
+sportvelden mee, en werkte met zones.</p>
 
-<h3>GRASS en Valhalla vergeleken</h3>
-<p>Beide krijgen dezelfde ingangen, dezelfde woningen en dezelfde OpenStreetMap-gegevens. Ze zijn het voor 97,8% van
-de woningen eens of die binnen 300 m van groen wonen. Bij 71% van de woningen scheelt de afstand hoogstens 10 m, bij
-93% hoogstens 50 m.</p>
-<figure>
-  <img src="img/300-vergelijking-spreiding.png" alt="Spreidingsdiagram van de loopafstand per woning in Zuid-Holland: GRASS op de horizontale as, Valhalla op de verticale; bijna alle woningen liggen op de diagonaal" loading="lazy">
-  <figcaption>Loopafstand per woning in Zuid-Holland. Op de diagonaal zijn beide het eens; erboven rekent Valhalla langer.</figcaption>
-</figure>
-<p>Waar ze verschillen, rekent Valhalla vaker korter. Valhalla bereikt een woning ook via haar eigen privé- of
-bestemmingsweg; het netwerk voor GRASS laat wegen met <code>access=private</code> weg en verbindt de woning in een
-rechte lijn met de dichtstbijzijnde openbare weg.</p>
-<figure>
-  <img src="img/300-vergelijking-kaart.png" alt="Kaart van Delft met de 1.337 woningen waar GRASS en Valhalla het oneens zijn over 300 m" loading="lazy">
-  <figcaption>Delft: de 1.337 van de 55.123 woningen waar GRASS en Valhalla het oneens zijn over 300 m.</figcaption>
-</figure>
-
-<h3>Vergeleken met de FME-berekening</h3>
-<p>FME telde 79,1% van de woningen binnen 5 minuten, GRASS 56,1%. Per woning zijn ze het voor 69% eens. Het verschil
-zit vooral in het groen: de FME-berekening telde alles van haar groenkaart mee, ook bosjes, struweel, tuinen,
-golfbanen en sportvelden. De nieuwe bronnen bevatten alleen parken, natuur, recreatiegebieden, landgoederen,
-begraafplaatsen en volkstuinen. De rest van het verschil komt van de zones.</p>
-
-<h3>Rekentijd</h3>
+<h2>Rekentijd</h2>
 <div class="table-wrap"><table>
-<tr><th>Stap (hele provincie)</th><th>GRASS</th><th>Valhalla</th></tr>
-<tr><td>Groen: afstand tot elk kruispunt, of expansion en isochronen</td><td>18,5 min</td><td>11 min</td></tr>
-<tr><td>Woningen: 1,8 miljoen adressen</td><td>4,8 min</td><td>12,1 min</td></tr>
-<tr><td>Samen</td><td>23 min</td><td>23 min</td></tr>
+<tr><th>Stap (hele provincie)</th><th>Tijd</th></tr>
+<tr><td>Groen, water, ingangen, netwerk en woningen voorbereiden (GDAL)</td><td>8 min</td></tr>
+<tr><td>Loopafstand tot elk kruispunt (GRASS)</td><td>18 min</td></tr>
+<tr><td>1,8 miljoen woningen koppelen</td><td>4,6 min</td></tr>
 </table></div>
-<p>Op een werkstation met 6 kernen en 64 GB geheugen. Daarnaast duurt het voorbereiden van groen, ingangen,
-netwerk en woningen 8 minuten. Beide programma's zijn dus even snel. De berekening gaat verder met GRASS, omdat dat
-met QGIS wordt meegeleverd en niets extra's vraagt.</p>
+<p>Op een werkstation met 6 kernen en 64 GB geheugen. Valhalla deed hetzelfde in 26 minuten.</p>
 
-<h3>Nog te doen</h3>
-<ul>
-  <li><b>Water telt nu als groen.</b> Natuurgebied en nationaal park uit TOP10NL bevatten veel open water
-      (Haringvliet, Hollands Diep, Voordelta, Biesbosch). Een pad langs zo'n oever wordt dan een parkingang. Eerst
-      wordt open water uit het groen geknipt; daarna gaat de kaart over op deze berekening.</li>
-  <li>99 groengebieden in de provincie hebben geen ingang, vooral volkstuinen en begraafplaatsen zonder pad erin en
-      zonder straat binnen 10 m.</li>
-</ul>
-<p>De code staat in
-<a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park"><code>indicator_300_park/</code></a>.</p>
-
-<h2>Beperkingen en open punten</h2>
+<h2>Open punten</h2>
 <ul>
   <li><b>300 m² is veel kleiner dan de WHO-norm van 1 ha.</b> Het artikel en de WHO bedoelen een grote openbare
-      groenvoorziening; hier telt ook een klein park mee. De uitkomst is daardoor gunstiger dan volgens de strikte norm.
-      Een berekening met 1 ha is het eerste verbeterpunt.</li>
-  <li><b>Openbaarheid.</b> Of het groen openbaar toegankelijk is, is niet gecontroleerd; een ingang betekent alleen dat er
-      een pad het groen in gaat.</li>
-  <li><b>Groen zonder paden</b> (een open grasveld aan de straat) krijgt geen ingang en telt dus niet mee.</li>
-  <li><b>Gemaakt met FME</b>, met een isochronencalculator
-      (<a href="https://github.com/valhalla/valhalla">Valhalla</a>) die tijdelijk lokaal draaide. De stappen zijn open data en
-      open software; de workbench staat in de repository, maar is alleen met FME te draaien. De nieuwe berekening
-      met alleen open software staat <a href="#open-methode">hierboven</a>.</li>
+      groenvoorziening. Een berekening met 1 ha is een filter op hetzelfde groen.</li>
+  <li><b>Groen zonder ingang.</b> 1.063 groengebieden in de provincie krijgen geen ingang, samen 1,7% van het groen:
+      vooral natuureilandjes die na het wegknippen van het water overblijven, maar ook ongeveer 230 parken, volkstuinen
+      en begraafplaatsen waar de dichtstbijzijnde straat net te ver ligt
+      (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/3">issue #3</a>).</li>
+  <li><b>Openbaarheid</b> is niet per terrein gecontroleerd.</li>
 </ul>
 
 <h2>Code en bronnen</h2>
 <div class="table-wrap"><table class="plain">
 <tr><th>Stap</th><th>Waar</th></tr>
-<tr><td>Groen, ingangen, loopzones, indeling panden</td><td>FME-workbench <a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/fme"><code>300_2025 regel.fmw</code></a></td></tr>
+<tr><td>Groen, ingangen, loopafstanden (GDAL en GRASS uit QGIS)</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park"><code>indicator_300_park/</code></a></td></tr>
 <tr><td>Aandeel per gemeente/wijk/buurt, kaarttegels</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/web/build_tiles_30_300.py"><code>web/build_tiles_30_300.py</code></a></td></tr>
-<tr><td>Parken en bossen op de kaart</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/web/build_tiles_groen.py"><code>web/build_tiles_groen.py</code></a></td></tr>
+<tr><td>Groen op de kaart</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/web/build_tiles_groen.py"><code>web/build_tiles_groen.py</code></a></td></tr>
 </table></div>
 <div class="table-wrap"><table class="plain">
 <tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr>
-<tr><td>Parken en bossen</td><td>OpenStreetMap en TOP10NL (Kadaster)</td><td>2024</td></tr>
-<tr><td>Paden en wegen</td><td>OpenStreetMap, extract Zuid-Holland (Geofabrik)</td><td>2025</td></tr>
-<tr><td>Looptijd</td><td>Isochronencalculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>), profiel voetganger</td><td>2025</td></tr>
-<tr><td>Panden met woonfunctie</td><td>BAG (provinciale kopie)</td><td>9 december 2025</td></tr>
+<tr><td>Parken</td><td>Provinciale voorzieningenkaart (OpenStreetMap en TOP10NL)</td><td>17 september 2025</td></tr>
+<tr><td>Overig groen</td><td>TOP10NL functioneel gebied (Kadaster)</td><td>2025</td></tr>
+<tr><td>Water</td><td>CBS Wijk- en Buurtkaart 2025, OpenStreetMap</td><td>2025–2026</td></tr>
+<tr><td>Paden en straten</td><td>OpenStreetMap, extract Zuid-Holland (Geofabrik)</td><td>12 oktober 2026</td></tr>
+<tr><td>Woningen</td><td>BAG via PDOK, zelfde als de 3</td><td>27 september 2026</td></tr>
 </table></div>
 </main>
 <footer>3-30-300-regel · <a href="https://github.com/RobertoTjesse/3-30-300-regel">broncode op GitHub</a> ·

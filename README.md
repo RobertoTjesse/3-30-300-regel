@@ -8,9 +8,9 @@ The 3-30-300 rule (Konijnendijk, 2023) asks for green in three ways:
 |---|---|---|---|---|
 | 3 | 3 trees visible from every home | trees visible from just outside the facade (30 m radius, AHN surface model) | Python + GDAL, this repository | [`indicator_3_bomen/`](indicator_3_bomen/) |
 | 30 | 30% tree canopy in every neighbourhood | area under crowns (BKB 2024, Friedenau Society, from lidar) / land area per CBS buurt, wijk and gemeente (2025) | Python + GDAL, this repository | [`indicator_30_kroonbedekking/`](indicator_30_kroonbedekking/) |
-| 300 | a park within 300 m of every home | walking distance from the home to the nearest entrance of a park or other public green >= 300 m2 | GDAL + GRASS (OSGeo4W), checked with Valhalla; the map still shows the earlier FME result | [`indicator_300_park/`](indicator_300_park/) |
+| 300 | a park within 300 m of every home | walking distance from the home to the nearest entrance of a park or other public green >= 300 m2 | QGIS only: GDAL + GRASS, checked with Valhalla | [`indicator_300_park/`](indicator_300_park/) |
 
-All three are computed for the province of Zuid-Holland and published as one web map with a 3 / 30 / 300 switch, per gemeente, wijk, buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**. The site and its explanation pages are in Dutch, with an English version ([map](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). The 3 and the 30 run for another province without code changes ([Another province](#another-province)). The 300 is now computed with open software as well: GDAL and GRASS from OSGeo4W, checked with Valhalla ([`indicator_300_park/`](indicator_300_park/)). The map keeps the earlier FME result until open water has been cut out of the green.
+All three are computed for the province of Zuid-Holland and published as one web map with a 3 / 30 / 300 switch, per gemeente, wijk, buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**. The site and its explanation pages are in Dutch, with an English version ([map](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). The 3 and the 30 run for another province without code changes ([Another province](#another-province)). All three run on QGIS and the components that come with it (GDAL, GRASS, QGIS's Python); no other software or licence is needed.
 
 ## What the results say
 
@@ -20,7 +20,7 @@ Zuid-Holland, latest runs:
 |---|---|
 | 3 | 85.9% of homes see at least 3 trees; 5.0% see none |
 | 30 | 8.1% of the land lies under a tree crown. 102 of the 2,509 buurten reach 30%, and no gemeente does (Wassenaar comes closest with 27.9%) |
-| 300 | On the map (FME): 78.9% of homes lie within a 5-minute walk of a park or wood; 99.2% within 15 minutes. The open method, with stricter green and a walking distance per home: 36.8% within 300 m, 56.1% within 5 minutes, 97.9% within 15 minutes |
+| 300 | 36.7% of homes lie within a 300 m walk of a park or other public green, 56.0% within 5 minutes and 97.8% within 15 minutes. Per gemeente from 20.3% (Voorne aan Zee) to 86.7% (Oegstgeest) within 5 minutes |
 
 The figures per gemeente, wijk and buurt are sound. For a single home the map gives an indication, and the assumptions below explain most of the cases where it disagrees with what a resident sees.
 
@@ -49,17 +49,17 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 
 ### The 300
 
-- **A small park counts.** Green counts from 300 m², where the WHO norm behind the rule is 1 ha. Strips narrower than about 6 m (perimeter / area above 0.35), such as verges, drop out. *Pushes the result up; a 1 ha run is the first planned improvement.*
-- **Touching the zone is enough.** A building counts when any part of it lies in the 5-minute zone. For a long apartment block, one end inside makes all its homes pass. *Pushes the result up.*
-- **Walking starts at an entrance.** An entrance is where an OpenStreetMap path crosses the edge of the green. Green without a path into it gets no entrance and does not count, and a shortcut missing from OSM is missing from the route. *Pushes the result down.*
-- **5 minutes means about 425 m along streets.** Valhalla walks at 5.1 km/h. With the usual detour of streets compared with the straight line, that comes to roughly 300 m as the crow flies, and it does respect water, railways and motorways.
-- **Public access is not checked.** A path into the green is taken as access. *Pushes the result up.*
-- **The homes come from a different BAG copy** (9 December 2025) than the 3 (27 September 2026), so the number of homes per area differs slightly between the two.
+- **A small park counts.** Green counts from 300 m², where the WHO norm behind the rule is 1 ha. Strips narrower than about 6 m drop out, and open water is cut out of the green. *Pushes the result up.*
+- **Only parks, nature, recreation areas, estates, cemeteries and allotments.** Small woods, verges, sports grounds and golf courses do not count. *Pushes the result down.*
+- **Walking starts at an entrance.** An entrance is where an OpenStreetMap path or street crosses the edge of the green. Green without a path into it and without a street within 10 m gets no entrance ([issue #3](https://github.com/RobertoTjesse/3-30-300-regel/issues/3)). *Pushes the result down.*
+- **Cycle paths are walking routes**, as Dutch traffic law allows where there is no footpath. *Pushes the result up.*
+- **5 minutes means 425 m along streets** (5.1 km/h), roughly 300 m as the crow flies. The map colours on 5 minutes; the 300 m along the street is in the popups.
+- **Public access is not checked** beyond leaving out duck decoys and private paths. *Pushes the result up.*
 
 ### All three
 
 - Only homes are measured. The paper also asks for trees visible from schools and workplaces.
-- The sources are from different years: trees and surface model 2020-2022 (the 3), crowns 2024 (the 30), green 2024 and paths 2025 (the 300).
+- The sources are from different years: trees and surface model 2020-2022 (the 3), crowns 2024 (the 30), green 2025 and paths 2026 (the 300).
 - The 3 and the 30 use different tree data (NEO tree points against the BKB crown map), so a tree can count for one and not for the other.
 - A building belongs to the buurt and gemeente that holds its centre point. For the 3 and the 300, areas with fewer than 10 homes get no percentage on the map.
 
@@ -77,7 +77,7 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 │   ├── fme/                      the original FME workbenches for the 3
 │   └── README.md, ARCHITECTURE.md, BENCHMARKS.md, IMPROVEMENTS.md
 ├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 per area) + the earlier FME workbenches
-├── indicator_300_park/           the 300: etl/ (GDAL + GRASS, Valhalla as a check) + the earlier FME workbenches
+├── indicator_300_park/           the 300: etl/ (GDAL + GRASS from QGIS; Valhalla as a check) + the earlier FME workbenches
 ├── web/                          the web map for all three (published site)
 ├── docs/bronnen/                 source documents (Konijnendijk 2023, the Cobra Groeninzicht handbook)
 ├── qgis_validation/              builds the QGIS validation project for all three
@@ -102,7 +102,7 @@ What to run:
 |---|---|
 | The 3, all stages | `indicator_3_bomen/etl/01_tile_dem.py` to `06_area_summaries.py`; see [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md#pipeline) |
 | The 30 | `python indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py` (after stage 6 of the 3, which writes the areas); see [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) |
-| The 300 | `bash indicator_300_park/etl/run_300.sh` with the steps in [its README](indicator_300_park/README.md); the map tiles still read the FME results in `data/fme_output/` |
+| The 300 | `bash indicator_300_park/etl/run_300.sh` with the steps in [its README](indicator_300_park/README.md) |
 | Web map tiles | `python web/build_tiles.py` (the 3), `python web/build_tiles_30_300.py` (the 30 and 300) and `python web/build_tiles_groen.py` (the 300's green) |
 | Preview the map | `python web/serve.py`, then http://localhost:8000 |
 | QGIS validation project | `C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py` |
@@ -117,8 +117,9 @@ Everything under `data/` is gitignored:
 | `data/raw/` | `bkb_2024.tif`: Boomkroonbedekking 2024 (Friedenau Society, from lidar), the Netherlands at 0.25 m, 9.2 GB (`config.BKB_TIF`) | Friedenau Society |
 | `data/interim/` | `province_dem.vrt`, `province_trees.gpkg`, BAG buildings/addresses, gemeenten, wijken, buurten, CBS 2025 land area (`cbs2025_oppervlak.gpkg`); tiles during a run | built locally (PDOK, see the 3's README) |
 | `data/processed/` | the 3: `<name>_viewshed.tif`, `<name>_woningen.gpkg`, `ZuidHolland_*.gpkg/csv`; the 30: `ZuidHolland_kroonbedekking.csv`; `experiments/` (e.g. the corrected ArcGIS benchmark) | pipeline output |
-| `data/fme_output/` | the FME results: `300.gdb` (300); `30_regel_v2.gdb`, the earlier 30, kept for comparison; `3_lijst.gdb` | copy of `R:\…\3-30-300\fme output` |
-| `data/fme_input/` | FME inputs for the 300: `gemeentes`, `groenvoorzieningen`, `localeversie_osm` | copy of `R:\…\3-30-300\fme_input` (`panden`, 8.8 GB, stays on R:) |
+| `data/raw/voorzieningen/`, `top10_groen/`, `top10_recreatiegebieden/`, `osm/` | the green of the 300 (provincial facilities map, TOP10NL) and the OpenStreetMap extract | provincial SDE, Geofabrik |
+| `data/fme_output/` | the earlier FME results: `300.gdb` and `30_regel_v2.gdb`, kept for comparison; `3_lijst.gdb` | copy of `R:\…\3-30-300\fme output` |
+| `data/fme_input/` | inputs of the earlier FME 300: `gemeentes`, `groenvoorzieningen`, `localeversie_osm` | copy of `R:\…\3-30-300\fme_input` (`panden`, 8.8 GB, stays on R:) |
 | `data/studiegebied/` | study-area comparison for one Delft buurt | `indicator_3_bomen/arcgis_tests/studiegebied.py` |
 | `web/data/` | `3.pmtiles`, `30-300.pmtiles`, `looptijd.pmtiles`, `groen.pmtiles` (each under GitHub's 100 MB limit) | `web/build_tiles*.py` |
 
@@ -133,11 +134,11 @@ A 3 / 30 / 300 switch shows the three indicators on the same areas: gemeenten (z
 | `web/index.html` | the map (MapLibre + PMTiles); settings (`PROVINCE`, `REPO`, colours, texts) at the top of the `<script>`; Dutch, English with `?lang=en` (every text as `L("Nederlands", "English")`) |
 | `web/uitleg/*.html`, `web/uitleg/en/*.html` | explanation pages in Dutch and English: method, choices, the Konijnendijk paper, how to repeat it |
 | `web/build_tiles.py` | `data/3.pmtiles` from `<Province>_gebieden.gpkg` and `_woningen.gpkg` |
-| `web/build_tiles_30_300.py` | `data/30-300.pmtiles` (areas, homes) and `data/looptijd.pmtiles` (walking zones and entrances, in a file of their own so that switching them on or off does not re-process the building tiles), from the 30 per area (`<Province>_kroonbedekking.csv`), the FME results of the 300 (`config.FME_OUTPUT_DIR`, default `data/fme_output`) and the 3's areas |
-| `web/build_tiles_groen.py` | `data/groen.pmtiles`: the parks and woods of the 300, from the workbench's green input (`config.FME_INPUT_DIR`) |
+| `web/build_tiles_30_300.py` | `data/30-300.pmtiles` (areas, homes) and `data/looptijd.pmtiles` (walking zones and entrances, in a file of their own so that switching them on or off does not re-process the building tiles), from the 30 per area (`<Province>_kroonbedekking.csv`), the GRASS walking distance per home of the 300 and the 3's areas |
+| `web/build_tiles_groen.py` | `data/groen.pmtiles`: the green areas of the 300 (`indicator_300_park/etl/01_prepare.py`) |
 | `web/serve.py` | local preview server (supports the Range requests PMTiles needs) |
 
-The 30 comes directly from BKB 2024 on the map's own buurten; wijken and gemeenten are the sums of their buurten. The 300 is recounted per area from the buildings' walking class. From zoom 11 the 300 also shows the parks and woods themselves, selected from the workbench's input `data/fme_input/groenvoorzieningen/groenkaart.gdb` (`config.FME_INPUT_DIR`) the way the workbench does: no TOP10NL water, at least 300 m2, perimeter / area at most 0.35.
+The 30 comes directly from BKB 2024 on the map's own buurten; wijken and gemeenten are the sums of their buurten. The 300 counts every home per area by its own walking distance; a building on the map takes the class of its nearest home. From zoom 11 the 300 also shows the green areas themselves.
 
 To publish, copy `web/` without the `.py` files to the `gh-pages` branch, add an empty `.nojekyll`, and push. GitHub Pages serves that branch at https://robertotjesse.github.io/3-30-300-regel/.
 
@@ -152,10 +153,10 @@ To publish, copy `web/` without the `.py` files to the `gh-pages` branch, add an
 Everything that differs per province is a setting or an input file, so no code changes are needed.
 
 1. Put the inputs per municipality in one folder (`VIEWANALYSE_DIR`): `<name>.tif` (AHN DSM 0.5 m *ruw*, Float32, RD New) and `<name>.gpkg` (tree points, RD New). Build `province_dem.vrt` and `province_trees.gpkg` (the 3's README, "Setup").
-2. In `indicator_3_bomen/etl/config_local.py`, set `PROVINCE` (exactly as in PDOK's bestuurlijke gebieden, e.g. `"Utrecht"`), `VIEWANALYSE_DIR`, `OSGEO4W_ROOT`, `MUNICIPALITIES = []`, and `FME_OUTPUT_DIR` if you have 300 results. Outputs are named after the province (`Utrecht_woningen.gpkg`).
+2. In `indicator_3_bomen/etl/config_local.py`, set `PROVINCE` (exactly as in PDOK's bestuurlijke gebieden, e.g. `"Utrecht"`), `VIEWANALYSE_DIR`, `OSGEO4W_ROOT`, `MUNICIPALITIES = []`. Outputs are named after the province (`Utrecht_woningen.gpkg`).
 3. Download the BAG with `python indicator_3_bomen/etl/download_bag_pdok.py`. The commands for the gemeenten and provincies are in `05_merge_province.py`, and for the CBS wijken and buurten in `06_area_summaries.py`, with your province's extent as `spatFilter`.
 4. Run stages `01` to `06`, then the 30 (`kroonbedekking_gebieden.py`; BKB 2024 covers the whole country) and `web/build_tiles.py`.
-5. The 300: run `indicator_300_park/etl/` with green sources for that province (see its README). The map tiles of the 300 still read FME results; without those, leave the 300 out of the map.
+5. The 300: run `indicator_300_park/etl/` with green sources and an OSM extract for that province (see its README).
 6. On the map, set `PROVINCE` and `REPO` at the top of the script in `web/index.html`; the map opens on the extent of `data/3.pmtiles`.
 7. Publish `web/` as described above. The explanation pages (Dutch and English) describe Zuid-Holland's run, so adapt the figures there.
 
