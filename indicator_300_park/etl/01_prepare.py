@@ -346,8 +346,8 @@ def write_homes(out, area):
 def main():
     t0 = time.time()
     if not config.PARKS_PATH.exists():
-        sys.exit(f"ERROR: {config.PARKS_PATH} is missing. Run indicator_300_park/sde_export/export_parken_sde.py "
-                 "from the ArcGIS Pro Python first, or set PARKS_PATH in config_local_300.py")
+        sys.exit(f"ERROR: {config.PARKS_PATH} is missing. Copy the voorzieningen geodatabase there, "
+                 "or set PARKS_PATH in config_local_300.py")
     config.WORK_DIR.mkdir(parents=True, exist_ok=True)
     if config.PREPARED_GPKG.exists():
         config.PREPARED_GPKG.unlink()

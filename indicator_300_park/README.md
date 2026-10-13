@@ -31,13 +31,14 @@ Method and caveats: `web/uitleg/300.html` (Dutch) and `web/uitleg/en/300.html` (
 
 | Step | Script | What |
 |---|---|---|
-| | `sde_export/export_parken_sde.py` (local only, not in the repository) | arcpy, run once from the ArcGIS Pro Python: copies the recreation areas of the draft omgevingsbeleid and the green kinds of TOP10NL functioneel gebied (botanische tuin, heemtuin, landgoed, nationaal park, natuurgebied, recreatiegebied, park) from the provincial SDE to `data/raw/groen_300/groen_300.gdb`, layer `parken_300` (bron, type, naam) |
 | 0 | `etl/00_valhalla_tiles.py` | Valhalla's walking network from the OSM extract, with `valhalla/graph_fietspad.lua`: Valhalla's own tag rules with cycle paths open to pedestrians. Once per extract |
 | 1 | `etl/01_prepare.py` | Parks (`PARKS_PATH` in `etl/config.py`), park entrances, the walkable OSM network (cut at shared OSM nodes) and the BAG homes of the 3, for `MUNICIPALITIES` plus a margin |
 | 2 | `etl/02_valhalla.py` | Valhalla expansion from every entrance, Valhalla's own snapping of every home (`locate`), and the classic isochrone polygons for comparison. Calls `etl/valhalla_worker.py` in the pyvalhalla environment |
 | 3 | `etl/03_grass.py` | GRASS `v.net.distance` from all entrances at once, on the network of step 1 |
 | 4 | `etl/04_compare.py` | Both engines, the isochrones and the old FME result per home; summary CSV, scatter plot and a map of where they disagree |
 | | `etl/explainer_expansion.py` | The pictures on the explanation page: expansion from the Provinciehuis, isochrone against expansion, and a cycle-path example |
+
+Parks: layer `parken_vlakken` of the provincial voorzieningen geodatabase (OpenStreetMap and TOP10NL, peildatum 17 September 2025), copied to `data/raw/voorzieningen/voorzieningen.gdb` (gitignored). Parks under 300 m2 and strips narrower than about 6 m (perimeter / area > 0.35) are left out.
 
 Cycle paths count as walking routes in both engines: Dutch traffic law (RVV 1990, art. 4) lets pedestrians use one where there is no footpath or pavement. Bridleways do not count.
 

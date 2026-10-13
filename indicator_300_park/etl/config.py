@@ -37,17 +37,17 @@ HOMES_GPKG = PROCESSED_DIR / f"{PROVINCE_SLUG}_woningen.gpkg"      # the homes o
 # ---------------------------------------------------------------------------
 # Input: the parks
 # ---------------------------------------------------------------------------
-# Any polygon layer GDAL can read. Default: the recreation areas of the draft
-# omgevingsbeleid and the green kinds of TOP10NL functioneel gebied, copied from
-# the provincial SDE by indicator_300_park/sde_export/export_parken_sde.py
-# (arcpy). The green of the old FME workbench, for comparison, in
-# config_local_300.py (which needs full paths: it cannot see the names here):
+# Any polygon layer GDAL can read. Default: the parks of the provincial
+# voorzieningen geodatabase (layer parken_vlakken: OpenStreetMap and TOP10NL,
+# peildatum 17 September 2025), copied to data/raw/voorzieningen/ (gitignored).
+# The green of the old FME workbench, for comparison, in config_local_300.py
+# (which needs full paths: it cannot see the names here):
 #   from pathlib import Path
 #   PARKS_PATH = Path(r"D:\Repositories\330300regel\data\fme_input\groenvoorzieningen\groenkaart.gdb")
 #   PARKS_LAYER = "groen_uit_osm_top10_2024"
 #   PARKS_WHERE = "\"bron\" <> 'top 10 water'"
-PARKS_PATH = RAW_DIR / "groen_300" / "groen_300.gdb"
-PARKS_LAYER = "parken_300"
+PARKS_PATH = RAW_DIR / "voorzieningen" / "voorzieningen.gdb"
+PARKS_LAYER = "parken_vlakken"
 PARKS_WHERE = None
 MIN_PARK_AREA_M2 = 300         # parks smaller than this are left out (WHO: 10,000)
 # Narrow strips are left out: perimeter / area at most this (1/m). 0.35 keeps a
