@@ -36,8 +36,6 @@ The earlier FME calculation gave higher values: higher in all 39 gemeenten with 
 
 ## Caveats
 
-- CBS gives land area in whole hectares, which can shift the percentage of a small buurt by a few points.
-- A crown over water counts as crown, while the water is not part of the land area.
-- What counts as a crown (e.g. a minimum height) is decided by how BKB 2024 was made.
+See the wiki page [Known issues](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Known-issues).
 
 More in `web/uitleg/30.html` (Dutch) and `web/uitleg/en/30.html` (English).

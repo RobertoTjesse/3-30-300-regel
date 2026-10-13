@@ -496,3 +496,16 @@ trees should be excluded, is still open.
 - Documentation (explanation pages, READMEs, wiki) rewritten around the new
   method, stressing that only QGIS and its components are needed; FME is
   described as the earlier calculation.
+
+**30. Documentation: one home per topic**
+- Ponytail check of the documentation: the README repeated five wiki pages,
+  README.nl.md copied the whole README, and assumptions, known issues,
+  validation and planned work were each kept in two or three places.
+- Now: the README is an overview with links (setup, data, web map,
+  validation and another province live in the wiki); README.nl.md is a
+  short Dutch introduction pointing to the explanation pages; the
+  assumptions live on the explanation pages (the points for all three on
+  the overview page); known issues only in the wiki; the ArcGIS validation
+  in the wiki and ARCHITECTURE.md §14; planned work in IMPROVEMENTS.md.
+  About 370 lines fewer, nothing lost: missing details were moved to the
+  wiki first.

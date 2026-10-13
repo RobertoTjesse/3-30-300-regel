@@ -62,8 +62,8 @@ de luchtfoto (Beeldmateriaal Nederland, 8 cm, via de WMS van PDOK).</p>
 
 <h2 id="provincie">Zelf doen voor een andere provincie</h2>
 <p>De repository is zo opgezet dat alleen instellingen en invoerbestanden per provincie verschillen. De volledige,
-technische handleiding staat in de
-<a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/README.nl.md#andere-provincie">README</a>. In het kort:</p>
+technische handleiding staat op
+de wikipagina <a href="https://github.com/RobertoTjesse/3-30-300-regel/wiki/Another-province">Another province</a> (Engels). In het kort:</p>
 <ol class="steps">
   <li><strong>Installeer QGIS/OSGeo4W</strong> (voor GDAL) en haal de code op:
     <pre><code>git clone https://github.com/RobertoTjesse/3-30-300-regel.git 330300regel</code></pre></li>
@@ -89,21 +89,23 @@ MUNICIPALITIES = []               # leeg = alle gemeenten</code></pre></li>
     Pages-branch.</li>
 </ol>
 
+<h2 id="alle-drie">Wat voor alle drie geldt</h2>
+<ul>
+  <li><b>Alleen woningen.</b> Het artikel vraagt ook om bomen in zicht van scholen en werkplekken.</li>
+  <li><b>De bronnen zijn van verschillende jaren:</b> bomen en hoogtemodel 2020–2022 (de 3), kronen 2024 (de 30), groen
+      2025 en paden 2026 (de 300).</li>
+  <li><b>De 3 en de 30 gebruiken andere bomen:</b> NEO-boompunten tegenover de BKB-kroonkaart, dus een boom kan bij de
+      ene wel en bij de andere niet meetellen.</li>
+  <li><b>Een pand hoort bij de buurt en gemeente waarin zijn middelpunt ligt.</b> Gebieden met minder dan 10 woningen
+      krijgen bij de 3 en de 300 geen percentage.</li>
+</ul>
+
 <h2 id="toekomst">Toekomst</h2>
 <p>De hele regel draait op QGIS en wat QGIS meelevert: Python met GDAL, en voor de 300 GRASS. Er is geen andere
-software of licentie nodig. Wat nog komt:</p>
-<ul>
-  <li><b>De WHO-grens van 1 ha</b> voor de 300, als filter op hetzelfde groen.</li>
-  <li>De 3 ook voor scholen en werkplekken (het artikel vraagt dat).</li>
-  <li><b>Hoogbouw:</b> de 3 per verdieping. Nu kijkt elke woning in een flat vanaf straatniveau; vanaf hoger zie je
-      over heggen en auto's heen. Met het aantal bouwlagen uit de 3D BAG kan de zichtlijntest per verdieping.</li>
-  <li><b>Eén uitkomst per woning:</b> per woning de waarden van alle drie de regels, of ze voldoen, en hoeveel van de
-      drie (0 tot 3) gehaald worden; per gebied het aandeel woningen dat aan alle drie voldoet. Zie de
-      <a href="https://github.com/RobertoTjesse/3-30-300-regel/wiki/Comparison-with-Cobra-Groeninzicht">vergelijking met
-      Cobra Groeninzicht</a> (Engels), dat een cijfer per pand geeft.</li>
-</ul>
-<p>Zie ook <a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/IMPROVEMENTS.md"><code>IMPROVEMENTS.md</code></a>
-en de <a href="https://github.com/RobertoTjesse/3-30-300-regel/issues">open punten</a>.</p>
+software of licentie nodig. Wat nog gepland staat (zoals de 3 per verdieping, de WHO-grens van 1 ha voor de 300 en één
+uitkomst per woning), staat in
+<a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/IMPROVEMENTS.md#planned-work"><code>IMPROVEMENTS.md</code></a>;
+open punten staan bij de <a href="https://github.com/RobertoTjesse/3-30-300-regel/issues">issues</a>.</p>
 </main>
 <footer>3-30-300-regel · <a href="https://github.com/RobertoTjesse/3-30-300-regel">broncode op GitHub</a> ·
   <a href="konijnendijk.html">Konijnendijk (2023)</a></footer>

@@ -76,9 +76,7 @@ Delft takes about a minute.
 
 ## Known issues
 
-- **Green without an entrance** ([issue #3](https://github.com/RobertoTjesse/3-30-300-regel/issues/3)). 1,063 green areas in the province (2,096 ha, 1.7% of the green) get no entrance: mostly nature islets left after the water cut, and about 230 parks, allotments and cemeteries where the nearest walkable way is just over 10 m away.
-- **300 m2 is far below the WHO's 1 ha.** A run with 1 ha is a filter on the green areas.
-- **Public access is not checked** beyond the choice of sources and the OSM access tags. Cemeteries close at night, and some allotment complexes are locked.
+See the wiki page [Known issues](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Known-issues), among them the green areas without an entrance ([issue #3](https://github.com/RobertoTjesse/3-30-300-regel/issues/3)).
 
 ## One-time setup
 

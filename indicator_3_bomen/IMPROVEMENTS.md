@@ -72,7 +72,15 @@ The 3 is in this repository (Python + GDAL), and since 2026-10-04 so is the 30 (
 
 Since 2026-10-13 the 300 has an open pipeline too (`indicator_300_park/etl/`), on the same OSGeo4W installation: GDAL finds the park entrances and builds the walking network from OpenStreetMap, and GRASS `v.net.distance` gives every home a walking distance in metres to the nearest entrance, using the same BAG addresses as the 3. Valhalla computes the same distances as a check; the two agree for 98% of homes. It replaces the FME workbench (`indicator_300_park/fme/300_2025 regel.fmw`), which needed a PostGIS road network and a Valhalla server and only gave inside or outside a 5- or 15-minute zone. What is left before the map switches over: cutting open water out of the green (see `indicator_300_park/README.md`).
 
-Still planned: the 3 also for schools and workplaces, as the paper asks.
+## Planned work
+
+The one list of planned work for all three; the sections below work out the larger items.
+
+- The 3 per floor for multi-storey buildings (below).
+- Values per home and a mark, including the number of rules met (below).
+- The 3 also for schools and workplaces, as the paper asks.
+- The 300 with the WHO threshold of 1 ha, as a filter on the same green areas.
+- The 300: green areas without an entrance ([issue #3](https://github.com/RobertoTjesse/3-30-300-regel/issues/3)).
 
 ## Planned: multi-storey buildings (future work)
 

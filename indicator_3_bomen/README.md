@@ -164,59 +164,8 @@ default) flattens the tree's own crown first.
 
 ## Validation against ArcGIS
 
-The ArcGIS benchmark `visibility_Delft` (Spatial Analyst *Visibility*) turned
-out to have its observers at 2 x RASTERVALU instead of RASTERVALU + 1 m:
-the field was given as both observer elevation and observer offset. Found
-with an isolated tree and an isolated group of trees
-(`arcgis_tests/one_tree.py` + `one_tree_arcgis.py`), where ArcGIS with those
-settings reproduces the benchmark on 100% of cells. With the intended
-observer, ArcGIS Visibility, GDAL and an exact line-of-sight test agree
-closely (GDAL 95.5-99.7% of cells equal to the exact test on single trees).
+The ArcGIS benchmark for Delft had its observers at twice the intended height; with the intended observer, ArcGIS and GDAL agree. The full comparison is in the wiki ([Validation against ArcGIS](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Validation-against-ArcGIS)) and in `ARCHITECTURE.md` §14. The ArcGIS scripts are run by hand from the ArcGIS Pro Python Command Prompt, with Pro closed.
 
-`arcgis_tests/benchmark_corrected.py` reruns the benchmark for Delft with the
-intended observer (in 500 m tiles, ~1 hour); `compare_benchmark.py`
-compares it with the original and this pipeline. Inside Delft, >= 30 m from
-its boundary:
+## Known issues
 
-| | Mean trees visible | Cells >= 3 trees |
-|---|---:|---:|
-| Corrected benchmark (ArcGIS, point + 1 m) | 3.28 | 47.3% |
-| Original benchmark (2 x RASTERVALU) | 6.16 | 69.5% |
-| This pipeline (canopy-top observer) | 4.57 | 60.4% |
-
-The remaining difference with this pipeline is its canopy-top observer
-(median ~2 m higher) and its own DEM. Details: `ARCHITECTURE.md` §14 and
-`../WORKLOG.md` §8-9.
-
-The ArcGIS scripts are run by hand in the ArcGIS Pro Python Command Prompt
-(with Pro itself closed). The old GRID engine behind Viewshed and Visibility
-fails on paths like `D:\Repositories\3-regel`, so they copy their inputs to a
-plain work folder under `D:\Temp` first.
-
-## Known data issues
-
-- **[RESOLVED 2026-10-13]** Tree status: 21% of the trees are marked
-  "disappeared, small tree" in the source registry (`current_st`) and 3%
-  "not seen once, small tree". Both are now left out (see
-  [Which trees count](#which-trees-count)). In Delft the share of homes
-  with >= 3 visible trees falls from 94.9% to 88.1%, and in the province
-  (rerun 2026-10-08/09) from 94.7% to 85.9%. Issue closed without
-  confirmation from NEO of what the statuses mean
-  ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)).
-- **[RESOLVED 2026-10-01]** ArcGIS comparison: the benchmark's observer
-  height was wrong (2 x RASTERVALU; reproduced on 100% of cells, also for a
-  whole study area). With the same DEM and observers GDAL and ArcGIS agree
-  (same >= 3 verdict on 98.3% of cells); the remaining difference with this
-  pipeline comes from its inputs, the canopy-top observer and its own DEM
-  ([issue #2](https://github.com/RobertoTjesse/3-30-300-regel/issues/2), closed).
-- DEMs must be floating point (AHN: Float32). `01_tile_dem.py` stops on
-  integer DEMs (heights truncated to whole metres, which happened once in an
-  AHN5 export) or ones with a scale/offset.
-- **[RESOLVED 2026-09-07]** 12 of 52 municipality DEMs were 0-3.4% real
-  data and otherwise exactly zero without a NoData flag (a flat surface: the
-  viewshed then sees everything). Re-exported from
-  `Geo_raster.TOPOGRAFIE.AHN4_05M_RUW` (`sde_reexport/`, `ARCHITECTURE.md` §11).
-- Output value `0` means "no tree within 30 m", not "no data"; no NoData
-  value is set on purpose.
-- Some large DEMs (e.g. Rotterdam) are strip-organised rather than tiled,
-  so stage 1's windowed reads pull more data off disk than needed.
+See the wiki page [Known issues](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Known-issues).

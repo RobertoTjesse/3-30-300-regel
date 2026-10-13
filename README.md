@@ -10,7 +10,7 @@ The 3-30-300 rule (Konijnendijk, 2023) asks for green in three ways:
 | 30 | 30% tree canopy in every neighbourhood | area under crowns (BKB 2024, Friedenau Society, from lidar) / land area per CBS buurt, wijk and gemeente (2025) | Python + GDAL, this repository | [`indicator_30_kroonbedekking/`](indicator_30_kroonbedekking/) |
 | 300 | a park within 300 m of every home | walking distance from the home to the nearest entrance of a park or other public green >= 300 m2 | QGIS only: GDAL + GRASS, checked with Valhalla | [`indicator_300_park/`](indicator_300_park/) |
 
-All three are computed for the province of Zuid-Holland and published as one web map with a 3 / 30 / 300 switch, per gemeente, wijk, buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**. The site and its explanation pages are in Dutch, with an English version ([map](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). The 3 and the 30 run for another province without code changes ([Another province](#another-province)). All three run on QGIS and the components that come with it (GDAL, GRASS, QGIS's Python); no other software or licence is needed.
+All three are computed for the province of Zuid-Holland and published as one web map with a 3 / 30 / 300 switch, per gemeente, wijk, buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**. The site and its explanation pages are in Dutch, with an English version ([map](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). Any province can be run without code changes ([Another province](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Another-province)). All three run on QGIS and the components that come with it (GDAL, GRASS, QGIS's Python); no other software or licence is needed.
 
 ## What the results say
 
@@ -22,53 +22,18 @@ Zuid-Holland, latest runs:
 | 30 | 8.1% of the land lies under a tree crown. 102 of the 2,509 buurten reach 30%, and no gemeente does (Wassenaar comes closest with 27.9%) |
 | 300 | 36.7% of homes lie within a 300 m walk of a park or other public green, 56.0% within 5 minutes and 97.8% within 15 minutes. Per gemeente from 20.3% (Voorne aan Zee) to 86.7% (Oegstgeest) within 5 minutes |
 
-The figures per gemeente, wijk and buurt are sound. For a single home the map gives an indication, and the assumptions below explain most of the cases where it disagrees with what a resident sees.
+The figures per gemeente, wijk and buurt are sound. For a single home the map gives an indication, and the assumptions explain most of the cases where it disagrees with what a resident sees.
 
 ## What the results assume
 
-The paper leaves a lot open: from where you look, how far, what counts as a tree or a park. Every gap had to be filled with a choice, and each choice moves the numbers. These are the ones that move them most, with the direction they push the result. The explanation pages (`web/uitleg/`, Dutch and English) give the reasons and the alternatives that were considered.
-
-### The 3
-
-- **One good spot is enough.** A building gets the highest count of any 0.5 x 0.5 m cell in a 1.5 m ring around it. If a single cell in the back garden sees three trees, the whole building passes, even if the living room looks out on a blank wall. The rule asks whether you see trees from your home, not from every window. *Pushes the result up.*
-- **Every home in a building gets the building's score.** All 80 flats in a block share one number, and the area figures count homes, so that block weighs 80 times as much as a detached house.
-- **The view is measured at street level.** The spot is 1.8 m above the ground just outside the facade. Upper floors and balconies, which look over hedges and cars, are not calculated. *Pushes the result down for flats.*
-- **A tree is seen when its crown top is seen.** The line of sight runs from the top of the crown (the highest surface point within 1.5 m of the tree point) to the spot outside the home. A home that sees only the side of a crown or an overhanging branch, while the top is hidden behind a roof, does not count that tree. A home that sees just the top above a roof does. Measuring from the tree point itself would put the observer inside its own crown; in Delft 35.5% of trees then saw practically nothing.
-- **30 m is counted from the trunk.** The distance runs from the tree point to the spot outside the home, not from the edge of the crown. A large tree with its trunk 32 m away does not count, even if its crown hangs closer.
-- **Every tree counts the same.** A young street tree counts as much as an old oak; the paper's "well-established" is not checked. Trees marked "disappeared, small tree" or "not seen once, small tree" in the source (24.5% of the tree points) are left out ([issue #1](https://github.com/RobertoTjesse/3-30-300-regel/issues/1)). *Pushes the result up.*
-- **Everything in the surface model blocks the view.** Buildings, hedges, fences, bus shelters and other trees' crowns are solid. A dense hedge counts as a wall, also in winter. *Pushes the result down.*
-- **The surroundings are from 2020-2022, the homes from 2026.** A home built since then is scored on the old situation (3 to 5% of homes).
-
-### The 30
-
-- **The buurt is the unit, as the paper asks.** A wijk or gemeente figure is the crown area of all its buurten divided by their total land area. Large green buurten can lift it while other buurten stay far below 30%, so the buurt level is the one to read.
-- **Each 25 cm cell counts once, in one buurt.** A cell belongs to the buurt that holds its centre. Overlapping crowns count once, as the ground under them exists once.
-- **Crown area is divided by land area.** Water is left out of the area, so a buurt with a lake is not marked down for it. A crown over a canal still counts as crown, which lifts buurten with many trees along the water slightly. *Pushes the result up a little.*
-- **What counts as a crown is decided by BKB 2024.** It is made from lidar and covers street and garden trees alike; any minimum tree height comes from how that map was made.
-- **CBS gives land area in whole hectares.** For a small buurt that can shift the percentage by a few points.
-
-### The 300
-
-- **A small park counts.** Green counts from 300 m², where the WHO norm behind the rule is 1 ha. Strips narrower than about 6 m drop out, and open water is cut out of the green. *Pushes the result up.*
-- **Only parks, nature, recreation areas, estates, cemeteries and allotments.** Small woods, verges, sports grounds and golf courses do not count. *Pushes the result down.*
-- **Walking starts at an entrance.** An entrance is where an OpenStreetMap path or street crosses the edge of the green. Green without a path into it and without a street within 10 m gets no entrance ([issue #3](https://github.com/RobertoTjesse/3-30-300-regel/issues/3)). *Pushes the result down.*
-- **Cycle paths are walking routes**, as Dutch traffic law allows where there is no footpath. *Pushes the result up.*
-- **5 minutes means 425 m along streets** (5.1 km/h), roughly 300 m as the crow flies. The map colours on 5 minutes; the 300 m along the street is in the popups.
-- **Public access is not checked** beyond leaving out duck decoys and private paths. *Pushes the result up.*
-
-### All three
-
-- Only homes are measured. The paper also asks for trees visible from schools and workplaces.
-- The sources are from different years: trees and surface model 2020-2022 (the 3), crowns 2024 (the 30), green 2025 and paths 2026 (the 300).
-- The 3 and the 30 use different tree data (NEO tree points against the BKB crown map), so a tree can count for one and not for the other.
-- A building belongs to the buurt and gemeente that holds its centre point. For the 3 and the 300, areas with fewer than 10 homes get no percentage on the map.
+The paper leaves a lot open: from where you look, how far, what counts as a tree or a park. Every gap had to be filled with a choice, and each choice moves the numbers. The choices that move them most, with the direction they push the result, are on the explanation pages: [the 3](https://robertotjesse.github.io/3-30-300-regel/uitleg/en/3.html#aannames), [the 30](https://robertotjesse.github.io/3-30-300-regel/uitleg/en/30.html#aannames), [the 300](https://robertotjesse.github.io/3-30-300-regel/uitleg/en/300.html#aannames), and for all three together [the overview](https://robertotjesse.github.io/3-30-300-regel/uitleg/en/#alle-drie) (Dutch versions under `/uitleg/`). Open issues are listed in the wiki under [Known issues](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Known-issues).
 
 ## Repository layout
 
 ```
 330300regel/
 ├── README.md                     this file: the project as a whole
-├── README.nl.md                  the same in Dutch
+├── README.nl.md                  a short introduction in Dutch
 ├── WORKLOG.md                    what was done and found, step by step
 ├── indicator_3_bomen/            the 3: full pipeline, see its README
 │   ├── etl/                      stages 01-06, config.py, config_local.py (gitignored)
@@ -81,7 +46,7 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 ├── web/                          the web map for all three (published site)
 ├── docs/bronnen/                 source documents (Konijnendijk 2023, the Cobra Groeninzicht handbook)
 ├── qgis_validation/              builds the QGIS validation project for all three
-├── data/                         all data (gitignored), see "Data"
+├── data/                         all data (gitignored), see the wiki page "Data sources"
 └── logs/                         run logs (gitignored)
 ```
 
@@ -89,76 +54,15 @@ Folder names start with a letter and contain no hyphens because the old GRID eng
 
 ## Getting started
 
-You need a QGIS / OSGeo4W install (its Python has GDAL/OGR and, for the validation project, PyQGIS; nothing comes from pip) and access to the source data (see [Data](#data)). The ArcGIS comparisons also need ArcGIS Pro with Spatial Analyst.
+You need QGIS (the OSGeo4W installation; nothing comes from pip) and access to the source data. Clone into a folder without hyphens or spaces (`git clone https://github.com/RobertoTjesse/3-30-300-regel.git 330300regel`) and run everything from the repository root with QGIS's Python. The details are in the [wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki):
 
-1. Clone into a folder without hyphens or spaces:
-   `git clone https://github.com/RobertoTjesse/3-30-300-regel.git 330300regel`
-2. Copy `indicator_3_bomen/etl/config_local.example.py` to `indicator_3_bomen/etl/config_local.py` and fill in `OSGEO4W_ROOT` and `VIEWANALYSE_DIR`. This file is gitignored. The shared settings are in `indicator_3_bomen/etl/config.py`, which every script in the repository imports.
-3. Run everything from the repository root with that Python, e.g. `C:\...\OSGeo4W\apps\Python312\python.exe indicator_3_bomen\etl\01_tile_dem.py`.
-
-What to run:
-
-| Goal | Command (from the repository root) |
+| Wiki page | What |
 |---|---|
-| The 3, all stages | `indicator_3_bomen/etl/01_tile_dem.py` to `06_area_summaries.py`; see [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md#pipeline) |
-| The 30 | `python indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py` (after stage 6 of the 3, which writes the areas); see [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) |
-| The 300 | `bash indicator_300_park/etl/run_300.sh` with the steps in [its README](indicator_300_park/README.md) |
-| Web map tiles | `python web/build_tiles.py` (the 3), `python web/build_tiles_30_300.py` (the 30 and 300) and `python web/build_tiles_groen.py` (the 300's green) |
-| Preview the map | `python web/serve.py`, then http://localhost:8000 |
-| QGIS validation project | `C:\...\OSGeo4W\bin\python-qgis-ltr.bat qgis_validation\build_project.py` |
-
-## Data
-
-Everything under `data/` is gitignored:
-
-| Path | What | Source |
-|---|---|---|
-| `VIEWANALYSE_DIR` (not copied) | per municipality: AHN DSM `.tif` + NEO trees `.gpkg`, 119 GB | `R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\fme_input\viewanalyse` |
-| `data/raw/` | `bkb_2024.tif`: Boomkroonbedekking 2024 (Friedenau Society, from lidar), the Netherlands at 0.25 m, 9.2 GB (`config.BKB_TIF`) | Friedenau Society |
-| `data/interim/` | `province_dem.vrt`, `province_trees.gpkg`, BAG buildings/addresses, gemeenten, wijken, buurten, CBS 2025 land area (`cbs2025_oppervlak.gpkg`); tiles during a run | built locally (PDOK, see the 3's README) |
-| `data/processed/` | the 3: `<name>_viewshed.tif`, `<name>_woningen.gpkg`, `ZuidHolland_*.gpkg/csv`; the 30: `ZuidHolland_kroonbedekking.csv`; `experiments/` (e.g. the corrected ArcGIS benchmark) | pipeline output |
-| `data/raw/voorzieningen/`, `top10_groen/`, `top10_recreatiegebieden/`, `osm/` | the green of the 300 (provincial facilities map, TOP10NL) and the OpenStreetMap extract | provincial SDE, Geofabrik |
-| `data/fme_output/` | the earlier FME results: `300.gdb` and `30_regel_v2.gdb`, kept for comparison; `3_lijst.gdb` | copy of `R:\…\3-30-300\fme output` |
-| `data/fme_input/` | inputs of the earlier FME 300: `gemeentes`, `groenvoorzieningen`, `localeversie_osm` | copy of `R:\…\3-30-300\fme_input` (`panden`, 8.8 GB, stays on R:) |
-| `data/studiegebied/` | study-area comparison for one Delft buurt | `indicator_3_bomen/arcgis_tests/studiegebied.py` |
-| `web/data/` | `3.pmtiles`, `30-300.pmtiles`, `looptijd.pmtiles`, `groen.pmtiles` (each under GitHub's 100 MB limit) | `web/build_tiles*.py` |
-
-The ArcGIS benchmark `visibility_Delft` and the AHN5 DSM used in the comparisons are read from `R:\ESRI\DATA\RUIMTELIJKE ONTWIKKELING\PERSOONLIJK\Chris\test\data.gdb`.
-
-## The web map
-
-A 3 / 30 / 300 switch shows the three indicators on the same areas: gemeenten (zoom < 10), CBS wijken 2025 (< 11.5), CBS buurten 2025 (< 13), and from there every residential building (the 3 and the 300; the 30 stays on buurten). The (i) button lists the sources and their dates. The background is the PDOK grey map or an aerial photo, and the address search uses the PDOK Locatieserver, limited to the province.
-
-| File | What |
-|---|---|
-| `web/index.html` | the map (MapLibre + PMTiles); settings (`PROVINCE`, `REPO`, colours, texts) at the top of the `<script>`; Dutch, English with `?lang=en` (every text as `L("Nederlands", "English")`) |
-| `web/uitleg/*.html`, `web/uitleg/en/*.html` | explanation pages in Dutch and English: method, choices, the Konijnendijk paper, how to repeat it |
-| `web/build_tiles.py` | `data/3.pmtiles` from `<Province>_gebieden.gpkg` and `_woningen.gpkg` |
-| `web/build_tiles_30_300.py` | `data/30-300.pmtiles` (areas, homes) and `data/looptijd.pmtiles` (walking zones and entrances, in a file of their own so that switching them on or off does not re-process the building tiles), from the 30 per area (`<Province>_kroonbedekking.csv`), the GRASS walking distance per home of the 300 and the 3's areas |
-| `web/build_tiles_groen.py` | `data/groen.pmtiles`: the green areas of the 300 (`indicator_300_park/etl/01_prepare.py`) |
-| `web/serve.py` | local preview server (supports the Range requests PMTiles needs) |
-
-The 30 comes directly from BKB 2024 on the map's own buurten; wijken and gemeenten are the sums of their buurten. The 300 counts every home per area by its own walking distance; a building on the map takes the class of its nearest home. From zoom 11 the 300 also shows the green areas themselves.
-
-To publish, copy `web/` without the `.py` files to the `gh-pages` branch, add an empty `.nojekyll`, and push. GitHub Pages serves that branch at https://robertotjesse.github.io/3-30-300-regel/.
-
-## Validation
-
-- The QGIS validation project (`qgis_validation/build_project.py` builds `qgis_validation/330300regel_validatie.qgz`, gitignored) holds the 3 per municipality (viewshed and homes), all trees, the DEM, 3D BAG, background maps, the experiments (the corrected and the original ArcGIS benchmark), the one-tree and tree-group comparison, the study area, and the open 300 (green areas, entrances, isochrones, walking distance per home, and the comparison with Valhalla and FME). A re-run only adds new layers and removes layers whose file is gone, so changes made in QGIS are kept; delete the `.qgz` to rebuild it.
-- The ArcGIS benchmark for the 3 had its observers at twice the intended height. With the intended observer, ArcGIS and this pipeline's GDAL engine agree closely. See [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md#validation-against-arcgis).
-- The 30 from BKB 2024 was compared with the earlier FME calculation on Delft and per gemeente; see [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md).
-
-## Another province
-
-Everything that differs per province is a setting or an input file, so no code changes are needed.
-
-1. Put the inputs per municipality in one folder (`VIEWANALYSE_DIR`): `<name>.tif` (AHN DSM 0.5 m *ruw*, Float32, RD New) and `<name>.gpkg` (tree points, RD New). Build `province_dem.vrt` and `province_trees.gpkg` (the 3's README, "Setup").
-2. In `indicator_3_bomen/etl/config_local.py`, set `PROVINCE` (exactly as in PDOK's bestuurlijke gebieden, e.g. `"Utrecht"`), `VIEWANALYSE_DIR`, `OSGEO4W_ROOT`, `MUNICIPALITIES = []`. Outputs are named after the province (`Utrecht_woningen.gpkg`).
-3. Download the BAG with `python indicator_3_bomen/etl/download_bag_pdok.py`. The commands for the gemeenten and provincies are in `05_merge_province.py`, and for the CBS wijken and buurten in `06_area_summaries.py`, with your province's extent as `spatFilter`.
-4. Run stages `01` to `06`, then the 30 (`kroonbedekking_gebieden.py`; BKB 2024 covers the whole country) and `web/build_tiles.py`.
-5. The 300: run `indicator_300_park/etl/` with green sources and an OSM extract for that province (see its README).
-6. On the map, set `PROVINCE` and `REPO` at the top of the script in `web/index.html`; the map opens on the extent of `data/3.pmtiles`.
-7. Publish `web/` as described above. The explanation pages (Dutch and English) describe Zuid-Holland's run, so adapt the figures there.
+| [Getting started](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Getting-started) | setup, settings, and what to run for the 3, the 30, the 300, the map tiles and the QGIS project |
+| [Data sources](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Data-sources) | every input with its date, and where the files are |
+| [Web map and publishing](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Web-map-and-publishing) | the map, its tile files, local preview and publishing to `gh-pages` |
+| [QGIS validation project](https://github.com/RobertoTjesse/3-30-300-regel/wiki/QGIS-validation-project) and [Validation against ArcGIS](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Validation-against-ArcGIS) | checking the results |
+| [Another province](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Another-province) | running it for another province |
 
 ## Documents
 
@@ -166,15 +70,15 @@ Everything that differs per province is a setting or an input file, so no code c
 |---|---|
 | [Wiki](https://github.com/RobertoTjesse/3-30-300-regel/wiki) | overview for new readers: getting started, the three indicators, data, validation, known issues, run times |
 | [`WORKLOG.md`](WORKLOG.md) | chronological log of the work and findings |
-| [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup, pipeline, validation, known data issues |
+| [`indicator_3_bomen/README.md`](indicator_3_bomen/README.md) | the 3: setup and pipeline |
 | [`indicator_3_bomen/ARCHITECTURE.md`](indicator_3_bomen/ARCHITECTURE.md) | the 3: design decisions in depth |
 | [`indicator_3_bomen/BENCHMARKS.md`](indicator_3_bomen/BENCHMARKS.md) | the 3: run times (generated) |
-| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | the 3: improvements over the original prototype; planned work: multi-storey buildings, values per home, the 3 for schools and workplaces |
+| [`indicator_3_bomen/IMPROVEMENTS.md`](indicator_3_bomen/IMPROVEMENTS.md) | improvements over the original prototype, and the list of planned work for all three |
 | [Comparison with Cobra Groeninzicht](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Comparison-with-Cobra-Groeninzicht) (wiki) | comparison with Cobra Groeninzicht's 3+30+300 and the Yggdrasil handbook: method, mark per building, what each side misses |
 | [`indicator_30_kroonbedekking/README.md`](indicator_30_kroonbedekking/README.md) | the 30 |
 | [`indicator_300_park/README.md`](indicator_300_park/README.md) | the 300 |
 | `web/uitleg/` | explanation pages for the public (Dutch; English in `web/uitleg/en/`) |
-| [`README.nl.md`](README.nl.md) | this README in Dutch |
+| [`README.nl.md`](README.nl.md) | a short introduction in Dutch |
 
 ## History
 
