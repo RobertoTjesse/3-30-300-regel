@@ -70,6 +70,13 @@ MIN_PARK_AREA_M2 = 300         # parks smaller than this are left out (WHO: 10,0
 # Narrow strips are left out: perimeter / area at most this (1/m). 0.35 keeps a
 # strip of about 6 m wide or more, as the old FME workbench did. None = keep all.
 MAX_EDGE_RATIO = 0.35
+# Green only counts its land: open water is cut out of every green polygon
+# before the size and strip filters, so a path along a shore or dyke is not a
+# park entrance. Water = the water parts of the CBS municipal map 2025 (sea,
+# Haringvliet, rivers; fetched from PDOK) plus the water polygons of the OSM
+# extract (lakes, canals, ponds). Built once into WATER_GPKG by 01_prepare.py.
+CUT_WATER = True
+CBS_WFS = "WFS:https://service.pdok.nl/cbs/wijkenbuurten/2025/wfs/v1_0"
 
 # ---------------------------------------------------------------------------
 # Input: OpenStreetMap
@@ -78,6 +85,7 @@ MAX_EDGE_RATIO = 0.35
 # Valhalla tiles, so all three have one network date.
 OSM_PBF = RAW_DIR / "osm" / "zuid-holland-latest.osm.pbf"
 OSM_GPKG = INTERIM_DIR / "osm" / "osm_ways_points.gpkg"   # made from OSM_PBF by 01_prepare.py
+WATER_GPKG = INTERIM_DIR / "osm" / "water.gpkg"           # CBS + OSM water, made by 01_prepare.py
 
 # Ways a pedestrian can use. Cycle paths count: Dutch traffic law (RVV 1990,
 # art. 4) lets pedestrians use one where there is no footpath or pavement.

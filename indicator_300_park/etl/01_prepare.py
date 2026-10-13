@@ -6,7 +6,8 @@ and the BAG addresses of the 3, for the study area (config.MUNICIPALITIES plus
 a margin), and writes one GeoPackage, config.PREPARED_GPKG, in RD New:
 
   area       the study area (the municipalities, without the margin)
-  park_sources  the source polygons that count (at least 300 m2, not a strip)
+  park_sources  the source polygons that count, without open water
+             (config.CUT_WATER), at least 300 m2 and not a strip
   parks      those polygons of all sources merged where they overlap or touch:
              park_id, m2, bronnen, soorten, namen
   network    walkable OSM ways, cut at every junction (shared OSM node), so
@@ -111,8 +112,68 @@ def keeps(g):
     return not (config.MAX_EDGE_RATIO and g.Boundary().Length() > config.MAX_EDGE_RATIO * area)
 
 
-def read_source(src, margin):
-    """[(RD geometry, type, name)] of one park source inside the margin, filtered by keeps()."""
+def water_gpkg():
+    """Open water in RD New, made once: layer cbs (the water parts of the CBS municipal map
+    2025 in and around the province: sea, Haringvliet, rivers) and layer osm (water polygons
+    of the OSM extract: lakes, canals, ponds)."""
+    path = config.WATER_GPKG
+    if path.exists() and path.stat().st_mtime > config.OSM_PBF.stat().st_mtime:
+        return path
+    print(f"  making {path.name} (once): CBS water from PDOK, OSM water from {config.OSM_PBF.name} …", flush=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        path.unlink()
+    ds = ogr.Open(str(config.GEBIEDEN_GPKG))
+    minx, maxx, miny, maxy = ds.GetLayerByName("gemeenten").GetExtent()
+    pad = config.AREA_MARGIN_M + 1000
+    gdal.VectorTranslate(str(path), config.CBS_WFS, format="GPKG", layers=["wijkenbuurten:gemeenten"],
+                         layerName="cbs", where="water = 'JA'", dstSRS="EPSG:28992",
+                         spatFilter=(minx - pad, miny - pad, maxx + pad, maxy + pad),
+                         geometryType="MULTIPOLYGON", selectFields=["gemeentenaam"])
+    gdal.SetConfigOption("OGR_INTERLEAVED_READING", "YES")
+    gdal.VectorTranslate(str(path), str(config.OSM_PBF), format="GPKG", accessMode="update",
+                         layers=["multipolygons"], layerName="osm", dstSRS="EPSG:28992",
+                         geometryType="MULTIPOLYGON", selectFields=["name", "natural", "landuse"],
+                         where="\"natural\" = 'water' OR landuse IN ('reservoir', 'basin') "
+                               "OR other_tags LIKE '%\"waterway\"=>\"riverbank\"%'")
+    gdal.SetConfigOption("OGR_INTERLEAVED_READING", None)
+    return path
+
+
+class Water:
+    """Cuts open water out of green polygons (config.CUT_WATER)."""
+
+    def __init__(self):
+        self.ds = ogr.Open(str(water_gpkg()))
+        self.layers = [self.ds.GetLayerByName(n) for n in ("cbs", "osm")]
+        self.cut_m2 = 0.0
+
+    def cut(self, g):
+        """g without the water it overlaps (polygons only; may be empty)."""
+        minx, maxx, miny, maxy = g.GetEnvelope()
+        wet = ogr.Geometry(ogr.wkbMultiPolygon)
+        for lyr in self.layers:
+            lyr.SetSpatialFilterRect(minx, miny, maxx, maxy)
+            for f in lyr:
+                w = f.GetGeometryRef()
+                if w is None or not w.Intersects(g):
+                    continue
+                w = w if w.IsValid() else w.MakeValid()
+                parts = polygons_only(w.Clone())
+                for i in range(parts.GetGeometryCount()):
+                    wet.AddGeometry(parts.GetGeometryRef(i))
+            lyr.SetSpatialFilter(None)
+        if wet.IsEmpty():
+            return g
+        before = g.GetArea()
+        dry = polygons_only(g.Difference(wet.UnionCascaded()))
+        self.cut_m2 += before - dry.GetArea()
+        return dry
+
+
+def read_source(src, margin, water=None):
+    """[(RD geometry, type, name)] of one park source inside the margin, with open water
+    cut out (when water is given), filtered by keeps()."""
     ds = ogr.Open(str(src["path"]))
     lyr = ds.GetLayerByName(src["layer"]) if src.get("layer") else ds.GetLayer(0)
     if src.get("where"):
@@ -137,7 +198,11 @@ def read_source(src, margin):
             g.Transform(to_rd)
         if not g.IsValid():
             g = polygons_only(g.MakeValid())
-        if g.IsEmpty() or not g.Intersects(margin) or not keeps(g):
+        if g.IsEmpty() or not g.Intersects(margin):
+            continue
+        if water is not None:
+            g = water.cut(g)
+        if g.IsEmpty() or not keeps(g):
             continue
         kind = f.GetField(src["type_field"]) if src.get("type_field") else src.get("type")
         name = f.GetField(src["name_field"]) if src.get("name_field") else None
@@ -155,9 +220,10 @@ def write_parks(out, margin):
     src_lyr = new_layer(out, "park_sources", ogr.wkbMultiPolygon,
                         [("bron", ogr.OFTString), ("soort", ogr.OFTString), ("naam", ogr.OFTString)])
     found = []
+    water = Water() if config.CUT_WATER else None
     out.StartTransaction()
     for src in config.PARKS_SOURCES:
-        polys = read_source(src, margin)
+        polys = read_source(src, margin, water)
         print(f"  {src['bron']}: {len(polys):,} polygons ({Path(src['path']).name}, {src.get('layer') or 'first layer'})")
         for g, kind, name in polys:
             f = ogr.Feature(src_lyr.GetLayerDefn())
@@ -168,6 +234,8 @@ def write_parks(out, margin):
             src_lyr.CreateFeature(f)
             found.append((g, src["bron"], kind, name))
     out.CommitTransaction()
+    if water is not None:
+        print(f"  open water cut out of the green: {water.cut_m2 / 1e4:,.0f} ha")
 
     every = ogr.Geometry(ogr.wkbMultiPolygon)
     for g, *_ in found:
