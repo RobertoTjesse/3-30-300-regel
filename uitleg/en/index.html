@@ -57,7 +57,7 @@ the aerial photo (Beeldmateriaal Nederland, 8 cm, via the PDOK WMS).</p>
 <tr><th>Indicator</th><th>Software</th><th>Data</th></tr>
 <tr><td>3</td><td>Python + GDAL, fully in the repository</td><td>AHN, BAG, CBS: open. Trees: NEO (purchased)</td></tr>
 <tr><td>30</td><td>Python + GDAL, fully in the repository</td><td>CBS: open. Tree crowns: Boomkroonbedekking 2024 by Friedenau Society</td></tr>
-<tr><td>300</td><td>FME + PostGIS + isochrone calculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>, open source); workbench in the repository</td><td>OpenStreetMap, TOP10NL, BAG: open</td></tr>
+<tr><td>300</td><td>Map: FME + PostGIS + <a href="https://github.com/valhalla/valhalla">Valhalla</a>. New calculation: Python + GDAL + GRASS (OSGeo4W), fully in the repository (<a href="300.html#open-methode">explanation</a>)</td><td>OpenStreetMap, TOP10NL, BAG, provincial facilities map: open</td></tr>
 </table></div>
 
 <h2 id="provincie">Doing it yourself for another province</h2>
@@ -79,7 +79,8 @@ MUNICIPALITIES = []               # empty = all municipalities</code></pre></li>
   <li><strong>Run the six steps</strong> (<code>indicator_3_bomen/etl/01</code> to <code>06</code>) and then
     <code>web/build_tiles.py</code>. For the 30, run
     <code>indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py</code> on the crown map (BKB 2024 covers all of
-    the Netherlands). The 300 (still) needs FME results. Then run <code>web/build_tiles_30_300.py</code> and
+    the Netherlands). For the 300, run <code>indicator_300_park/etl/</code> with green sources for your province; the
+    map tiles of the 300 still read FME results. Then run <code>web/build_tiles_30_300.py</code> and
     <code>web/build_tiles_groen.py</code>.</li>
   <li><strong>Adapt the map</strong>: in <code>web/index.html</code> only <code>PROVINCE</code> and <code>REPO</code>
     at the top of the script. The map zooms to the extent of your data by itself.</li>
@@ -87,15 +88,13 @@ MUNICIPALITIES = []               # empty = all municipalities</code></pre></li>
     Pages branch.</li>
 </ol>
 
-<h2 id="toekomst">Future: the 300 fully open source</h2>
-<p>The 3 and the 30 are open source and repeatable: Python with GDAL, in this repository. The 300 is still made with
-FME. The aim is to do it in Python as well, so that any province can repeat the whole rule:</p>
+<h2 id="toekomst">Future</h2>
+<p>The 3, the 30 and since October 2026 also the 300 can be repeated with open software: Python with GDAL, and for the
+300 GRASS, all from OSGeo4W and in this repository. Still to come:</p>
 <ul>
-  <li><b>300:</b> filter green from OpenStreetMap and TOP10NL, find the entrances with GDAL, walking zones with an
-      isochrone calculator (<a href="https://github.com/valhalla/valhalla">Valhalla</a>, already open source), and classify
-      buildings, all in one script. With the WHO threshold of 1 ha as an option.</li>
-  <li>Also: the 3 for schools and workplaces too (the paper asks for that), and the 300 on the same BAG
-      edition as the 3.</li>
+  <li><b>The 300 on the map:</b> first cut open water out of the green, then move the map to the new calculation. The
+      WHO threshold of 1 ha then becomes a filter on the same result.</li>
+  <li>The 3 for schools and workplaces too (the paper asks for that).</li>
   <li><b>High-rise:</b> the 3 per floor. Now every home in a flat looks out from street level; from higher up you see
       over hedges and cars. With the number of floors from the 3D BAG the line-of-sight test can be done per floor.</li>
   <li><b>One result per home:</b> per home the values of all three rules, whether each is met, and how many of the
