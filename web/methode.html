@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>3-30-300 Zuid-Holland</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
+<style>
+/* Layout: a technical report. Sticky contents column on the left, one reading column, figures framed as numbered plates with captions. */
+:root {
+  --paper: #fafbfa; --plate: #ffffff; --panel: #f0f3f1; --ink: #18211c; --muted: #58655e; --rule: #d3dbd6; --grid: #e6ebe8;
+  --accent: #1d6b40;
+  --c3: #2f7d4a; --c30: #2a6c8c; --c300: #a3611b; --fail: #b5402c; --pass: #1d6b40;
+  /* map palette (web/index.html), shared by both themes */
+  --m0: #d7191c; --m1: #fd8d3c; --m2: #74c476; --m3: #31a354; --m4: #006d2c;
+  --k0: #d7301f; --k1: #fdae6b; --k2: #c7e9c0; --k3: #74c476; --k4: #238b45;
+  --serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111613; --plate: #161c19; --panel: #1c2420; --ink: #e2e9e4; --muted: #98a59e; --rule: #2f3a34; --grid: #242d28;
+    --accent: #5fc58b; --c3: #66c38a; --c30: #6db2d4; --c300: #e0a25a; --fail: #ec7d66; --pass: #5fc58b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111613; --plate: #161c19; --panel: #1c2420; --ink: #e2e9e4; --muted: #98a59e; --rule: #2f3a34; --grid: #242d28;
+  --accent: #5fc58b; --c3: #66c38a; --c30: #6db2d4; --c300: #e0a25a; --fail: #ec7d66; --pass: #5fc58b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.62 var(--sans); }
+a { color: var(--accent); text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 0 80px;
+        display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 56px; }
+@media (max-width: 880px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; padding-inline: 16px; } nav.toc { display: none; } }
+
+/* masthead */
+.mast { border-bottom: 1px solid var(--rule); background: var(--plate); }
+.mast-in { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 14px;
+           display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline;
+           font: 500 12px/1.4 var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.mast-in b { color: var(--ink); font-weight: 500; }
+.mast-in a { color: var(--muted); }
+.mast-in .lang { margin-left: auto; border: 1px solid var(--rule); border-radius: 2px; padding: 3px 8px; color: var(--ink); text-decoration: none; }
+.mast-in .lang:hover { background: var(--panel); border-color: var(--muted); }
+@media (max-width: 880px) { .mast-in { padding-inline: 16px; } }
+
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; padding-top: 48px; font-size: 13.5px; }
+nav.toc .lbl { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.toc a { display: grid; grid-template-columns: 26px 1fr; padding: 4px 0 4px 10px; border-left: 2px solid var(--rule);
+            color: var(--muted); text-decoration: none; }
+nav.toc a span { font-family: var(--mono); font-size: 12px; }
+nav.toc a:hover { color: var(--ink); }
+nav.toc a.on { color: var(--ink); border-left-color: var(--accent); }
+
+main { min-width: 0; padding-top: 40px; }
+h1 { font: 700 clamp(30px, 4.6vw, 46px)/1.08 var(--serif); letter-spacing: -.01em; margin: 0 0 14px; text-wrap: balance; }
+h1 .n { font-variant-numeric: lining-nums; }
+.sub { font: 400 19px/1.5 var(--serif); color: var(--muted); max-width: 62ch; margin: 0 0 22px; }
+.byline { font-size: 13.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 34px; }
+
+.abstract { border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); padding-block: 18px 22px; margin-bottom: 8px; }
+.abstract h2 { font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; margin: 0 0 8px; border: 0; padding: 0; }
+.abstract p { font-family: var(--serif); font-size: 17px; margin: 0 0 18px; max-width: 70ch; }
+.keyfig { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule); }
+.keyfig > div { padding: 14px 16px 2px 0; display: grid; gap: 2px; align-content: start; }
+.keyfig > div + div { padding-left: 16px; border-left: 1px solid var(--rule); }
+.keyfig .ix { font: 600 13px var(--mono); }
+.keyfig .v { font: 600 34px/1.05 var(--serif); font-variant-numeric: tabular-nums; }
+.keyfig .d { font-size: 13.5px; color: var(--muted); line-height: 1.4; }
+@media (max-width: 600px) { .keyfig { grid-template-columns: minmax(0, 1fr); } .keyfig > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--rule); } }
+
+section { scroll-margin-top: 16px; }
+h2 { font: 600 27px/1.2 var(--serif); margin: 64px 0 14px; padding-top: 18px; border-top: 1px solid var(--rule); text-wrap: balance;
+     display: flex; gap: 14px; align-items: baseline; }
+h2 .sn { font: 500 15px var(--mono); color: var(--muted); }
+h3 { font: 600 19px/1.3 var(--serif); margin: 36px 0 8px; display: flex; gap: 10px; align-items: baseline; }
+h3 .sn { font: 500 13px var(--mono); color: var(--muted); }
+p, li { max-width: 68ch; }
+.eq { font: italic 400 20px/1.4 var(--serif); padding: 14px 18px; margin: 16px 0; background: var(--panel); border-radius: 2px;
+      overflow-x: auto; white-space: nowrap; }
+.eq .frac { display: inline-grid; vertical-align: middle; text-align: center; margin: 0 6px; }
+.eq .frac > span:first-child { border-bottom: 1px solid var(--ink); padding: 0 4px; }
+.eq .no { float: right; font: 400 14px var(--mono); color: var(--muted); font-style: normal; padding-left: 20px; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+
+/* indicator tags */
+.tag { display: inline-block; font: 600 11.5px/1 var(--mono); padding: 4px 6px 3px; border-radius: 2px; color: var(--plate); vertical-align: 1px; }
+.t3 { background: var(--c3); } .t30 { background: var(--c30); } .t300 { background: var(--c300); }
+
+/* rule definition grid */
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--rule); background: var(--plate); margin: 20px 0; }
+.rules > div { padding: 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.rules > div + div { border-left: 1px solid var(--rule); }
+.rules .big { font: 700 44px/1 var(--serif); }
+.rules .r3 .big { color: var(--c3); } .rules .r30 .big { color: var(--c30); } .rules .r300 .big { color: var(--c300); }
+.rules .q { font-family: var(--serif); font-size: 16.5px; line-height: 1.4; }
+.rules .ops { font-size: 13.5px; color: var(--muted); border-top: 1px dashed var(--rule); padding-top: 8px; line-height: 1.5; }
+.rules .ops b { color: var(--ink); font-weight: 600; }
+@media (max-width: 720px) { .rules { grid-template-columns: minmax(0, 1fr); } .rules > div + div { border-left: 0; border-top: 1px solid var(--rule); } }
+
+/* figure plates */
+figure { margin: 28px 0; background: var(--plate); border: 1px solid var(--rule); min-width: 0; }
+figure .body { padding: 16px 18px 10px; }
+figcaption { border-top: 1px solid var(--rule); padding: 10px 18px 12px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+figcaption b { color: var(--ink); font-weight: 600; font-family: var(--sans); }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: end; margin-bottom: 12px; }
+.ctl label { display: grid; gap: 2px; font-size: 12.5px; color: var(--muted); min-width: 150px; flex: 1 1 150px; }
+.ctl label output { font: 500 13px var(--mono); color: var(--ink); }
+.ctl .row { display: flex; justify-content: space-between; gap: 8px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: 500 12.5px var(--sans); background: var(--plate); color: var(--muted); border: 0; padding: 6px 11px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--plate); }
+.seg button:hover:not([aria-pressed="true"]) { color: var(--ink); background: var(--panel); }
+.readout { display: flex; flex-wrap: wrap; gap: 6px 26px; font: 13px var(--mono); padding: 10px 0 4px; border-top: 1px dashed var(--rule); margin-top: 8px; }
+.readout span { color: var(--muted); }
+.readout b { color: var(--ink); font-weight: 500; }
+.verdict { font: 600 12px var(--mono); padding: 3px 7px; border-radius: 2px; letter-spacing: .03em; }
+.verdict.ok { background: var(--pass); color: var(--plate); }
+.verdict.no { background: var(--fail); color: var(--plate); }
+.verdict.out { background: var(--muted); color: var(--plate); }
+.svgbox { overflow-x: auto; }
+svg { display: block; max-width: 100%; height: auto; }
+svg text { font-family: var(--sans); fill: var(--muted); font-size: 11px; }
+svg .ax { stroke: var(--rule); stroke-width: 1; }
+svg .gl { stroke: var(--grid); stroke-width: 1; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+@media (max-width: 720px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; border-radius: 1px; }
+
+/* pipeline */
+.pipe { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; counter-reset: st; }
+.pipe > div { padding: 10px 12px 12px; border-top: 3px solid var(--c3); background: var(--panel); position: relative; min-width: 0; }
+.pipe > div + div { border-left: 1px solid var(--plate); }
+.pipe .s { font: 500 11.5px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.pipe .t { font-weight: 600; font-size: 14px; margin: 2px 0 4px; }
+.pipe .x { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+@media (max-width: 900px) { .pipe { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pipe > div { border-left: 1px solid var(--plate); border-bottom: 1px solid var(--plate); } }
+@media (max-width: 520px) { .pipe { grid-template-columns: minmax(0, 1fr); } }
+
+/* tables */
+.tw { overflow-x: auto; margin: 18px 0; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font: 600 12px var(--sans); color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--ink); white-space: nowrap; vertical-align: bottom; }
+td { padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; }
+caption { caption-side: top; text-align: left; font-size: 13.5px; color: var(--muted); padding: 0 0 8px; }
+caption b { color: var(--ink); }
+.tcap { font-size: 13.5px; color: var(--muted); margin: 28px 0 -10px; }
+.tcap b { color: var(--ink); }
+.dir { font: 600 12px var(--mono); white-space: nowrap; }
+.dir.up { color: var(--c300); } .dir.down { color: var(--c30); } .dir.flat { color: var(--muted); }
+
+/* results table */
+.filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 4px 0 10px; }
+.filters input[type=search] { font: 14px var(--sans); padding: 6px 10px; border: 1px solid var(--rule); background: var(--plate); color: var(--ink); border-radius: 2px; min-width: 0; width: 220px; max-width: 100%; }
+#res th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+#res th button:focus-visible { outline: 2px solid var(--accent); }
+#res th button[data-dir]::after { content: attr(data-dir); font-family: var(--mono); color: var(--ink); }
+#res td { padding: 4px 10px; }
+#res tr.prov td { font-weight: 600; background: var(--panel); border-bottom: 1px solid var(--ink); }
+#res tbody tr:hover td { background: var(--panel); }
+.bar { display: grid; grid-template-columns: 46px minmax(70px, 1fr); gap: 8px; align-items: center; min-width: 150px; }
+.bar .num { font: 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.bar .trk { position: relative; height: 10px; background: var(--grid); }
+.bar .fil { position: absolute; inset: 0 auto 0 0; }
+.bar .tgt { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 1.5px solid var(--ink); }
+.scroll-y { max-height: 520px; overflow: auto; }
+.scroll-y thead th { position: sticky; top: 0; background: var(--plate); z-index: 1; }
+
+.note { font-size: 14px; color: var(--muted); border-left: 2px solid var(--rule); padding-left: 14px; margin: 16px 0; max-width: 68ch; }
+ol.refs { padding-left: 22px; font-size: 14.5px; }
+ol.refs li { margin-bottom: 8px; }
+footer { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+
+#tip { position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--paper); font: 12px/1.45 var(--mono);
+       padding: 6px 9px; border-radius: 2px; max-width: 260px; }
+@media (prefers-reduced-motion: no-preference) { .bar .fil { transition: width .25s ease; } }
+</style>
+</head>
+<body>
+
+<div class="mast"><div class="mast-in">
+  <b>Technische notitie · 3-30-300-regel</b>
+  <span>Provincie Zuid-Holland</span>
+  <span>Versie 2026-10-13</span>
+  <a href="https://robertotjesse.github.io/3-30-300-regel/">Kaart</a>
+  <a href="https://github.com/RobertoTjesse/3-30-300-regel">Broncode</a>
+  <a class="lang" href="methode-en.html" hreflang="en" lang="en" title="Read this page in English">EN · English</a>
+</div></div>
+
+<div class="wrap">
+<nav class="toc" aria-label="Inhoud">
+  <div class="lbl">Inhoud</div>
+  <ol>
+    <li><a href="#rule"><span>1</span>De regel</a></li>
+    <li><a href="#m3"><span>2</span>Methode: de 3</a></li>
+    <li><a href="#m30"><span>3</span>Methode: de 30</a></li>
+    <li><a href="#m300"><span>4</span>Methode: de 300</a></li>
+    <li><a href="#results"><span>5</span>Uitkomsten</a></li>
+    <li><a href="#bench"><span>6</span>Validatie en benchmarks</a></li>
+    <li><a href="#assume"><span>7</span>Aannames</a></li>
+    <li><a href="#data"><span>8</span>Datasets</a></li>
+    <li><a href="#refs"><span>9</span>Bronnen</a></li>
+  </ol>
+</nav>
+
+<main>
+<h1>De <span class="n">3-30-300</span>-regel gemeten voor elke woning in Zuid-Holland</h1>
+<p class="sub">Hoe we een richtlijn van drie regels hebben omgezet in cijfers voor 1,8 miljoen woningen, 2.509 buurten en 50 gemeenten, en hoe ver je die cijfers kunt vertrouwen.</p>
+<div class="byline"><span>Roberto Beth</span><span>Open-source pijplijn: Python + GDAL, FME, PostGIS, Valhalla</span><span>Coördinatenstelsel RD New (EPSG:28992)</span></div>
+
+<div class="abstract">
+  <h2>Samenvatting</h2>
+  <p>Konijnendijk (2023) stelt dat iedereen vanuit huis drie bomen moet zien, in een buurt met 30% boomkroonbedekking moet wonen en een park binnen 300 m moet hebben. We hebben alle drie berekend voor de provincie Zuid-Holland, uit lidar-hoogtemodellen, een bomenregister, een kroonkaart en een voetgangersnetwerk. De meeste woningen zien drie bomen en de meeste liggen op korte loopafstand van groen. Bij de kroonbedekking zit de provincie het verst van de norm.</p>
+  <div class="keyfig">
+    <div><span class="ix" style="color:var(--c3)">3</span><span class="v">85,9%</span><span class="d">van de woningen ziet minstens 3 bomen binnen 30 m; 5,0% ziet er geen</span></div>
+    <div><span class="ix" style="color:var(--c30)">30</span><span class="v">8,1%</span><span class="d">van het land ligt onder een kroon; 102 van de 2.509 buurten halen 30%, geen enkele gemeente</span></div>
+    <div><span class="ix" style="color:var(--c300)">300</span><span class="v">78,9%</span><span class="d">van de woningen ligt binnen 5 minuten lopen van een park of bos; 99,2% binnen 15 minuten</span></div>
+  </div>
+</div>
+
+<section id="rule">
+<h2><span class="sn">1</span>De regel en hoe we die lezen</h2>
+<p>Het artikel geeft elk deel in één zin en laat open hoe je het meet: vanaf waar je kijkt, hoe ver, wat telt als boom of park. Hieronder staat de tekst uit het artikel naast de definitie die wij gebruiken. Hoofdstuk 7 noemt elke keuze en de kant waarop die de uitkomst duwt.</p>
+<div class="rules">
+  <div class="r3"><span class="big">3</span><span class="q">Iedereen moet vanuit zijn woning minstens drie bomen kunnen zien.</span>
+    <span class="ops"><b>Gemeten als</b> het aantal bomen waarvan de kroontop een vrije zichtlijn heeft naar een punt 1,8 m boven de grond direct voor de gevel, voor bomen tot 30 m van de stam.</span></div>
+  <div class="r30"><span class="big">30</span><span class="q">Elke buurt moet minstens 30% boomkroonbedekking hebben.</span>
+    <span class="ops"><b>Gemeten als</b> het kroonoppervlak uit de lidar-raster BKB 2024 gedeeld door het landoppervlak, per CBS-buurt. Water telt niet mee in het landoppervlak.</span></div>
+  <div class="r300"><span class="big">300</span><span class="q">Elke woning moet op hooguit 300 m van het dichtstbijzijnde park of groengebied liggen.</span>
+    <span class="ops"><b>Gemeten als</b> 5 minuten lopen (ongeveer 425 m over paden en straten) van een parkingang naar het pand, voor groen van minstens 300 m².</span></div>
+</div>
+</section>
+
+<section id="m3">
+<h2><span class="sn">2</span>Methode: de 3</h2>
+<p>Voor elk vakje van 0,5 m in het AHN-hoogtemodel tellen we door hoeveel bomen het gezien wordt. Vanaf de kroontop van elke boom wordt een zichtveld (viewshed) berekend met een straal van 30 m, en de zichtbare vakjes van alle bomen worden opgeteld. Een woning krijgt daarna de hoogste telling in een ring van 1,5 m rond het pand.</p>
+
+<h3><span class="sn">2.1</span>Zichtlijn</h3>
+<p>De waarnemer staat op de kroontop: het hoogste punt van het oppervlak binnen 1,5 m van het boompunt. Op het boompunt zelf zou de waarnemer in zijn eigen kroon staan, en in Delft zag 35,5% van de bomen dan vrijwel niets. Het doel ligt 1,8 m boven de grond, ongeveer ooghoogte bij de voordeur. Alles in het hoogtemodel blokkeert het zicht, ook heggen, schuttingen, auto's en andere kronen.</p>
+
+<figure id="f1">
+  <div class="body">
+    <div class="ctl">
+      <label for="los-d"><span class="row">Stam tot gevelpunt <output id="los-d-o"></output></span><input id="los-d" type="range" min="4" max="40" step="0.5" value="18"></label>
+      <label for="los-h"><span class="row">Kroontop <output id="los-h-o"></output></span><input id="los-h" type="range" min="4" max="25" step="0.5" value="11"></label>
+      <label for="los-o"><span class="row">Hoogte obstakel <output id="los-o-o"></output></span><input id="los-o" type="range" min="0" max="8" step="0.1" value="2.2"></label>
+      <label for="los-p"><span class="row">Obstakel tot gevel <output id="los-p-o"></output></span><input id="los-p" type="range" min="0.5" max="39" step="0.5" value="4"></label>
+    </div>
+    <div class="svgbox"><svg id="los" viewBox="0 0 760 300" role="img" aria-label="Doorsnede van een zichtlijn van kroontop naar woning"></svg></div>
+    <div class="readout" id="los-r"></div>
+  </div>
+  <figcaption><b>Figuur 1.</b> Doorsnede van één zichtlijn. De lijn loopt van de kroontop naar het oogpunt 1,8 m boven de grond voor de woning. De boom telt mee als de lijn vrij blijft van elk oppervlak ertussen en de stam hooguit 30 m ver staat. Verschuif het obstakel (een heg, een bestelbus, een schuur) om te zien waar het zicht wegvalt.</figcaption>
+</figure>
+
+<h3><span class="sn">2.2</span>Van vakjes naar woningen</h3>
+<p>Binnen een pand toont het hoogtemodel het dak, dus daar zegt de telling niets over iemand op straat. De score van een pand is de hoogste telling in een ring van vakjes van 0,5 m, van de gevel tot 1,5 m daarbuiten. Eén goede plek is genoeg: ziet een hoek van de achtertuin drie bomen, dan haalt het pand de norm. Elke woning in het pand krijgt die score, dus een blok van 80 flats weegt 80 keer mee in de cijfers per gebied.</p>
+
+<figure id="f2">
+  <div class="body">
+    <div class="ctl">
+      <div class="seg" role="group" aria-label="Voorbeeldpand" id="ring-ex">
+        <button type="button" aria-pressed="true" data-k="street">Straat met bomen</button>
+        <button type="button" aria-pressed="false" data-k="garden">Alleen achtertuin</button>
+        <button type="button" aria-pressed="false" data-k="bare">Kale straat</button>
+      </div>
+      <div class="seg" role="group" aria-label="Samenvattende maat" id="ring-stat">
+        <button type="button" aria-pressed="true" data-k="max">Maximum (gebruikt)</button>
+        <button type="button" aria-pressed="false" data-k="med">Mediaan</button>
+        <button type="button" aria-pressed="false" data-k="mean">Gemiddelde</button>
+      </div>
+    </div>
+    <div class="svgbox"><svg id="ring" viewBox="0 0 520 330" role="img" aria-label="Raster van tellingen zichtbare bomen rond een pand"></svg></div>
+    <div class="legend" id="ring-leg"></div>
+    <div class="readout" id="ring-r"></div>
+  </div>
+  <figcaption><b>Figuur 2.</b> De score van een pand uit de ring van 1,5 m eromheen (drie vakjes van 0,5 m breed). Elk vakje toont door hoeveel bomen het gezien wordt, in de kleuren van de kaart. De voorbeelden zijn illustraties, geen echte panden. Wissel van maximum naar mediaan om te zien hoeveel deze keuze de uitkomst optilt: de mediaan vraagt of een gewone plek drie bomen ziet, het maximum of er één plek is die dat doet.</figcaption>
+</figure>
+
+<h3><span class="sn">2.3</span>Pijplijn</h3>
+<p>De provincie wordt in tegels van 500 m geknipt met een rand van 35 m, meer dan de straal van 30 m. Bomen en terrein worden over die rand gelezen, zodat een boom net over een tegel- of gemeentegrens toch meetelt, maar alleen de binnenste 500 m wordt weggeschreven. De tegels sluiten daarna naadloos op elkaar aan.</p>
+<div class="pipe">
+  <div><div class="s">01_tile_dem</div><div class="t">Tegels</div><div class="x">Tegels van 500 m + rand van 35 m uit het provinciale hoogtemodel</div></div>
+  <div><div class="s">02_compute_viewsheds</div><div class="t">Zichtvelden</div><div class="x">Eén GDAL-viewshed per boom, tellingen opgeteld per tegel, 4 processen</div></div>
+  <div><div class="s">03_merge_tiles</div><div class="t">Samenvoegen</div><div class="x">Binnenvensters tot één Cloud-Optimized GeoTIFF per gemeente</div></div>
+  <div><div class="s">04_score_buildings</div><div class="t">Score</div><div class="x">Hoogste telling in de gevelring van 1,5 m per woonpand</div></div>
+  <div><div class="s">05_merge_province</div><div class="t">Provincie</div><div class="x">Elk pand één keer, in zijn huidige gemeente</div></div>
+  <div><div class="s">06_area_summaries</div><div class="t">Gebieden</div><div class="x">Aandeel woningen per klasse, per CBS-buurt, -wijk en gemeente</div></div>
+</div>
+<p class="note">Van de 5,2 miljoen boompunten staan er 1.275.676 (24,5%) in het register als ‘verdwenen, kleine boom’ of ‘één keer niet gezien, kleine boom’. Die tellen niet mee. Het effect op de uitkomst staat in figuur 8.</p>
+</section>
+
+<section id="m30">
+<h2><span class="sn">3</span>Methode: de 30</h2>
+<p>Kroonbedekking is het aandeel land onder boomkronen. De kronen komen uit Boomkroonbedekking 2024 (BKB 2024), een raster van 0,25 m gemaakt uit lidar, waarin 1 kroon betekent. De gebieden zijn de CBS-buurten van 2025, dezelfde als op de kaart.</p>
+<div class="eq">kroonbedekking<sub>buurt</sub> = <span class="frac"><span>Σ kroonvakjes × 0,0625 m²</span><span>landoppervlak (CBS, zonder water)</span></span> × 100% <span class="no">(1)</span></div>
+<p>Een vakje hoort bij de buurt waarin zijn midden ligt. Een kroon op een grens wordt dus over de buurten verdeeld en nooit dubbel geteld, en overlappende kronen tellen één keer omdat de grond eronder ook maar één keer bestaat. Het cijfer van een wijk of gemeente is het kroonoppervlak van al haar buurten gedeeld door hun totale landoppervlak. Het artikel vraagt om de buurt, en een grote groene buurt kan een gemeente optillen terwijl haar andere buurten ver onder 30% blijven.</p>
+
+<figure id="f3">
+  <div class="body"><div class="svgbox"><svg id="hist" viewBox="0 0 760 270" role="img" aria-label="Histogram van de kroonbedekking per buurt"></svg></div></div>
+  <figcaption><b>Figuur 3.</b> Kroonbedekking van de 2.509 CBS-buurten in Zuid-Holland, in klassen van 5 procentpunt. De 102 buurten op of boven 30% zijn gekleurd. Ga met de muis over een staaf voor het aantal.</figcaption>
+</figure>
+</section>
+
+<section id="m300">
+<h2><span class="sn">4</span>Methode: de 300</h2>
+<p>Een woning telt mee als ze binnen 5 minuten lopen van de ingang van een park of bos ligt. Het groen komt uit een gecombineerde groenkaart van OpenStreetMap en TOP10NL (2024). Een ingang is een plek waar een pad uit OpenStreetMap de rand van het groen kruist. Vanaf elke ingang tekent de routeplanner Valhalla het gebied dat een voetganger met 5,1 km/u bereikt, over straten en paden, om water, spoor en snelwegen heen. Een pand telt mee als een deel ervan in die zone ligt.</p>
+<p>Twee filters bepalen wat als groen telt: minstens 300 m², en geen smalle strook. Een berm of een rij struiken heeft veel rand voor zijn oppervlak, dus vormen met een verhouding omtrek / oppervlak boven 0,35 m⁻¹ vallen af. Bij een lange strook nadert die verhouding 2 / breedte, wat de grens op een breedte van ongeveer 5,7 m legt.</p>
+
+<figure id="f4">
+  <div class="body two">
+    <div>
+      <div class="ctl">
+        <label for="g-w"><span class="row">Breedte <output id="g-w-o"></output></span><input id="g-w" type="range" min="1" max="40" step="0.5" value="8"></label>
+        <label for="g-l"><span class="row">Lengte <output id="g-l-o"></output></span><input id="g-l" type="range" min="10" max="300" step="1" value="60"></label>
+      </div>
+      <svg id="strip" viewBox="0 0 340 130" role="img" aria-label="Een rechthoek groen op schaal"></svg>
+      <div class="readout" id="g-r"></div>
+    </div>
+    <div>
+      <div class="ctl">
+        <label for="w-t"><span class="row">Looptijd <output id="w-t-o"></output></span><input id="w-t" type="range" min="1" max="15" step="1" value="5"></label>
+      </div>
+      <svg id="walk" viewBox="0 0 340 130" role="img" aria-label="Loopafstand over straat vergeleken met hemelsbrede afstand"></svg>
+      <div class="readout" id="w-r"></div>
+    </div>
+  </div>
+  <figcaption><b>Figuur 4.</b> Links: de twee filters op een rechthoek groen. Een vorm telt mee als het oppervlak minstens 300 m² is en omtrek / oppervlak hooguit 0,35 m⁻¹. Rechts: de afstand die je met 5,1 km/u over het netwerk aflegt, en de hemelsbrede afstand die daarbij hoort met een gangbare omwegfactor van 1,42 (425 m straat voor 300 m hemelsbreed).</figcaption>
+</figure>
+</section>
+
+<section id="results">
+<h2><span class="sn">5</span>Uitkomsten</h2>
+<p>De provincie als geheel: 85,9% van de woningen ziet drie of meer bomen, 8,1% van het land ligt onder een kroon en 78,9% van de woningen ligt binnen 5 minuten lopen van groen. Geen enkele gemeente haalt de 30. Wassenaar komt het dichtst bij met 27,9%, Kaag en Braassem is het laagst met 2,5%.</p>
+
+<figure id="f5">
+  <div class="body">
+    <svg id="split" viewBox="0 0 760 74" role="img" aria-label="Aandeel woningen per aantal zichtbare bomen"></svg>
+    <div class="legend" id="split-leg"></div>
+  </div>
+  <figcaption><b>Figuur 5.</b> De 3 voor de provincie: aandeel van de 1.797.328 woningen naar het aantal bomen dat zichtbaar is vanaf de beste plek bij het pand.</figcaption>
+</figure>
+
+<p class="tcap"><b>Tabel 1.</b> De drie indicatoren per gemeente. Klik op een kolom om te sorteren. Het zwarte streepje bij de 30 markeert de grens van 30%. De kleuren van de balken volgen de klassen van de kaart.</p>
+<div class="filters">
+  <input id="q" type="search" placeholder="Zoek gemeente" aria-label="Zoek gemeente">
+  <span class="mono" style="color:var(--muted);font-size:12.5px" id="q-n"></span>
+</div>
+<div class="tw scroll-y">
+<table id="res">
+  <thead><tr>
+    <th><button type="button" data-k="0">Gemeente</button></th>
+    <th class="n"><button type="button" data-k="1">Woningen</button></th>
+    <th><button type="button" data-k="2"><span class="tag t3">3</span> ≥ 3 bomen zichtbaar</button></th>
+    <th><button type="button" data-k="4"><span class="tag t30">30</span> kroonbedekking</button></th>
+    <th><button type="button" data-k="5"><span class="tag t300">300</span> ≤ 5 min lopen</button></th>
+    <th class="n"><button type="button" data-k="6">≤ 15 min</button></th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+</div>
+
+<figure id="f6">
+  <div class="body">
+    <div class="ctl">
+      <label for="sx" style="flex:0 1 200px">Horizontale as
+        <select id="sx"><option value="2">3: woningen met ≥ 3 bomen</option><option value="4" selected>30: kroonbedekking</option><option value="5">300: woningen ≤ 5 min</option><option value="3">3: woningen zonder boom</option></select></label>
+      <label for="sy" style="flex:0 1 200px">Verticale as
+        <select id="sy"><option value="2" selected>3: woningen met ≥ 3 bomen</option><option value="4">30: kroonbedekking</option><option value="5">300: woningen ≤ 5 min</option><option value="3">3: woningen zonder boom</option></select></label>
+    </div>
+    <div class="svgbox"><svg id="sc" viewBox="0 0 760 360" role="img" aria-label="Spreidingsdiagram van twee indicatoren per gemeente"></svg></div>
+    <div class="readout" id="sc-r"></div>
+  </div>
+  <figcaption><b>Figuur 6.</b> Twee indicatoren tegen elkaar voor de 50 gemeenten, met Pearsons r en een kleinste-kwadratenlijn. Het oppervlak van een cirkel is evenredig met het aantal woningen. Ga met de muis over een punt voor de naam.</figcaption>
+</figure>
+</section>
+
+<section id="bench">
+<h2><span class="sn">6</span>Validatie en benchmarks</h2>
+<p>Bij de 3 kan het meest misgaan, dus daar is het meest gecontroleerd. Die is vergeleken met ArcGIS Spatial Analyst, met een exacte zichtlijntoets op losse bomen en met de eerdere benchmarkraster voor Delft. De 30 is vergeleken met de eerdere FME-berekening en met Cobra Groeninzicht.</p>
+
+<h3><span class="sn">6.1</span>Viewshed-rekenkern tegen ArcGIS en een exacte toets</h3>
+<p>De oorspronkelijke ArcGIS-benchmark voor Delft bleek de waarnemers op twee keer de bedoelde hoogte te hebben: het hoogteveld was zowel als waarnemershoogte als als offset opgegeven. Met een losse boom en een losse groep bomen gaf ArcGIS met die instellingen op 100% van de vakjes de benchmark terug. Daarna is de benchmark opnieuw gedraaid met de bedoelde waarnemer.</p>
+
+<figure id="f7">
+  <div class="body two">
+    <div><svg id="arc1" viewBox="0 0 340 210" role="img" aria-label="Gemiddeld aantal zichtbare bomen per vakje, drie berekeningen"></svg></div>
+    <div><svg id="arc2" viewBox="0 0 340 210" role="img" aria-label="Aandeel vakjes dat drie of meer bomen ziet, drie berekeningen"></svg></div>
+  </div>
+  <figcaption><b>Figuur 7.</b> Delft, vakjes minstens 30 m binnen de gemeentegrens. Links: gemiddeld aantal zichtbare bomen per vakje. Rechts: aandeel vakjes dat drie of meer bomen ziet. Het resterende verschil tussen de gecorrigeerde benchmark en deze pijplijn komt door de waarnemershoogte (kroontop, mediaan ongeveer 2 m hoger dan boompunt + 1 m) en door een ander hoogtemodel.</figcaption>
+</figure>
+
+<div class="tw"><table>
+  <caption><b>Tabel 2.</b> Controles op overeenstemming voor de 3.</caption>
+  <thead><tr><th>Controle</th><th>Vergeleken</th><th class="n">Uitkomst</th></tr></thead>
+  <tbody>
+    <tr><td>Oorspronkelijke benchmark nabootsen</td><td>ArcGIS met waarnemer op 2 × hoogte tegen de benchmarkraster</td><td class="n">100% van de vakjes</td></tr>
+    <tr><td>Nauwkeurigheid op losse bomen</td><td>GDAL-viewshed tegen exacte zichtlijntoets</td><td class="n">95,5–99,7% van de vakjes gelijk</td></tr>
+    <tr><td>Overeenstemming rekenkernen</td><td>GDAL tegen ArcGIS, zelfde hoogtemodel en waarnemers</td><td class="n">98,3% zelfde oordeel ≥ 3</td></tr>
+    <tr><td>Totalen per gebied</td><td>Gemeentetotalen uit stap 6 tegen stap 5</td><td class="n">gelijk</td></tr>
+  </tbody>
+</table></div>
+
+<h3><span class="sn">6.2</span>Gevoeligheid voor het bomenregister</h3>
+<figure id="f8">
+  <div class="body"><svg id="slope" viewBox="0 0 760 230" role="img" aria-label="Aandeel woningen dat drie bomen ziet voor en na het statusfilter"></svg></div>
+  <figcaption><b>Figuur 8.</b> Aandeel woningen dat minstens drie bomen ziet, met alle boompunten (links) en zonder de punten die als verdwenen of klein zijn gemarkeerd (rechts). Het filter haalt 24,5% van de punten weg en verlaagt het provinciale cijfer met 8,8 procentpunt. Wat het register met deze statussen bedoelt, wordt nog nagevraagd (issue #1).</figcaption>
+</figure>
+
+<h3><span class="sn">6.3</span>Vergelijking met andere berekeningen</h3>
+<div class="tw"><table>
+  <caption><b>Tabel 3.</b> Deze studie tegen twee andere berekeningen, per gemeente in Zuid-Holland.</caption>
+  <thead><tr><th>Indicator</th><th>Vergeleken met</th><th class="n">Pearson r</th><th>Verschil</th><th>Belangrijkste oorzaak</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag t30">30</span></td><td>Eerdere FME-berekening (NEO-kroonvlakken, 39 gemeenten)</td><td class="n">0,99</td><td>FME hoger in alle 39, mediaan +23%</td><td>Kronen die een buurt raken volledig meegeteld; overlap opgeteld</td></tr>
+    <tr><td><span class="tag t30">30</span></td><td>Cobra Groeninzicht (50 gemeenten)</td><td class="n">0,83</td><td>Cobra gemiddeld 7,6 punt hoger</td><td>500 m rond panden in plaats van al het land</td></tr>
+    <tr><td><span class="tag t3">3</span></td><td>Cobra Groeninzicht (50 gemeenten)</td><td class="n">0,31</td><td>Zwak verband</td><td>Cobra telt alleen kronen &gt; 28 m²; wij tellen elk boompunt</td></tr>
+  </tbody>
+</table></div>
+<p>De toewijzing van vakjes bij de 30 is gecontroleerd op de 91 buurten van Delft: het getelde oppervlak wijkt hooguit 4,1 m² af van het oppervlak van de polygoon, en de buurten optellen geeft dezelfde wijk- en gemeentetotalen als die direct uitknippen, op 0,02 m² na.</p>
+
+<h3><span class="sn">6.4</span>Rekentijden</h3>
+<p>De 3 is het zware deel: 10.241.760 zichtvelden over 28.723 tegels. Bomen bij een tegelrand worden door beide buren berekend, daarom is dat aantal hoger dan het aantal bomen. Alle 52 hoogtemodelgebieden samen kostten 25,6 uur op één werkstation met 4 processen. De 30 kost ongeveer 4 minuten voor de provincie (6.225 tegels van 1 km, 5 processen).</p>
+
+<figure id="f9">
+  <div class="body">
+    <div class="svgbox"><svg id="rt" viewBox="0 0 760 380" role="img" aria-label="Rekentijd tegen aantal zichtvelden per gemeente"></svg></div>
+    <div class="legend" id="rt-leg"></div>
+    <div class="svgbox"><svg id="rt2" viewBox="0 0 760 64" role="img" aria-label="Aandeel van de totale rekentijd per stap"></svg></div>
+  </div>
+  <figcaption><b>Figuur 9.</b> Rekentijd van stap 1–3 per hoogtemodelgebied tegen het aantal zichtvelden, beide op logaritmische schaal. De stippellijn is het provinciale gemiddelde over de drie stappen, ongeveer 111 zichtvelden per seconde; de viewshed-stap alleen haalt een mediaan van 505 per seconde. Delft (137 bomen/s) was het eerste gebied, en de pijplijn is daarna versneld. De balk eronder verdeelt de 1.536 minuten over de drie stappen. Bron: <code>logs/benchmark.csv</code>.</figcaption>
+</figure>
+</section>
+
+<section id="assume">
+<h2><span class="sn">7</span>Aannames</h2>
+<p>Elk gat in de tekst van het artikel is met een keuze gevuld. Dit zijn de keuzes die de cijfers het meest verschuiven, met de kant waarop ze de uitkomst duwen.</p>
+<div class="filters"><div class="seg" role="group" aria-label="Toon aannames voor" id="af">
+  <button type="button" aria-pressed="true" data-k="all">Alle</button>
+  <button type="button" aria-pressed="false" data-k="3">3</button>
+  <button type="button" aria-pressed="false" data-k="30">30</button>
+  <button type="button" aria-pressed="false" data-k="300">300</button>
+</div></div>
+<div class="tw"><table id="at">
+  <thead><tr><th></th><th>Keuze</th><th>Effect</th></tr></thead>
+  <tbody></tbody>
+</table></div>
+</section>
+
+<section id="data">
+<h2><span class="sn">8</span>Datasets</h2>
+<p>De bronnen komen uit verschillende jaren. Dat is de belangrijkste reden dat de kaart soms afwijkt van wat een bewoner nu ziet.</p>
+<div class="tw"><table>
+  <caption><b>Tabel 4.</b> Invoergegevens.</caption>
+  <thead><tr><th>Dataset</th><th>Leverancier</th><th>Datum</th><th>Resolutie / omvang</th><th>Gebruikt voor</th></tr></thead>
+  <tbody>
+    <tr><td>AHN4-hoogtemodel (DSM, <i>ruw</i>), Float32</td><td>Actueel Hoogtebestand Nederland</td><td>2020–2022</td><td>0,5 m · 52 gebieden, 119 GB</td><td><span class="tag t3">3</span></td></tr>
+    <tr><td>Boompunten met status</td><td>NEO-bomenregister</td><td>2020–2022</td><td>5,2 miljoen punten, 3,9 miljoen meegeteld</td><td><span class="tag t3">3</span></td></tr>
+    <tr><td>BAG pand + verblijfsobject (gebruiksdoel, status)</td><td>Kadaster via PDOK</td><td>27 sep 2026</td><td>978.428 woonpanden</td><td><span class="tag t3">3</span></td></tr>
+    <tr><td>Boomkroonbedekking 2024 (BKB)</td><td>Friedenau Society, uit lidar</td><td>2024</td><td>0,25 m · heel Nederland, 9,2 GB</td><td><span class="tag t30">30</span></td></tr>
+    <tr><td>Wijk- en Buurtkaart, landoppervlak</td><td>CBS via PDOK</td><td>2025</td><td>50 gemeenten, 518 wijken, 2.509 buurten · oppervlak in hele ha</td><td><span class="tag t3">3</span> <span class="tag t30">30</span> <span class="tag t300">300</span></td></tr>
+    <tr><td>Bestuurlijke gebieden (gemeenten, provincie)</td><td>Kadaster via PDOK</td><td>2026</td><td>polygonen</td><td><span class="tag t3">3</span></td></tr>
+    <tr><td>Groenkaart (parken, bossen), zonder water</td><td>OpenStreetMap + TOP10NL</td><td>2024</td><td>polygonen ≥ 300 m²</td><td><span class="tag t300">300</span></td></tr>
+    <tr><td>Paden en wegen (parkingangen)</td><td>OpenStreetMap, extract van Geofabrik</td><td>26 aug 2025</td><td>Zuid-Holland</td><td><span class="tag t300">300</span></td></tr>
+    <tr><td>BAG pand (woningen per pand)</td><td>Kadaster, provinciale kopie</td><td>9 dec 2025</td><td>panden</td><td><span class="tag t300">300</span></td></tr>
+    <tr><td>Routeplanner voor voetgangers</td><td>Valhalla, lokale installatie</td><td>OSM-netwerk</td><td>isochronen met 5,1 km/u, 5 en 15 min</td><td><span class="tag t300">300</span></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="refs">
+<h2><span class="sn">9</span>Bronnen</h2>
+<ol class="refs">
+  <li>Konijnendijk, C.C. (2023). Evidence-based guidelines for greener, healthier, more resilient neighbourhoods: Introducing the 3–30–300 rule. <i>Journal of Forestry Research</i> 34, 821–830. <a href="https://doi.org/10.1007/s11676-022-01523-z">doi.org/10.1007/s11676-022-01523-z</a></li>
+  <li>Cobra Groeninzicht (2025). <i>Handboek 3-30-300-regel</i> (Nederlandse vertaling van het Yggdrasil-handboek). In de repository onder <code>docs/bronnen/</code>.</li>
+  <li>Projectrepository, met de pijplijn, het rekenlogboek en de volledige lijst keuzes: <a href="https://github.com/RobertoTjesse/3-30-300-regel">github.com/RobertoTjesse/3-30-300-regel</a>. Vergelijking met Cobra Groeninzicht: <a href="https://github.com/RobertoTjesse/3-30-300-regel/wiki/Comparison-with-Cobra-Groeninzicht">wiki</a> (Engels).</li>
+</ol>
+<footer>De cijfers per gebied zijn betrouwbaar. Voor één woning geeft de kaart een indicatie; hoofdstuk 7 verklaart de meeste gevallen waarin die afwijkt van wat een bewoner ziet. Gebieden met minder dan 10 woningen krijgen op de kaart geen percentage.</footer>
+</section>
+</main>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (v, d = 1) => v.toLocaleString("nl-NL", { minimumFractionDigits: d, maximumFractionDigits: d });
+const int = v => Math.round(v).toLocaleString("nl-NL");
+const tip = $("#tip");
+function showTip(ev, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const x = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px"; tip.style.top = (ev.clientY + 14) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+function bindTip(node, html) {
+  node.addEventListener("pointermove", ev => showTip(ev, html));
+  node.addEventListener("pointerleave", hideTip);
+}
+
+/* ---------- data ---------- */
+// [gemeente, woningen, % woningen >= 3 bomen, % woningen 0 bomen, kroonbedekking %, % woningen <= 5 min, % woningen <= 15 min]
+const G = [
+["'s-Gravenhage",275739,82.5,6.4,18.7,88.5,99.9],["Alblasserdam",8565,80.9,3.9,8.0,91.4,99.8],["Albrandswaard",10884,91.1,2.2,14.7,65.5,100.0],
+["Alphen aan den Rijn",52306,87.3,3.8,5.1,78.8,98.6],["Barendrecht",20112,89.9,2.0,11.9,66.8,99.9],["Bodegraven-Reeuwijk",15396,85.3,5.5,3.5,64.5,95.3],
+["Capelle aan den IJssel",32506,91.8,1.8,14.1,77.3,99.7],["Delft",55121,90.6,3.1,20.9,94.0,100.0],["Dordrecht",58207,84.2,5.8,13.6,77.7,99.9],
+["Goeree-Overflakkee",23262,79.3,6.3,5.9,74.8,98.3],["Gorinchem",18349,81.5,9.1,10.2,51.8,99.8],["Gouda",36347,86.1,5.7,12.4,85.3,99.6],
+["Hardinxveld-Giessendam",7929,85.8,5.2,5.6,56.2,99.9],["Hendrik-Ido-Ambacht",13180,84.3,7.1,10.0,72.6,99.9],["Hillegom",10563,84.5,4.4,6.5,59.9,99.7],
+["Hoeksche Waard",40564,86.1,4.7,4.1,68.2,97.0],["Kaag en Braassem",12897,82.2,7.3,2.5,73.5,97.5],["Katwijk",28095,70.2,15.3,8.7,87.5,99.8],
+["Krimpen aan den IJssel",12834,87.7,2.0,14.7,81.2,100.0],["Krimpenerwaard",24947,85.0,3.4,3.8,71.6,95.6],["Lansingerland",26256,81.6,7.6,5.8,61.6,97.7],
+["Leiden",66287,87.0,3.7,14.6,92.5,100.0],["Leiderdorp",12757,96.6,0.6,7.4,83.1,100.0],["Leidschendam-Voorburg",38632,95.0,1.2,11.3,91.3,99.9],
+["Lisse",10856,85.6,4.9,13.2,79.7,99.8],["Maassluis",16895,74.5,15.1,9.7,82.6,100.0],["Midden-Delfland",8233,87.5,3.7,3.1,75.3,97.6],
+["Molenlanden",18329,83.9,3.2,3.2,55.2,91.9],["Nieuwkoop",12239,88.2,3.7,4.1,51.0,95.2],["Nissewaard",40904,80.8,5.2,6.9,74.0,99.3],
+["Noordwijk",21647,76.0,11.4,11.0,88.4,99.4],["Oegstgeest",11312,90.5,4.8,15.2,94.4,100.0],["Papendrecht",14674,87.4,2.7,12.8,70.8,99.5],
+["Pijnacker-Nootdorp",23587,82.5,9.0,11.2,67.0,99.7],["Ridderkerk",21971,91.4,2.6,14.1,67.9,99.8],["Rijswijk",30949,89.8,6.4,22.3,81.5,100.0],
+["Rotterdam",332575,89.3,2.5,9.7,78.4,99.6],["Schiedam",38805,82.2,4.8,11.8,75.8,100.0],["Sliedrecht",11474,83.2,5.6,6.1,68.3,99.2],
+["Teylingen",16932,87.7,5.7,7.0,84.3,99.2],["Vlaardingen",37376,87.6,4.1,17.4,78.8,100.0],["Voorne aan Zee",34210,86.4,3.1,12.8,55.8,97.6],
+["Voorschoten",11744,96.3,1.2,16.3,87.8,99.5],["Waddinxveen",14610,74.3,14.6,6.0,56.3,98.7],["Wassenaar",12567,96.5,0.6,27.9,87.1,100.0],
+["Westland",49582,79.5,9.9,5.0,66.7,96.8],["Zoetermeer",58791,93.0,2.3,13.4,86.1,98.4],["Zoeterwoude",4586,74.5,17.0,3.6,95.1,99.6],
+["Zuidplas",20129,78.7,13.0,4.4,75.0,97.6],["Zwijndrecht",20616,87.4,2.9,13.4,72.1,99.8]];
+const PROV = ["Zuid-Holland", 1797328, 85.9, 5.0, 8.1, 78.9, 99.2];
+// kroonbedekking per buurt, aantallen per klasse van 5 punt (0-5, 5-10, ...)
+const HIST = [541,731,568,343,160,64,34,28,18,10,4,4,3,1];
+// [gebied, tegels, zichtvelden, tile DEM s, viewsheds s, merge s]  (indicator_3_bomen/BENCHMARKS.md)
+const BENCH = [["'s-Gravenhage", 924, 665896, 1762.4, 1163.1, 322.8], ["Alblasserdam", 110, 50608, 267.4, 105.4, 31.1], ["Albrandswaard", 160, 120719, 442.8, 235.3, 48.0], ["Alphen aan den Rijn", 825, 257369, 1746.4, 647.3, 255.9], ["Barendrecht", 143, 95935, 363.9, 184.1, 43.9], ["Bodegraven-Reeuwijk", 750, 175238, 1703.1, 353.7, 191.2], ["Brielle", 285, 86589, 737.7, 165.1, 74.4], ["Capelle aan den IJssel", 168, 133988, 502.5, 250.4, 56.7], ["Delft", 208, 149849, 875.8, 1094.0, 285.3], ["Dordrecht", 950, 287711, 1825.4, 566.1, 212.1], ["Goeree-Overflakkee", 4410, 685485, 7473.1, 1419.4, 1000.3], ["Gorinchem", 176, 61211, 393.5, 120.9, 41.3], ["Gouda", 154, 75839, 390.5, 148.5, 42.8], ["Hardinxveld-Giessendam", 198, 53459, 377.0, 105.9, 46.6], ["Hellevoetsluis", 546, 135290, 1184.1, 271.4, 131.2], ["Hendrik-Ido-Ambacht", 121, 76019, 335.4, 159.7, 37.3], ["Hillegom", 110, 28922, 233.4, 61.9, 25.5], ["Hoeksche Waard", 1947, 441463, 3645.7, 921.9, 589.4], ["Kaag en Braassem", 513, 87668, 1180.3, 185.0, 119.4], ["Katwijk", 256, 107076, 480.5, 202.5, 68.4], ["Krimpen aan den IJssel", 98, 68285, 263.0, 163.6, 37.8], ["Krimpenerwaard", 1260, 388530, 2768.4, 794.4, 419.7], ["Lansingerland", 460, 246541, 1125.4, 463.4, 176.8], ["Leiden", 195, 136266, 417.0, 257.1, 61.8], ["Leiderdorp", 108, 39528, 223.3, 77.4, 25.0], ["Leidschendam-Voorburg", 391, 269795, 934.7, 548.1, 121.9], ["Lisse", 135, 59059, 292.8, 109.2, 34.6], ["Maassluis", 120, 50356, 351.1, 125.3, 32.5], ["Midden-Delfland", 552, 283719, 1446.7, 542.1, 175.5], ["Molenlanden", 1539, 396075, 3348.8, 1036.2, 492.6], ["Nieuwkoop", 840, 122698, 1752.1, 255.4, 188.0], ["Nissewaard", 735, 248251, 1703.6, 622.1, 230.4], ["Noordwijk", 725, 227889, 1119.7, 441.7, 174.6], ["Oegstgeest", 90, 63869, 207.2, 126.2, 38.9], ["Papendrecht", 77, 37145, 193.3, 98.5, 27.7], ["Pijnacker-Nootdorp", 300, 185093, 849.4, 329.9, 92.4], ["Ridderkerk", 210, 127507, 536.9, 252.3, 90.7], ["Rijswijk", 120, 90769, 273.1, 173.4, 39.2], ["Rotterdam", 3496, 1450428, 8197.0, 2975.0, 1134.4], ["Schiedam", 160, 78593, 476.7, 149.7, 45.8], ["Sliedrecht", 96, 34720, 191.3, 69.4, 23.8], ["Teylingen", 270, 119837, 642.0, 223.1, 75.8], ["Vlaardingen", 210, 122443, 573.5, 272.9, 72.5], ["Voorschoten", 120, 92570, 280.1, 148.9, 35.2], ["Waddinxveen", 255, 92813, 635.5, 221.0, 68.1], ["Wassenaar", 506, 369583, 899.8, 611.3, 183.7], ["Westland", 784, 280866, 1637.5, 545.9, 287.5], ["Westvoorne", 638, 238684, 1566.0, 409.1, 149.2], ["Zoetermeer", 300, 157447, 727.3, 282.5, 85.0], ["Zoeterwoude", 192, 49976, 449.1, 90.0, 42.8], ["Zuidplas", 600, 228911, 1685.2, 448.8, 180.1], ["Zwijndrecht", 187, 107180, 471.8, 222.4, 60.2]];
+
+/* ---------- figuur 1: zichtlijn ---------- */
+(function () {
+  const svg = $("#los"), L = 46, R = 744, T = 16, B = 262;
+  const X = m => L + (R - L) * (m + 3) / 49, Y = m => B - (B - T) * m / 26;
+  const ids = ["d", "h", "o", "p"], inp = {}; ids.forEach(k => inp[k] = $("#los-" + k));
+  function draw() {
+    const d = +inp.d.value, h = +inp.h.value, oh = +inp.o.value;
+    inp.p.max = Math.max(0.5, d - 1); const p = Math.min(+inp.p.value, d - 1);
+    $("#los-d-o").value = fmt(d) + " m"; $("#los-h-o").value = fmt(h) + " m";
+    $("#los-o-o").value = fmt(oh) + " m"; $("#los-p-o").value = fmt(p) + " m";
+    svg.textContent = "";
+    for (let m = 0; m <= 45; m += 5) { el("line", { x1: X(m), x2: X(m), y1: T, y2: B, class: "gl" }, svg); el("text", { x: X(m), y: B + 16, "text-anchor": "middle" }, svg, m); }
+    for (let m = 0; m <= 25; m += 5) { el("line", { x1: L, x2: R, y1: Y(m), y2: Y(m), class: "gl" }, svg); el("text", { x: L - 8, y: Y(m) + 4, "text-anchor": "end" }, svg, m); }
+    el("text", { x: R, y: B + 32, "text-anchor": "end" }, svg, "afstand tot de stam (m)");
+    el("text", { x: 8, y: T + 2, "text-anchor": "start" }, svg, "hoogte (m)");
+    el("line", { x1: L, x2: R, y1: B, y2: B, stroke: css("--ink"), "stroke-width": 1.5 }, svg);
+    el("line", { x1: X(30), x2: X(30), y1: T, y2: B, stroke: css("--c30"), "stroke-dasharray": "5 4", "stroke-width": 1.4 }, svg);
+    el("text", { x: X(30) + 5, y: T + 12, fill: css("--c30") }, svg, "30 m");
+    const tx = 0, sx = tx + d, ox = sx - p;
+    const r = Math.max(1.6, h * 0.28);
+    el("rect", { x: X(tx) - 3, y: Y(h - r * 1.4), width: 6, height: Y(0) - Y(h - r * 1.4), fill: css("--muted") }, svg);
+    el("ellipse", { cx: X(tx), cy: Y(h - r), rx: X(r * 0.95) - X(0), ry: Y(0) - Y(r), fill: css("--c3"), "fill-opacity": .35, stroke: css("--c3") }, svg);
+    const hx = sx + 1, hw = Math.min(9, 46 - hx);
+    if (hw > 0) {
+      el("rect", { x: X(hx), y: Y(7), width: X(hw) - X(0), height: Y(0) - Y(7), fill: css("--panel"), stroke: css("--ink"), "stroke-width": 1 }, svg);
+      el("polygon", { points: `${X(hx)},${Y(7)} ${X(hx + 4.5)},${Y(10)} ${X(hx + 9)},${Y(7)}`, fill: css("--panel"), stroke: css("--ink"), "stroke-width": 1 }, svg);
+      el("text", { x: X(hx) + 6, y: Y(3) }, svg, "woning");
+    }
+    if (oh > 0) el("rect", { x: X(ox) - 4, y: Y(oh), width: 8, height: Y(0) - Y(oh), fill: css("--m4"), "fill-opacity": .75 }, svg);
+    const lineAt = x => h + (1.8 - h) * (x - tx) / d;
+    const clear = lineAt(ox) - oh, inRange = d <= 30, vis = inRange && (oh === 0 || clear > 0);
+    const col = vis ? css("--pass") : css("--fail");
+    if (oh > 0 && clear <= 0) {
+      el("line", { x1: X(tx), y1: Y(h), x2: X(ox), y2: Y(lineAt(ox)), stroke: col, "stroke-width": 2 }, svg);
+      el("line", { x1: X(ox), y1: Y(lineAt(ox)), x2: X(sx), y2: Y(1.8), stroke: col, "stroke-width": 2, "stroke-dasharray": "3 4" }, svg);
+    } else el("line", { x1: X(tx), y1: Y(h), x2: X(sx), y2: Y(1.8), stroke: col, "stroke-width": 2, "stroke-dasharray": inRange ? "" : "6 4" }, svg);
+    el("circle", { cx: X(tx), cy: Y(h), r: 5, fill: css("--plate"), stroke: css("--ink"), "stroke-width": 2 }, svg);
+    el("text", { x: X(tx) + 9, y: Y(h) - 6, fill: css("--ink") }, svg, "waarnemer: kroontop");
+    el("circle", { cx: X(sx), cy: Y(1.8), r: 5, fill: css("--ink") }, svg);
+    el("text", { x: X(sx) - 8, y: Y(1.8) - 10, "text-anchor": "end", fill: css("--ink") }, svg, "doel 1,8 m");
+    const v = !inRange ? '<span class="verdict out">BUITEN BEREIK</span>' : vis ? '<span class="verdict ok">TELT MEE</span>' : '<span class="verdict no">GEBLOKKEERD</span>';
+    $("#los-r").innerHTML = `<span>helling <b>${fmt(Math.atan2(h - 1.8, d) * 180 / Math.PI)}°</b></span>` +
+      (oh > 0 ? `<span>lijn boven obstakel <b>${fmt(clear, 2)} m</b></span>` : "") + `<span>afstand <b>${fmt(d)} / 30 m</b></span>` + v;
+  }
+  ids.forEach(k => inp[k].addEventListener("input", draw)); draw();
+  window.__redraw = (window.__redraw || []).concat(draw);
+})();
+
+/* ---------- figuur 2: gevelring ---------- */
+(function () {
+  const svg = $("#ring"), C = 12, NX = 26, NY = 20, OX = (520 - NX * C) / 2, OY = 22;
+  const MAP = [["0", "--m0"], ["1–2", "--m1"], ["3–5", "--m2"], ["6–7", "--m3"], ["8+", "--m4"]];
+  const cls = v => v === 0 ? 0 : v <= 2 ? 1 : v <= 5 ? 2 : v <= 7 ? 3 : 4;
+  $("#ring-leg").innerHTML = MAP.map(([t, c]) => `<span><i style="background:var(${c})"></i>${t} bomen</span>`).join("");
+  const hash = (x, y) => { let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return n - Math.floor(n); };
+  const EX = {
+    street: (x, y) => { const t = y / (NY - 1); return Math.max(0, Math.round(6.5 * t - 0.5 + 1.6 * hash(x, y) - (x < 3 || x > NX - 4 ? 1 : 0))); },
+    garden: (x, y) => { const dx = x - (NX - 2), dy = y - 1; const near = Math.hypot(dx, dy); return Math.max(0, Math.round((near < 5 ? 4.2 - near * .45 : 0.2) + (hash(x, y) - .5) * 1.1)); },
+    bare: (x, y) => (x === 4 && y === NY - 2 ? 2 : hash(x, y) > .82 ? 1 : 0)
+  };
+  let ex = "street", stat = "max";
+  function draw() {
+    svg.textContent = "";
+    const f = EX[ex], vals = [], cells = [];
+    for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
+      const inside = x >= 3 && x < NX - 3 && y >= 3 && y < NY - 3;
+      if (inside) continue;
+      const v = f(x, y); vals.push(v); cells.push([x, y, v]);
+    }
+    const mx = Math.max(...vals), sorted = [...vals].sort((a, b) => a - b);
+    const med = sorted[Math.floor(sorted.length / 2)], mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const score = stat === "max" ? mx : stat === "med" ? med : mean;
+    for (const [x, y, v] of cells) {
+      const r = el("rect", { x: OX + x * C, y: OY + y * C, width: C - 1, height: C - 1, fill: css(MAP[cls(v)][1]) }, svg);
+      if (stat === "max" && v === mx) r.setAttribute("stroke", css("--ink")), r.setAttribute("stroke-width", 2);
+      bindTip(r, `vakje (${x}, ${y})<br>${v} ${v === 1 ? "boom" : "bomen"} zichtbaar`);
+    }
+    el("rect", { x: OX + 3 * C, y: OY + 3 * C, width: (NX - 6) * C - 1, height: (NY - 6) * C - 1, fill: css("--panel"), stroke: css("--ink"), "stroke-width": 1.5 }, svg);
+    el("text", { x: 260, y: OY + NY * C / 2 - 4, "text-anchor": "middle", fill: css("--ink"), "font-size": 13 }, svg, "pandcontour");
+    el("text", { x: 260, y: OY + NY * C / 2 + 14, "text-anchor": "middle" }, svg, "dakvlak, niet gescoord");
+    el("text", { x: 260, y: OY - 8, "text-anchor": "middle" }, svg, "achtertuin");
+    el("text", { x: 260, y: OY + NY * C + 18, "text-anchor": "middle" }, svg, "straatkant");
+    const pass = score >= 3;
+    const share = 100 * vals.filter(v => v >= 3).length / vals.length;
+    $("#ring-r").innerHTML = `<span>ringvakjes <b>${vals.length}</b></span><span>max <b>${mx}</b></span><span>mediaan <b>${med}</b></span>` +
+      `<span>gemiddelde <b>${fmt(mean)}</b></span><span>vakjes ≥ 3 <b>${fmt(share, 0)}%</b></span>` +
+      `<span>score <b>${stat === "mean" ? fmt(score) : score}</b></span><span class="verdict ${pass ? "ok" : "no"}">${pass ? "HAALT DE 3" : "ONDER DE 3"}</span>`;
+  }
+  function seg(id, set) {
+    $(id).addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); set(b.dataset.k); draw();
+    });
+  }
+  seg("#ring-ex", k => ex = k); seg("#ring-stat", k => stat = k); draw();
+  window.__redraw.push(draw);
+})();
+
+/* ---------- figuur 3: histogram kroonbedekking ---------- */
+(function () {
+  const svg = $("#hist"), L = 50, R = 744, T = 14, B = 222, max = 800;
+  const bw = (R - L) / HIST.length, Y = v => B - (B - T) * v / max;
+  function draw() {
+    svg.textContent = "";
+    for (let v = 0; v <= max; v += 200) { el("line", { x1: L, x2: R, y1: Y(v), y2: Y(v), class: "gl" }, svg); el("text", { x: L - 8, y: Y(v) + 4, "text-anchor": "end" }, svg, v); }
+    HIST.forEach((n, i) => {
+      const meet = i >= 6;
+      const r = el("rect", { x: L + i * bw + 2, y: Y(n), width: bw - 4, height: Math.max(1, B - Y(n)), fill: meet ? css("--c30") : css("--rule") }, svg);
+      if (!meet) r.setAttribute("stroke", css("--muted")), r.setAttribute("stroke-width", .6);
+      el("text", { x: L + i * bw + bw / 2, y: Y(n) - 5, "text-anchor": "middle", fill: css("--ink"), "font-family": css("--mono"), "font-size": 10.5 }, svg, n);
+      bindTip(r, `${i * 5}–${i * 5 + 5}% kroon<br>${n} buurten`);
+    });
+    for (let i = 0; i <= HIST.length; i += 2) el("text", { x: L + i * bw, y: B + 16, "text-anchor": "middle" }, svg, i * 5 + "%");
+    el("line", { x1: L, x2: R, y1: B, y2: B, stroke: css("--ink") }, svg);
+    el("line", { x1: L + 6 * bw, x2: L + 6 * bw, y1: T, y2: B, stroke: css("--ink"), "stroke-dasharray": "4 3" }, svg);
+    el("text", { x: L + 6 * bw + 6, y: T + 26, fill: css("--ink") }, svg, "grens van 30%");
+    el("text", { x: L + 6 * bw + 6, y: T + 42 }, svg, "102 buurten (4,1%) op of erboven");
+    el("text", { x: R, y: B + 36, "text-anchor": "end" }, svg, "kroonbedekking per buurt");
+    el("text", { x: 6, y: T + 2 }, svg, "buurten");
+  }
+  draw(); window.__redraw.push(draw);
+})();
+
+/* ---------- figuur 4: groenfilters en lopen ---------- */
+(function () {
+  const w = $("#g-w"), l = $("#g-l"), t = $("#w-t");
+  function strip() {
+    const W = +w.value, Lm = +l.value, A = W * Lm, PA = 2 * (W + Lm) / A;
+    $("#g-w-o").value = fmt(W) + " m"; $("#g-l-o").value = Lm + " m";
+    const svg = $("#strip"); svg.textContent = "";
+    const s = Math.min(320 / Lm, 96 / W), ok = A >= 300 && PA <= 0.35;
+    el("rect", { x: 10, y: 14 + (96 - W * s) / 2, width: Lm * s, height: Math.max(1, W * s), fill: ok ? css("--m3") : css("--rule"), stroke: ok ? css("--m4") : css("--muted") }, svg);
+    el("line", { x1: 10, x2: 10 + 10 * s, y1: 124, y2: 124, stroke: css("--ink"), "stroke-width": 2 }, svg);
+    el("text", { x: 16 + 10 * s, y: 128 }, svg, "10 m");
+    const fA = A >= 300, fP = PA <= 0.35;
+    $("#g-r").innerHTML = `<span>oppervlak <b style="color:var(${fA ? "--pass" : "--fail"})">${int(A)} m²</b></span>` +
+      `<span>omtrek / oppervlak <b style="color:var(${fP ? "--pass" : "--fail"})">${fmt(PA, 3)}</b></span><span class="verdict ${ok ? "ok" : "no"}">${ok ? "TELT ALS GROEN" : "VALT AF"}</span>`;
+  }
+  function walk() {
+    const m = +t.value, net = 5100 / 60 * m, crow = net / 1.42;
+    $("#w-t-o").value = m + " min";
+    const svg = $("#walk"); svg.textContent = "";
+    const S = 300 / 1800, x0 = 20;
+    for (let d = 0; d <= 1800; d += 300) { el("line", { x1: x0 + d * S, x2: x0 + d * S, y1: 10, y2: 104, class: "gl" }, svg); el("text", { x: x0 + d * S, y: 120, "text-anchor": "middle" }, svg, int(d)); }
+    el("rect", { x: x0, y: 22, width: net * S, height: 22, fill: css("--c300") }, svg);
+    el("text", { x: x0 + 4, y: 18, fill: css("--ink") }, svg, `over het netwerk: ${int(net)} m`);
+    el("rect", { x: x0, y: 70, width: crow * S, height: 22, fill: css("--c300"), "fill-opacity": .45, stroke: css("--c300") }, svg);
+    el("text", { x: x0 + 4, y: 66, fill: css("--ink") }, svg, `hemelsbreed: ≈ ${int(crow)} m`);
+    el("line", { x1: x0 + 300 * S, x2: x0 + 300 * S, y1: 8, y2: 104, stroke: css("--ink"), "stroke-dasharray": "4 3" }, svg);
+    $("#w-r").innerHTML = `<span>snelheid <b>5,1 km/u</b></span><span>omwegfactor <b>1,42</b></span>` +
+      `<span class="verdict ${crow <= 305 ? "ok" : "out"}">${crow <= 305 ? "BINNEN 300 m" : "VERDER DAN 300 m"}</span>`;
+  }
+  [w, l].forEach(i => i.addEventListener("input", strip)); t.addEventListener("input", walk);
+  strip(); walk(); window.__redraw.push(strip, walk);
+})();
+
+/* ---------- figuur 5: verdeling provincie ---------- */
+(function () {
+  const P = [["0", 5.0, "--m0"], ["1–2", 9.1, "--m1"], ["3–5", 26.1, "--m2"], ["6–7", 20.9, "--m3"], ["8+", 38.9, "--m4"]];
+  $("#split-leg").innerHTML = P.map(([t, , c]) => `<span><i style="background:var(${c})"></i>${t} bomen</span>`).join("");
+  function draw() {
+    const svg = $("#split"); svg.textContent = ""; let x = 0; const W = 740;
+    P.forEach(([t, v, c], i) => {
+      const r = el("rect", { x: 10 + x * W / 100, y: 8, width: v * W / 100 - 1, height: 34, fill: css(c) }, svg);
+      bindTip(r, `${t} bomen<br>${fmt(v)}% van de woningen`);
+      el("text", { x: 10 + (x + v / 2) * W / 100, y: 30, "text-anchor": "middle", fill: i === 2 ? "#18211c" : "#ffffff", "font-family": css("--mono"), "font-size": 12 }, svg, fmt(v) + "%");
+      x += v;
+    });
+    const t3 = 10 + 14.1 * W / 100;
+    el("line", { x1: t3, x2: t3, y1: 2, y2: 50, stroke: css("--ink"), "stroke-width": 1.5 }, svg);
+    el("text", { x: t3 + 5, y: 64, fill: css("--ink") }, svg, "85,9% ziet 3 of meer →");
+  }
+  draw(); window.__redraw.push(draw);
+})();
+
+/* ---------- tabel 1: per gemeente ---------- */
+(function () {
+  const tb = $("#res tbody");
+  const cls3 = v => v < 80 ? "--k0" : v < 90 ? "--k1" : v < 95 ? "--k2" : v < 98 ? "--k3" : "--k4";
+  const cls30 = v => v < 10 ? "--k0" : v < 20 ? "--k1" : v < 30 ? "--k2" : "--k4";
+  const cls300 = v => v < 50 ? "--k0" : v < 70 ? "--k1" : v < 85 ? "--k2" : v < 95 ? "--k3" : "--k4";
+  const bar = (v, max, c, tgt) => `<div class="bar"><span class="num">${fmt(v)}</span><span class="trk"><span class="fil" style="width:${100 * Math.min(v, max) / max}%;background:var(${c})"></span>${tgt != null ? `<span class="tgt" style="left:${100 * tgt / max}%"></span>` : ""}</span></div>`;
+  const row = (g, prov) => `<tr${prov ? ' class="prov"' : ""}><td>${g[0]}</td><td class="n">${int(g[1])}</td>` +
+    `<td>${bar(g[2], 100, cls3(g[2]))}</td><td>${bar(g[4], 40, cls30(g[4]), 30)}</td><td>${bar(g[5], 100, cls300(g[5]))}</td><td class="n">${fmt(g[6])}</td></tr>`;
+  let key = 0, dir = 1, q = "";
+  function draw() {
+    const rows = G.filter(g => g[0].toLowerCase().includes(q)).sort((a, b) => (a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0) * dir);
+    tb.innerHTML = row(PROV, true) + rows.map(g => row(g)).join("");
+    $("#q-n").textContent = `${rows.length} van ${G.length} gemeenten`;
+    $("#res thead").querySelectorAll("button").forEach(b => { if (+b.dataset.k === key) b.dataset.dir = dir > 0 ? "↑" : "↓"; else delete b.dataset.dir; });
+  }
+  $("#res thead").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const k = +b.dataset.k; if (k === key) dir = -dir; else { key = k; dir = k === 0 ? 1 : -1; } draw();
+  });
+  $("#q").addEventListener("input", e => { q = e.target.value.trim().toLowerCase(); draw(); });
+  draw();
+})();
+
+/* ---------- figuur 6: spreidingsdiagram ---------- */
+(function () {
+  const svg = $("#sc"), L = 58, R = 740, T = 16, B = 318;
+  const NAME = { 2: "woningen met ≥ 3 bomen (%)", 3: "woningen zonder boom (%)", 4: "kroonbedekking (%)", 5: "woningen ≤ 5 min lopen (%)" };
+  const COL = { 2: "--c3", 3: "--c3", 4: "--c30", 5: "--c300" };
+  function pear(xs, ys) {
+    const n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+    return { r: sxy / Math.sqrt(sxx * syy), b: sxy / sxx, a: my - sxy / sxx * mx };
+  }
+  const nice = (lo, hi) => { const s = (hi - lo) > 30 ? 10 : 5; return [Math.floor(lo / s) * s, Math.ceil(hi / s) * s, s]; };
+  function draw() {
+    const kx = +$("#sx").value, ky = +$("#sy").value;
+    svg.textContent = "";
+    const xs = G.map(g => g[kx]), ys = G.map(g => g[ky]);
+    const [x0, x1, xs_] = nice(Math.min(...xs), Math.max(...xs)), [y0, y1, ys_] = nice(Math.min(...ys), Math.max(...ys));
+    const X = v => L + (R - L) * (v - x0) / (x1 - x0), Y = v => B - (B - T) * (v - y0) / (y1 - y0);
+    for (let v = x0; v <= x1; v += xs_) { el("line", { x1: X(v), x2: X(v), y1: T, y2: B, class: "gl" }, svg); el("text", { x: X(v), y: B + 16, "text-anchor": "middle" }, svg, v); }
+    for (let v = y0; v <= y1; v += ys_) { el("line", { x1: L, x2: R, y1: Y(v), y2: Y(v), class: "gl" }, svg); el("text", { x: L - 8, y: Y(v) + 4, "text-anchor": "end" }, svg, v); }
+    el("line", { x1: L, x2: R, y1: B, y2: B, stroke: css("--ink") }, svg); el("line", { x1: L, x2: L, y1: T, y2: B, stroke: css("--ink") }, svg);
+    el("text", { x: R, y: B + 34, "text-anchor": "end", fill: css("--ink") }, svg, NAME[kx]);
+    el("text", { x: 14, y: (T + B) / 2, transform: `rotate(-90 14 ${(T + B) / 2})`, "text-anchor": "middle", fill: css("--ink") }, svg, NAME[ky]);
+    if (kx !== ky) {
+      const { r, a, b } = pear(xs, ys);
+      const yA = a + b * x0, yB = a + b * x1;
+      el("line", { x1: X(x0), y1: Y(yA), x2: X(x1), y2: Y(yB), stroke: css("--muted"), "stroke-dasharray": "5 4" }, svg);
+      $("#sc-r").innerHTML = `<span>n <b>50</b></span><span>Pearson r <b>${fmt(r, 2)}</b></span><span>r² <b>${fmt(r * r, 2)}</b></span><span>helling <b>${fmt(b, 2)}</b></span>`;
+    } else $("#sc-r").innerHTML = "<span>Kies twee verschillende indicatoren.</span>";
+    if (kx === 4) el("line", { x1: X(30), x2: X(30), y1: T, y2: B, stroke: css("--c30"), "stroke-width": 1.2 }, svg);
+    const c = css(COL[ky]);
+    [...G].sort((a, b) => b[1] - a[1]).forEach(g => {
+      const rr = 2.5 + Math.sqrt(g[1]) / 38;
+      const dot = el("circle", { cx: X(g[kx]), cy: Y(g[ky]), r: rr, fill: c, "fill-opacity": .35, stroke: c, "stroke-width": 1.2 }, svg);
+      bindTip(dot, `<b>${g[0]}</b><br>${int(g[1])} woningen<br>x ${fmt(g[kx])} · y ${fmt(g[ky])}`);
+      if (g[1] > 100000 || g[0] === "Wassenaar" || g[0] === "Katwijk" || g[0] === "Zoeterwoude")
+        el("text", { x: X(g[kx]) + rr + 3, y: Y(g[ky]) + 4, fill: css("--ink"), "font-size": 10.5 }, svg, g[0]);
+    });
+  }
+  $("#sx").addEventListener("change", draw); $("#sy").addEventListener("change", draw);
+  draw(); window.__redraw.push(draw);
+})();
+
+/* ---------- figuur 7: vergelijking ArcGIS ---------- */
+(function () {
+  const runs = [["ArcGIS gecorrigeerd", "punt + 1 m", "--c30"], ["Oorspr. benchmark", "2 × hoogte", "--fail"], ["Deze pijplijn", "kroontop", "--c3"]];
+  function panel(id, vals, max, title, unit, d) {
+    const svg = $(id); svg.textContent = "";
+    const L = 124, R = 318, T = 30, rowH = 50, X = v => L + (R - L) * v / max;
+    el("text", { x: 4, y: 14, fill: css("--ink"), "font-size": 12.5 }, svg, title);
+    runs.forEach(([n, s, c], i) => {
+      const y = T + i * rowH;
+      el("text", { x: L - 8, y: y + 14, "text-anchor": "end", fill: css("--ink") }, svg, n);
+      el("text", { x: L - 8, y: y + 28, "text-anchor": "end" }, svg, s);
+      el("rect", { x: L, y: y + 4, width: X(vals[i]) - L, height: 24, fill: css(c), "fill-opacity": i === 1 ? .55 : .9 }, svg);
+      el("text", { x: X(vals[i]) + 5, y: y + 21, fill: css("--ink"), "font-family": css("--mono"), "font-size": 12 }, svg, fmt(vals[i], d) + unit);
+    });
+    el("line", { x1: L, x2: L, y1: T - 4, y2: T + 3 * rowH - 10, stroke: css("--ink") }, svg);
+  }
+  const draw = () => { panel("#arc1", [3.28, 6.16, 4.57], 8, "Gemiddeld aantal zichtbare bomen per vakje", "", 2); panel("#arc2", [47.3, 69.5, 60.4], 90, "Vakjes die ≥ 3 bomen zien", "%", 1); };
+  draw(); window.__redraw.push(draw);
+})();
+
+/* ---------- figuur 8: hellingsgrafiek ---------- */
+(function () {
+  const D = [["Zuid-Holland", 94.7, 85.9], ["Delft", 94.9, 88.1]];
+  function draw() {
+    const svg = $("#slope"); svg.textContent = "";
+    const xa = 230, xb = 530, T = 30, B = 200, Y = v => B - (B - T) * (v - 80) / 20;
+    for (let v = 80; v <= 100; v += 5) { el("line", { x1: xa - 40, x2: xb + 40, y1: Y(v), y2: Y(v), class: "gl" }, svg); el("text", { x: xa - 50, y: Y(v) + 4, "text-anchor": "end" }, svg, v + "%"); }
+    el("text", { x: xa, y: 16, "text-anchor": "middle", fill: css("--ink") }, svg, "alle boompunten");
+    el("text", { x: xb, y: 16, "text-anchor": "middle", fill: css("--ink") }, svg, "met statusfilter");
+    D.forEach(([n, a, b], i) => {
+      const c = i === 0 ? css("--c3") : css("--muted");
+      el("line", { x1: xa, y1: Y(a), x2: xb, y2: Y(b), stroke: c, "stroke-width": 2.2 }, svg);
+      [[xa, a, "end", -10], [xb, b, "start", 10]].forEach(([x, v, an, dx]) => {
+        el("circle", { cx: x, cy: Y(v), r: 5, fill: c }, svg);
+        el("text", { x: x + dx, y: Y(v) + 4 + (i ? 12 : -4), "text-anchor": an, fill: css("--ink"), "font-family": css("--mono"), "font-size": 12 }, svg, fmt(v) + "%");
+      });
+      el("text", { x: xb + 60, y: Y(b) + 4 + (i ? 12 : -4), fill: c }, svg, `${n} (−${fmt(a - b)} pt)`);
+    });
+  }
+  draw(); window.__redraw.push(draw);
+})();
+
+/* ---------- figuur 9: rekentijden ---------- */
+(function () {
+  const L = 62, R = 740, T = 16, B = 328;
+  const lx = v => Math.log10(v), X = v => L + (R - L) * (lx(v) - 4) / (lx(2e6) - 4), Y = v => B - (B - T) * (lx(v) - 0) / (lx(300) - 0);
+  const data = BENCH.map(b => ({ n: b[0], tiles: b[1], trees: b[2], s: b[3] + b[4] + b[5], st: [b[3], b[4], b[5]] }));
+  const rates = data.map(d => d.trees / d.st[1]).sort((a, b) => a - b);
+  const STAGE = [["Tegels", "--c300"], ["Zichtvelden", "--c3"], ["Samenvoegen", "--c30"]];
+  $("#rt-leg").innerHTML = `<span><i style="background:var(--c3);opacity:.6"></i>hoogtemodelgebied (oppervlak cirkel ∝ tegels)</span><span><i style="background:var(--muted)"></i>provinciaal gemiddelde</span>`;
+  function draw() {
+    const svg = $("#rt"); svg.textContent = "";
+    [1e4, 3e4, 1e5, 3e5, 1e6].forEach(v => { el("line", { x1: X(v), x2: X(v), y1: T, y2: B, class: "gl" }, svg); el("text", { x: X(v), y: B + 16, "text-anchor": "middle" }, svg, v >= 1e6 ? v / 1e6 + " mln" : v / 1e3 + "k"); });
+    [1, 3, 10, 30, 100, 300].forEach(v => { el("line", { x1: L, x2: R, y1: Y(v), y2: Y(v), class: "gl" }, svg); el("text", { x: L - 8, y: Y(v) + 4, "text-anchor": "end" }, svg, v); });
+    el("line", { x1: L, x2: R, y1: B, y2: B, stroke: css("--ink") }, svg); el("line", { x1: L, x2: L, y1: T, y2: B, stroke: css("--ink") }, svg);
+    el("text", { x: R, y: B + 34, "text-anchor": "end", fill: css("--ink") }, svg, "berekende zichtvelden (log)");
+    el("text", { x: 14, y: (T + B) / 2, transform: `rotate(-90 14 ${(T + B) / 2})`, "text-anchor": "middle", fill: css("--ink") }, svg, "minuten, stap 1–3 (log)");
+    const tot = data.reduce((a, d) => a + d.s, 0), trees = data.reduce((a, d) => a + d.trees, 0), k = tot / trees;
+    el("line", { x1: X(1e4), y1: Y(1e4 * k / 60), x2: X(2e6), y2: Y(2e6 * k / 60), stroke: css("--muted"), "stroke-dasharray": "5 4" }, svg);
+    const c = css("--c3");
+    data.forEach(d => {
+      const r = 2.5 + Math.sqrt(d.tiles) / 9;
+      const dot = el("circle", { cx: X(d.trees), cy: Y(d.s / 60), r, fill: c, "fill-opacity": .3, stroke: c, "stroke-width": 1.1 }, svg);
+      bindTip(dot, `<b>${d.n}</b><br>${int(d.trees)} zichtvelden · ${d.tiles} tegels<br>${fmt(d.s / 60)} min · ${Math.round(d.trees / d.st[1])} bomen/s`);
+      if (["Rotterdam", "Delft", "Goeree-Overflakkee", "Papendrecht", "'s-Gravenhage"].includes(d.n))
+        el("text", { x: X(d.trees) + r + 3, y: Y(d.s / 60) + 4, fill: css("--ink"), "font-size": 10.5 }, svg, d.n);
+    });
+    const s2 = $("#rt2"); s2.textContent = "";
+    const sums = [0, 1, 2].map(i => data.reduce((a, d) => a + d.st[i], 0)); let x = 0; const W = 740;
+    sums.forEach((v, i) => {
+      const w = v / tot * W;
+      const r = el("rect", { x: 10 + x, y: 6, width: w - 1, height: 26, fill: css(STAGE[i][1]) }, s2);
+      bindTip(r, `${STAGE[i][0]}<br>${int(v / 60)} min · ${fmt(100 * v / tot)}%`);
+      el("text", { x: 10 + x + 6, y: 24, fill: "#ffffff", "font-size": 12 }, s2, `${STAGE[i][0]} ${fmt(100 * v / tot, 0)}%`);
+      x += w;
+    });
+    el("text", { x: 10, y: 52 }, s2, `totaal ${int(tot / 60)} min over ${data.length} gebieden · mediane snelheid zichtvelden ${Math.round(rates[rates.length >> 1])} bomen/s`);
+  }
+  draw(); window.__redraw.push(draw);
+})();
+
+/* ---------- tabel: aannames ---------- */
+(function () {
+  const A = [
+    ["3", "Eén goede plek is genoeg: een pand krijgt de hoogste telling in zijn ring van 1,5 m.", "up"],
+    ["3", "Elke woning in een pand krijgt de score van het pand; de cijfers per gebied tellen woningen.", "flat"],
+    ["3", "Het zicht wordt berekend op 1,8 m boven straatniveau. Hogere verdiepingen en balkons worden niet berekend.", "down"],
+    ["3", "Een boom is zichtbaar als de kroontop zichtbaar is, niet de zijkant van de kroon of een tak.", "flat"],
+    ["3", "De 30 m wordt vanaf de stam gemeten, niet vanaf de rand van de kroon.", "down"],
+    ["3", "Elke boom telt even zwaar, een jonge straatboom net zo hard als een oude eik. Verdwenen en kleine bomen (24,5%) tellen niet mee.", "up"],
+    ["3", "Alles in het hoogtemodel blokkeert het zicht: heggen, schuttingen en kronen zijn massief, ook in de winter.", "down"],
+    ["3", "Omgeving van 2020–2022, woningen van 2026. Woningen die sindsdien zijn gebouwd (3–5%) krijgen een score op de oude situatie.", "flat"],
+    ["30", "De buurt is de eenheid. Wijken en gemeenten zijn de som van hun buurten.", "flat"],
+    ["30", "Elk vakje van 25 cm telt één keer, in de buurt waarin zijn midden ligt.", "flat"],
+    ["30", "Water telt niet mee in het landoppervlak, maar een kroon boven water telt wel als kroon.", "up"],
+    ["30", "Wat een kroon is, ook een eventuele minimale hoogte, volgt uit hoe BKB 2024 is gemaakt.", "flat"],
+    ["30", "CBS geeft het landoppervlak in hele hectares; bij een kleine buurt kan dat een paar punten schelen.", "flat"],
+    ["300", "Groen telt vanaf 300 m²; de WHO-norm achter de regel gaat uit van 1 ha.", "up"],
+    ["300", "Een pand telt mee als een deel ervan de 5-minutenzone raakt.", "up"],
+    ["300", "Het lopen begint bij een ingang waar een OSM-pad het groen in gaat. Groen zonder pad op de kaart telt niet mee.", "down"],
+    ["300", "5 minuten met 5,1 km/u is ongeveer 425 m langs de straat, zo'n 300 m hemelsbreed.", "flat"],
+    ["300", "Openbare toegang is niet gecontroleerd; een pad het groen in geldt als toegang.", "up"],
+    ["all", "Alleen woningen zijn gemeten. Het artikel vraagt ook om zichtbare bomen vanuit scholen en werkplekken.", "flat"],
+    ["all", "De 3 en de 30 gebruiken andere boomgegevens (boompunten tegenover de kroonkaart).", "flat"]
+  ];
+  const D = { up: ["↑ verhoogt", "up"], down: ["↓ verlaagt", "down"], flat: ["– neutraal of wisselend", "flat"] };
+  const tag = k => k === "all" ? '<span class="tag" style="background:var(--muted)">alle</span>' : `<span class="tag t${k}">${k}</span>`;
+  let f = "all";
+  function draw() {
+    $("#at tbody").innerHTML = A.filter(a => f === "all" || a[0] === f || a[0] === "all")
+      .map(a => `<tr><td>${tag(a[0])}</td><td>${a[1]}</td><td><span class="dir ${D[a[2]][1]}">${D[a[2]][0]}</span></td></tr>`).join("");
+  }
+  $("#af").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    $("#af").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); f = b.dataset.k; draw();
+  });
+  draw();
+})();
+
+/* ---------- inhoudsopgave, themawissel ---------- */
+(function () {
+  const links = [...document.querySelectorAll("nav.toc a")];
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) links.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id));
+  }), { rootMargin: "-20% 0px -70% 0px" });
+  document.querySelectorAll("main section").forEach(s => io.observe(s));
+  const redraw = () => window.__redraw.forEach(f => f());
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+  new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
+</body>
+</html>

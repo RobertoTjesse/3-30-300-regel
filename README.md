@@ -131,7 +131,7 @@ A 3 / 30 / 300 switch shows the three indicators on the same areas: gemeenten (z
 | File | What |
 |---|---|
 | `web/index.html` | the map (MapLibre + PMTiles); settings (`PROVINCE`, `REPO`, colours, texts) at the top of the `<script>`; Dutch, English with `?lang=en` (every text as `L("Nederlands", "English")`) |
-| `web/method.html` | one-page technical note in English: method, results per gemeente, validation and run times, datasets, with interactive figures (no build step; the run times are copied from `BENCHMARKS.md`, the figures per gemeente from the latest runs) |
+| `web/methode.html`, `web/methode-en.html` | one-page technical note, Dutch (main) and English, linked by a language button: method, results per gemeente, validation and run times, datasets, with interactive figures (no build step; the run times are copied from `BENCHMARKS.md`, the figures per gemeente from the latest runs) |
 | `web/uitleg/*.html`, `web/uitleg/en/*.html` | explanation pages in Dutch and English: method, choices, the Konijnendijk paper, how to repeat it |
 | `web/build_tiles.py` | `data/3.pmtiles` from `<Province>_gebieden.gpkg` and `_woningen.gpkg` |
 | `web/build_tiles_30_300.py` | `data/30-300.pmtiles` (areas, homes) and `data/looptijd.pmtiles` (walking zones and entrances, in a file of their own so that switching them on or off does not re-process the building tiles), from the 30 per area (`<Province>_kroonbedekking.csv`), the FME results of the 300 (`config.FME_OUTPUT_DIR`, default `data/fme_output`) and the 3's areas |
