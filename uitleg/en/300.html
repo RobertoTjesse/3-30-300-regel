@@ -157,46 +157,50 @@ an area is coarse: it also covers the inside of blocks, water and railway land, 
   <figcaption>Blue: the streets you reach within 5 minutes (425 m). Dashed orange: the 5-minute isochrone Valhalla draws
   around them. A home inside the area counts, even when its front door is further away.</figcaption>
 </figure>
-<p>In Delft, 94.4% of homes lie inside Valhalla's 300 m zones, but 87.0% are really within a 300 m walk.</p>
+<p>In Delft, 96.7% of homes lie inside Valhalla's 300 m zones, but 91.4% are really within a 300 m walk.</p>
+
+<h3>Cycle paths count as walking routes</h3>
+<p>Dutch traffic law lets pedestrians use a cycle path where there is no pavement or footpath. The calculation
+therefore lets pedestrians walk on cycle paths; bridleways do not count. Valhalla's default profile closes cycle paths
+to pedestrians, so the calculation builds Valhalla's network with its own rules and one change: cycle paths are open
+to pedestrians, unless OpenStreetMap tags them <code>foot=no</code>.</p>
+<p>This matters a lot. With the default profile, 87.0% of homes in Delft are within 300 m; with cycle paths, 91.4%.
+Where a cycle bridge is the only way across the water, the default profile walks round:</p>
+<figure>
+  <img src="../img/300-fietspad-voorbeeld.png" alt="Example in Delft: GRASS crosses the water over a cycle bridge, Valhalla without cycle paths walks kilometres round" loading="lazy">
+  <figcaption>A home in Delft. Over the cycle bridge it is 147 m to the entrance. Without cycle paths Valhalla walks
+  round; its nearest entrance is then 453 m away.</figcaption>
+</figure>
 
 <h3>Two routing programs compared</h3>
 <p>Next to Valhalla, <a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html">GRASS
 <code>v.net.distance</code></a>, which comes with QGIS, does the same job. Both get the same park entrances, the same
-homes and the same OpenStreetMap data. Result for Delft, 55,123 homes (BAG addresses with a residential use):</p>
+homes and the same OpenStreetMap data, cycle paths included. Result for Delft, 55,123 homes (BAG addresses with a
+residential use):</p>
 <div class="table-wrap"><table>
 <tr><th>Method</th><th>Within 300 m</th><th>Within 5 min (425 m)</th></tr>
-<tr><td>GRASS, all walkable ways</td><td>91.5%</td><td>98.9%</td></tr>
-<tr><td>GRASS without cycle paths and bridleways</td><td>84.7%</td><td>96.3%</td></tr>
-<tr><td>Valhalla, expansion</td><td>87.0%</td><td>97.2%</td></tr>
-<tr><td>Valhalla, isochrones (zones)</td><td>94.4%</td><td>98.4%</td></tr>
-<tr><td>Old FME calculation (zones, per building)</td><td>not computed</td><td>94.6%</td></tr>
+<tr><td>GRASS, walking distance</td><td>91.5%</td><td>98.9%</td></tr>
+<tr><td>Valhalla, walking distance (expansion)</td><td>91.4%</td><td>99.0%</td></tr>
+<tr><td>Valhalla, zones (isochrones)</td><td>96.7%</td><td>99.6%</td></tr>
+<tr><td>Valhalla default profile, without cycle paths</td><td>87.0%</td><td>97.2%</td></tr>
+<tr><td>Old FME calculation (zones, per building, other green)</td><td>not computed</td><td>94.6%</td></tr>
 </table></div>
-<p>Per home, the distances from GRASS and Valhalla are mostly close: for 56% of homes they differ by 10 m or less, for
-83% by 50 m or less. The large differences come mainly from two choices in the walking network.</p>
+<p>GRASS and Valhalla agree for 98% of homes on whether they live within 300 m of a park. For 71% of homes the
+distance differs by 10 m or less, for 94% by 50 m or less.</p>
 <figure>
-  <img src="../img/300-vergelijking-spreiding.png" alt="Scatter plot of the walking distance per home: GRASS on the horizontal axis, Valhalla on the vertical; most homes lie on the diagonal" loading="lazy">
+  <img src="../img/300-vergelijking-spreiding.png" alt="Scatter plot of the walking distance per home: GRASS on the horizontal axis, Valhalla on the vertical; nearly all homes lie on the diagonal" loading="lazy">
   <figcaption>Walking distance per home in Delft. On the diagonal both agree; above it Valhalla's walk is longer.</figcaption>
 </figure>
-<p><b>Cycle paths.</b> Valhalla does not let pedestrians walk on a cycle path; GRASS does. Dutch traffic law allows
-walking on a cycle path where there is no pavement or footpath. Valhalla walked none of 89% of the cycle paths around
-Delft, against 6 to 18% of the other road types. Where a cycle bridge is the only way across the water, Valhalla
-walks round. When GRASS also leaves cycle paths out, the share of homes where Valhalla's walk is more than 50 m longer
-drops from 12% to 3%.</p>
+<p>The difference that is left comes mainly from private roads. Valhalla also reaches a home over its own private or
+destination-only road; the network for GRASS leaves out roads tagged <code>access=private</code> and links the home
+to the nearest public way in a straight line.</p>
 <figure>
-  <img src="../img/300-fietspad-voorbeeld.png" alt="Example in Delft: GRASS crosses the water over a cycle bridge, Valhalla walks kilometres round" loading="lazy">
-  <figcaption>A home in Delft. GRASS crosses over a cycle bridge: 147 m to the entrance. Valhalla walks round; its
-  nearest entrance is 453 m away.</figcaption>
+  <img src="../img/300-vergelijking-kaart.png" alt="Map of Delft with the 1,100 homes where GRASS and Valhalla disagree on 300 m" loading="lazy">
+  <figcaption>Where GRASS and Valhalla disagree on 300 m: 1,100 of the 55,123 homes.</figcaption>
 </figure>
-<p><b>Private roads.</b> Valhalla also reaches a home over its own private or destination-only road. The network for
-GRASS leaves out roads tagged <code>access=private</code>. Without cycle paths, Valhalla therefore comes out slightly
-more favourable than GRASS (87.0 against 84.7% within 300 m).</p>
-<figure>
-  <img src="../img/300-vergelijking-kaart.png" alt="Map of Delft with the homes where GRASS and Valhalla disagree on 300 m, in clusters along certain streets" loading="lazy">
-  <figcaption>Where GRASS and Valhalla disagree on 300 m. The differences come in clusters along whole streets. Over
-  three quarters of the homes that only GRASS puts within 300 m drop out when GRASS leaves cycle paths out.</figcaption>
-</figure>
-<p>Still to decide: whether cycle paths count as walking routes. After that the calculation can run for the whole
-province. The code is in <a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/etl"><code>indicator_300_park/etl/</code></a>.</p>
+<p>Next: the new park map (recreation areas from the draft omgevingsbeleid and the green of TOP10NL) and the run for
+the whole province. The code is in
+<a href="https://github.com/RobertoTjesse/3-30-300-regel/tree/master/indicator_300_park/etl"><code>indicator_300_park/etl/</code></a>.</p>
 
 <h2>Limitations and open issues</h2>
 <ul>
