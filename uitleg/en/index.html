@@ -62,7 +62,7 @@ the aerial photo (Beeldmateriaal Nederland, 8 cm, via the PDOK WMS).</p>
 
 <h2 id="provincie">Doing it yourself for another province</h2>
 <p>The repository is set up so that only settings and input files differ per province. The full technical guide is in
-the <a href="https://github.com/RobertoTjesse/3-30-300-regel#another-province">README</a>. In short:</p>
+the wiki page <a href="https://github.com/RobertoTjesse/3-30-300-regel/wiki/Another-province">Another province</a>. In short:</p>
 <ol class="steps">
   <li><strong>Install QGIS/OSGeo4W</strong> (for GDAL) and get the code:
     <pre><code>git clone https://github.com/RobertoTjesse/3-30-300-regel.git 330300regel</code></pre></li>
@@ -88,21 +88,23 @@ MUNICIPALITIES = []               # empty = all municipalities</code></pre></li>
     Pages branch.</li>
 </ol>
 
+<h2 id="alle-drie">What holds for all three</h2>
+<ul>
+  <li><b>Only homes.</b> The paper also asks for trees in view of schools and workplaces.</li>
+  <li><b>The sources are from different years:</b> trees and elevation model 2020–2022 (the 3), crowns 2024 (the 30),
+      green 2025 and paths 2026 (the 300).</li>
+  <li><b>The 3 and the 30 use different trees:</b> NEO tree points against the BKB crown map, so a tree can count for one
+      and not for the other.</li>
+  <li><b>A building belongs to the neighbourhood and municipality that hold its centre point.</b> Areas with fewer than
+      10 homes get no percentage for the 3 and the 300.</li>
+</ul>
+
 <h2 id="toekomst">Future</h2>
 <p>The whole rule runs on QGIS and what comes with it: Python with GDAL, and for the 300 GRASS. No other software or
-licence is needed. Still to come:</p>
-<ul>
-  <li><b>The WHO threshold of 1 ha</b> for the 300, as a filter on the same green.</li>
-  <li>The 3 for schools and workplaces too (the paper asks for that).</li>
-  <li><b>High-rise:</b> the 3 per floor. Now every home in a flat looks out from street level; from higher up you see
-      over hedges and cars. With the number of floors from the 3D BAG the line-of-sight test can be done per floor.</li>
-  <li><b>One result per home:</b> per home the values of all three rules, whether each is met, and how many of the
-      three (0 to 3) are met; per area the share of homes that meet all three. See the
-      <a href="https://github.com/RobertoTjesse/3-30-300-regel/wiki/Comparison-with-Cobra-Groeninzicht">comparison with
-      Cobra Groeninzicht</a>, which gives a mark per building.</li>
-</ul>
-<p>See also <a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/IMPROVEMENTS.md"><code>IMPROVEMENTS.md</code></a>
-and the <a href="https://github.com/RobertoTjesse/3-30-300-regel/issues">open issues</a>.</p>
+licence is needed. What is still planned (such as the 3 per floor, the WHO threshold of 1 ha for the 300, and one
+result per home) is listed in
+<a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_3_bomen/IMPROVEMENTS.md#planned-work"><code>IMPROVEMENTS.md</code></a>;
+open issues are on the <a href="https://github.com/RobertoTjesse/3-30-300-regel/issues">issues</a> page.</p>
 </main>
 <footer>3-30-300 rule · <a href="https://github.com/RobertoTjesse/3-30-300-regel">source code on GitHub</a> ·
   <a href="konijnendijk.html">Konijnendijk (2023)</a></footer>
