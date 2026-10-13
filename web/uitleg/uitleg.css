@@ -1,17 +1,8 @@
 /* Uitlegpagina's van de 3-30-300-kaart. Kleuren als op de kaart (web/index.html). */
 :root {
+  color-scheme: light;
   --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0; --soft: #f6f8fa;
   --accent: #238b45; --accent-soft: #e8f5ec; --warn: #9a6700; --warn-soft: #fff8c5;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #1c2128; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --soft: #22272e;
-    --accent: #3fb950; --accent-soft: #1b3326; --warn: #d29922; --warn-soft: #3a2f12;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #1c2128; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --soft: #22272e;
-  --accent: #3fb950; --accent-soft: #1b3326; --warn: #d29922; --warn-soft: #3a2f12;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
