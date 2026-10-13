@@ -61,9 +61,9 @@ PARKS_SOURCES = [
     dict(bron="top10nl", path=RAW_DIR / "top10_groen" / "top10_groen.gdb",
          layer="functioneel_gebied_groen", type_field="typefunctioneelgebied", name_field="naamnl"),
     # All of TOP10NL functioneel gebied as a shapefile; only these kinds count.
-    # Duck decoys (eendenkooi) are mostly fenced and closed to visitors.
+    # Duck decoys (eendenkooi) are left out: mostly fenced and closed to visitors.
     dict(bron="top10nl recreatie", path=RAW_DIR / "top10_recreatiegebieden" / "Top10_recreatiegebieden.shp",
-         where="typefuncti IN ('begraafplaats', 'volkstuinen', 'eendenkooi')",
+         where="typefuncti IN ('begraafplaats', 'volkstuinen')",
          type_field="typefuncti", name_field="naamnl"),
 ]
 MIN_PARK_AREA_M2 = 300         # parks smaller than this are left out (WHO: 10,000)
