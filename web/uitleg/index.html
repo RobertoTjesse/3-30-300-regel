@@ -33,7 +33,7 @@ voor een andere provincie herhaalt.</p>
   <a class="card" href="3.html"><div class="num">3</div><h3>bomen in zicht</h3>
     <p>Zichtlijnen van elke boom, score per woning direct voor de gevel.</p></a>
   <a class="card" href="30.html"><div class="num">30</div><h3>% kroonbedekking</h3>
-    <p>Oppervlak boomkronen gedeeld door landoppervlak, per buurt.</p></a>
+    <p>Oppervlak boomkronen gedeeld door landoppervlak, binnen 500 m van elke woning.</p></a>
   <a class="card" href="300.html"><div class="num">300</div><h3>meter naar groen</h3>
     <p>Looptijd over wegen en paden naar de ingang van een park of bos.</p></a>
 </div>
@@ -46,7 +46,7 @@ dezelfde gebieden, zodat je ze direct kunt vergelijken:</p>
 <tr><td>provincie</td><td>gemeenten</td><td>Bestuurlijke gebieden (Kadaster), huidige indeling</td></tr>
 <tr><td>stad</td><td>wijken</td><td>CBS Wijk- en Buurtkaart 2025</td></tr>
 <tr><td>wijk</td><td>buurten</td><td>CBS Wijk- en Buurtkaart 2025</td></tr>
-<tr><td>straat</td><td>woningen (3 en 300); de 30 blijft op buurtniveau</td><td>BAG</td></tr>
+<tr><td>straat</td><td>woningen (3, 30 en 300)</td><td>BAG</td></tr>
 </table></div>
 <p>Groen is steeds "voldoet", oranje en rood "voldoet niet", grijs "geen gegevens" of minder dan 10 woningen. Achter de
 knop <b>i</b> op de kaart staan de bronnen en hun actualiteit. Als achtergrond kies je de grijze topografische kaart of
@@ -79,7 +79,7 @@ MUNICIPALITIES = []               # leeg = alle gemeenten</code></pre></li>
     gebruik de omgrenzing van je eigen provincie.</li>
   <li><strong>Draai de zes stappen</strong> (<code>indicator_3_bomen/etl/01</code> t/m <code>06</code>) en daarna
     <code>web/build_tiles.py</code>. Voor de 30 draai je
-    <code>indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py</code> op de kroonkaart (BKB 2024 dekt heel
+    <code>indicator_30_kroonbedekking/etl/kroon_raster_5m.py</code> en <code>kroon_500m_woningen.py</code> op de kroonkaart (BKB 2024 dekt heel
     Nederland). Voor de 300 draai je <code>indicator_300_park/etl/</code> met groenbronnen en een OpenStreetMap-extract
     voor je provincie. Daarna <code>web/build_tiles_30_300.py</code> en
     <code>web/build_tiles_groen.py</code>.</li>
@@ -97,7 +97,7 @@ MUNICIPALITIES = []               # leeg = alle gemeenten</code></pre></li>
   <li><b>De 3 en de 30 gebruiken andere bomen:</b> NEO-boompunten tegenover de BKB-kroonkaart, dus een boom kan bij de
       ene wel en bij de andere niet meetellen.</li>
   <li><b>Een pand hoort bij de buurt en gemeente waarin zijn middelpunt ligt.</b> Gebieden met minder dan 10 woningen
-      krijgen bij de 3 en de 300 geen percentage.</li>
+      krijgen bij de 3, de 30 en de 300 geen percentage.</li>
 </ul>
 
 <h2 id="toekomst">Toekomst</h2>

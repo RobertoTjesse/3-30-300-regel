@@ -7,7 +7,7 @@ The 3-30-300 rule (Konijnendijk, 2023) asks for green in three ways:
 | | Rule | Measured here as | How it is made | Folder |
 |---|---|---|---|---|
 | 3 | 3 trees visible from every home | trees visible from just outside the facade (30 m radius, AHN surface model) | Python + GDAL, this repository | [`indicator_3_bomen/`](indicator_3_bomen/) |
-| 30 | 30% tree canopy in every neighbourhood | area under crowns (BKB 2024, Friedenau Society, from lidar) / land area per CBS buurt, wijk and gemeente (2025) | Python + GDAL, this repository | [`indicator_30_kroonbedekking/`](indicator_30_kroonbedekking/) |
+| 30 | 30% tree canopy in every neighbourhood | area under crowns (BKB 2024, Friedenau Society, from lidar) / land area within 500 m of every home's facade; buurt, wijk and gemeente from their homes | Python + GDAL, this repository | [`indicator_30_kroonbedekking/`](indicator_30_kroonbedekking/) |
 | 300 | a park within 300 m of every home | walking distance from the home to the nearest entrance of a park or other public green >= 300 m2 | QGIS only: GDAL + GRASS, checked with Valhalla | [`indicator_300_park/`](indicator_300_park/) |
 
 All three are computed for the province of Zuid-Holland and published as one web map with a 3 / 30 / 300 switch, per gemeente, wijk, buurt and home: **https://robertotjesse.github.io/3-30-300-regel/**. The site and its explanation pages are in Dutch, with an English version ([map](https://robertotjesse.github.io/3-30-300-regel/?lang=en), `/uitleg/en/`). Any province can be run without code changes ([Another province](https://github.com/RobertoTjesse/3-30-300-regel/wiki/Another-province)). All three run on QGIS and the components that come with it (GDAL, GRASS, QGIS's Python); no other software or licence is needed.
@@ -19,7 +19,7 @@ Zuid-Holland, latest runs:
 | | Result |
 |---|---|
 | 3 | 85.9% of homes see at least 3 trees; 5.0% see none |
-| 30 | 8.1% of the land lies under a tree crown. 102 of the 2,509 buurten reach 30%, and no gemeente does (Wassenaar comes closest with 27.9%) |
+| 30 | 1.8% of the homes have at least 30% canopy within 500 m; the mean is 12.7%. Wassenaar stands out with 27% of its homes |
 | 300 | 36.7% of homes lie within a 300 m walk of a park or other public green, 56.0% within 5 minutes and 97.8% within 15 minutes. Per gemeente from 20.3% (Voorne aan Zee) to 86.7% (Oegstgeest) within 5 minutes |
 
 The figures per gemeente, wijk and buurt are sound. For a single home the map gives an indication, and the assumptions explain most of the cases where it disagrees with what a resident sees.
@@ -40,7 +40,7 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 │   ├── arcgis_tests/             experiments: ArcGIS comparisons, exact test (local only, not on GitHub)
 │   ├── sde_reexport/             one-off re-export of corrupted DEMs
 │   └── README.md, ARCHITECTURE.md, BENCHMARKS.md, IMPROVEMENTS.md
-├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 per area)
+├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 within 500 m of every home)
 ├── indicator_300_park/           the 300: etl/ (GDAL + GRASS from QGIS; Valhalla as a check)
 ├── web/                          the web map for all three (published site)
 ├── docs/bronnen/                 source documents (Konijnendijk 2023, the Cobra Groeninzicht handbook)

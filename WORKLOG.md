@@ -529,3 +529,33 @@ trees should be excluded, is still open.
   5 onverhard met struiken, 6 gebouw, 7 brug over water, 8 buitenland,
   9 the border with another country. In `indicator_30_kroonbedekking/README.md`. Not used
   yet; it could replace the CBS land area (whole hectares) for the 30.
+
+## 2026-10-19: the 30 per home
+
+**33. Canopy within 500 m of the facade**
+- New method: for every residential building of the 3, crown area on land /
+  land area within 500 m of its footprint. Buurten, wijken and gemeenten
+  from their homes (share with >= 30%, and the mean), weighted by homes and
+  assigned as in the 3's stage 6. Replaces the 30 per buurt on the map.
+- `kroon_raster_5m.py`: crown on land and land per 5 m cell (UInt16 counts
+  of 0.25 m pixels) from BKB 2024 and land cover 2024; 6,300 blocks of 1 km,
+  5 min, `data/interim/kroon_land_5m.tif` (120 MB). Land 399,450 ha, crown on
+  land 29,039 ha in the box around the province.
+- `kroon_500m_woningen.py`: the 500 m buffer of the footprint's convex hull
+  is convex, so its cells are one run per grid row; running sums along the
+  rows make a building about 200 lookups. 978,428 buildings in 3 min.
+  Against brute force on 45 Delft buildings (5 largest footprints
+  included): at most 0.026 percentage points apart.
+- Zuid-Holland: 32,405 of 1,797,328 homes (1.8%) reach 30%; mean 12.7%,
+  median building 10.9%. 24 of 50 gemeenten have any home that does, none
+  half; 172 of 2,393 buurten with homes have any, 41 at least half.
+  Wassenaar 27.3% (mean 26.0%), Rijswijk 8.1%, Den Haag 6.1%, Delft 5.6%.
+- Land cover legend checked on the data (#32 was off from class 6 on):
+  inside BAG home footprints the class is 7 (building; 0.5% under a crown),
+  and 60% of class 8 pixels lie within 2 m of an OSM bridge. Land =
+  classes 2-7; 1 (water), 8 (bridge), 9 and 0 (no data, the sea) are not.
+  5 and 6 are not confirmed (6 is 31% under a crown).
+- Map: areas coloured by the share of homes >= 30% (0% has its own colour,
+  93% of buurten); buildings from zoom 13 by their own canopy. Explanation
+  pages (NL/EN), READMEs and wiki updated.
+

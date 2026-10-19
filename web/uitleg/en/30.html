@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
 <title>The 30: canopy cover</title>
-<meta name="description" content="How was the canopy cover per neighbourhood, district and municipality calculated, and why this way?">
+<meta name="description" content="How was the canopy cover within 500 m of every home calculated, and why this way?">
 <link rel="alternate" hreflang="nl" href="../30.html">
 <link rel="stylesheet" href="../uitleg.css">
 </head>
@@ -22,109 +22,130 @@
 </nav></header>
 
 <main>
-<h1>The 30: at least 30% tree canopy in every neighbourhood</h1>
-<p class="lead">How much of a neighbourhood's land lies under a tree crown? We measured the area under crowns on a map
-with 25 by 25 cm cells from 2024, and divided it by the neighbourhood's land area.</p>
+<h1>The 30: at least 30% tree canopy where you live</h1>
+<p class="lead">How much of the land around a home lies under a tree crown? For every residential building we measured
+that within 500 m of its facade, on a map of 25 by 25 cm cells from 2024. A neighbourhood, district or municipality then
+adds up its homes.</p>
 
 <div class="facts">
-  <div class="fact"><b>8.1%</b><span>of the land in Zuid-Holland lies under a tree crown</span></div>
-  <div class="fact"><b>102</b><span>of the 2,509 neighbourhoods reach 30%</span></div>
-  <div class="fact"><b>0 of 50</b><span>municipalities reach 30%; Wassenaar comes closest (27.9%)</span></div>
-  <div class="fact"><b>2.5%</b><span>lowest municipality (Kaag en Braassem)</span></div>
+  <div class="fact"><b>1.8%</b><span>of the homes in Zuid-Holland have at least 30% canopy cover within 500 m</span></div>
+  <div class="fact"><b>12.7%</b><span>mean canopy cover within 500 m of a home</span></div>
+  <div class="fact"><b>41</b><span>of the 2,393 neighbourhoods with homes where at least half of the homes reach 30%</span></div>
+  <div class="fact"><b>27%</b><span>of the homes in Wassenaar reach 30%, far more than anywhere else</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland; crowns in 2024, neighbourhoods and land area from CBS (2025).</p>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, crowns and land cover 2024, homes BAG 2026, neighbourhoods CBS 2025.</p>
 
 <h2>What is measured?</h2>
-<p>The <a href="konijnendijk.html">paper</a> asks for at least 30% canopy cover in every neighbourhood, and adds that it is
-about the neighbourhood, not the city average. We calculate:</p>
-<p style="font-size:18px;text-align:center"><b>canopy cover = area under tree crowns ÷ land area × 100%</b></p>
+<p>The <a href="konijnendijk.html">paper</a> asks for at least 30% canopy cover in every neighbourhood, and stresses that
+it is about the neighbourhood, not the average of the city. We take as the neighbourhood of a home everything within
+500 m of its facade, and calculate:</p>
+<p style="font-size:18px;text-align:center"><b>canopy cover = area under tree crowns ÷ land area × 100%, within 500 m of the facade</b></p>
+<p>On the map every building has its own colour. An area shows the share of homes that reach 30%; the mean canopy cover
+of those homes is in the popup.</p>
 
 <h2 id="aannames">What the result assumes</h2>
-<p>The paper leaves open from where and how far to measure. The choices below fill that in and make the most difference to the figures. Each says which way it pushes the result; the reasons are under "Choices and why".</p>
+<p>The paper leaves open from where and how far to measure. The choices below fill that in and make the most difference
+to the figures. Where a choice pushes the result one way, it says so; the reasons are under "Choices and why".</p>
 <ul>
-  <li><b>The neighbourhood is the unit.</b> A district or municipality is the crown area of all its neighbourhoods divided by their land area. Large green neighbourhoods lift it while others can stay far below 30%, so read the map at neighbourhood level.</li>
-  <li><b>Every bit of crown counts once.</b> Overlapping crowns count once, and a crown on a boundary counts in each neighbourhood for the part that lies there.</li>
-  <li><b>Divided by land area.</b> A neighbourhood with a lake is not marked down for the water, but a crown over a canal does count as crown. <i>(more favourable)</i></li>
-  <li><b>Street and garden trees count.</b> The crown map is made from lidar; what exactly counts as a crown is decided by that map.</li>
+  <li><b>500 m from the facade.</b> The zone runs around the whole footprint of the building, so a large building gets a
+      larger zone than a terraced house. With a smaller radius more homes would reach 30%, because the street and the
+      garden would weigh more.</li>
+  <li><b>Across boundaries.</b> The zone does not stop at the boundary of the neighbourhood, the municipality or the
+      province. A home at the edge of a wood counts that wood, also when it lies in the next municipality.</li>
+  <li><b>Divided by land area.</b> Water and bridges over water do not count. A home on a lake is not marked down for
+      the water. <i>(more favourable)</i></li>
+  <li><b>An area is the sum of its homes.</b> A block of 100 flats counts 100 times, a detached house once. The share
+      says how many people reach the 30, not how much ground.</li>
+  <li><b>Street and garden trees count.</b> The crown map is made from lidar; what exactly counts as a crown is up to that
+      map.</li>
 </ul>
 
 <h2>Steps</h2>
 <ol class="steps">
-  <li><strong>Where are the crowns?</strong>
-    Friedenau Society's Boomkroonbedekking 2024 (BKB 2024) divides all of the Netherlands into cells of 25 by 25 cm and
-    says for each cell whether a tree crown hangs over it. The map was made from lidar: laser height measurements from
+  <li><strong>Where are crowns?</strong>
+    Friedenau Society's Boomkroonbedekking 2024 (BKB 2024) divides the whole of the Netherlands into cells of 25 by 25 cm
+    and says for each cell whether a tree crown hangs over it. The map is made from lidar: laser height measurements from
     an aircraft.</li>
-  <li><strong>Neighbourhoods.</strong>
-    The municipalities, districts and neighbourhoods are those of the map, from the CBS Wijk- en Buurtkaart 2025, so the
-    3, the 30 and the 300 are shown on exactly the same polygons.</li>
-  <li><strong>Count the crowns per neighbourhood.</strong>
-    Each cell belongs to the neighbourhood that holds its centre. A crown on a boundary therefore counts for the part
-    that lies in each neighbourhood, and nowhere twice. Districts and municipalities are the sum of their
-    neighbourhoods; for Delft we checked that this gives exactly the same result as clipping the districts and the
-    municipality themselves.</li>
-  <li><strong>Divide by the land area.</strong>
-    The land area also comes from CBS (2025). Area under crowns ÷ land area × 100%.</li>
+  <li><strong>Where is land?</strong>
+    Friedenau Society's land cover 2024 is on the same grid and gives per cell water, paved, unpaved, building or bridge.
+    Everything except water and bridges over water is land.</li>
+  <li><strong>Adding up per 5 m.</strong>
+    For every 5 by 5 m square (400 cells of 25 cm) we counted how many cells are land and how many of those lie under a
+    crown. That makes the calculation per home fast, while the result hardly changes.</li>
+  <li><strong>The zone of each building.</strong>
+    Around every residential building from the BAG (the same buildings as for the 3), a zone of 500 m from the facade was
+    drawn. Within that zone crown and land were added up: crown ÷ land × 100%. Checked on 45 buildings in Delft, the
+    difference from an exact calculation is at most 0.03 percentage points.</li>
+  <li><strong>Neighbourhoods, districts and municipalities.</strong>
+    Every building belongs to the neighbourhood that holds its centre, and so to a district and a municipality, as for the
+    3. Per area: the share of homes with at least 30%, and their mean.</li>
 </ol>
 
 <h2>Choices and why</h2>
 <div class="table-wrap"><table>
 <tr><th>Choice</th><th>Why</th><th>Alternative we did not choose</th></tr>
-<tr><td>Per CBS neighbourhood</td>
-    <td>The paper asks for 30% per <i>neighbourhood</i>. The CBS buurt is the smallest official unit that comes closest
-        to that, and it is the same nationwide, so comparable between municipalities and provinces.</td>
-    <td>A grid or a radius around every home: more precise per home, but no longer "the neighbourhood" of the rule.</td></tr>
+<tr><td>Per home, within 500 m</td>
+    <td>The rule is about where people live. A radius around every home measures what its residents have around them,
+        also when the home lies at the edge of a neighbourhood. 500 m is about a 6-minute walk.</td>
+    <td>Per CBS neighbourhood (on the map until 19 October 2026): a large green neighbourhood can then reach 30% while the
+        homes themselves are on its bare side.</td></tr>
+<tr><td>From the facade, not from the centre</td>
+    <td>You leave the building at its facade. For a large building that makes tens of metres of difference.</td>
+    <td>A circle around the centre of the building.</td></tr>
 <tr><td>A crown map from lidar</td>
     <td>The rule is about cover: how much ground lies under a crown. The map measures that directly. Overlapping crowns
         count once, just as the ground under them exists only once.</td>
-    <td>Adding up crown polygons per tree (the earlier calculation, see below): overlapping crowns then count twice.</td></tr>
-<tr><td>The centre of a cell decides the neighbourhood</td>
-    <td>Every bit of crown counts in exactly one neighbourhood. With 25 cm cells a boundary is at most 12.5 cm off; in
-        Delft the counted area differs from the true area by at most 4 m² per neighbourhood.</td>
-    <td>Counting a whole crown in every neighbourhood it touches.</td></tr>
-<tr><td>Dividing by land area</td>
-    <td>No trees grow on open water. A neighbourhood with a lake or river would otherwise come out unfairly low.</td>
-    <td>Total area including water.</td></tr>
-<tr><td>Crowns 2024, neighbourhoods 2025</td>
-    <td>The crowns and the areas are from almost the same year, and the neighbourhoods are the same as on the map.</td>
-    <td>Older neighbourhood boundaries, which would first have to be carried over.</td></tr>
-<tr><td>Colours: &lt; 10, 10–20, 20–30, ≥ 30%</td>
-    <td>30% is the rule's threshold; the steps in between show how far a neighbourhood is from it.</td>
+    <td>Adding up crown areas per tree: overlapping crowns would then count twice.</td></tr>
+<tr><td>Divided by land area</td>
+    <td>No trees grow on open water. A home on a lake or river would otherwise come out too low.</td>
+    <td>The whole zone including water.</td></tr>
+<tr><td>Area = share of homes</td>
+    <td>The 3 and the 300 work the same way: what matters is how many people reach the rule.</td>
+    <td>Colouring the mean canopy cover; that is in the popup.</td></tr>
+<tr><td>Colours per building: &lt; 10, 10–20, 20–30, ≥ 30%</td>
+    <td>30% is the threshold of the rule; the steps in between show how far a home is from it.</td>
     <td>—</td></tr>
 </table></div>
 
-<h2>Compared with the earlier calculation</h2>
-<p>The 30 used to come from a calculation with the crown polygons of the NEO trees (2020–2022), on the CBS
-neighbourhoods of 2023. It always gave higher values: higher in all 39 municipalities for which that calculation was
-complete, usually by about 23% (median). In Delft it was 24.7% against 21.0% now. The pattern does agree: which
-municipalities score high and low is almost the same (correlation 0.99).</p>
-<p>The difference probably comes mostly from how crowns were counted. The old calculation counted every crown that
-touched a neighbourhood in full, so crowns on a boundary counted in two neighbourhoods, and it added up the areas of
-overlapping crowns. In Delft the difference per neighbourhood grows with the length of its boundary and with the
-amount of crown in it. The years also differ: the NEO crowns are from 2020–2022, the crown map from 2024. The old
-calculation also had no values for Voorne aan Zee and parts of Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp and
-Delft, because of an error with neighbourhood codes; those areas now have a value.</p>
+<h2 id="mijn-woning">There are trees near my home: why this colour?</h2>
+<p>A few trees in the street or the garden usually do not reach the 30. A zone of 500 m from the facade is at least
+78 hectares: 30% of it is about 24 hectares under crowns, more than 30 football pitches. Mostly homes at or in a wood,
+a large park or an estate reach that. Half of the buildings in Zuid-Holland are below 11%.</p>
+<p>Per home this is an indication from a map, not a measurement on site. Trees planted or felled after 2024 are not in
+it yet.</p>
+
+<h2>Compared with the 30 per neighbourhood</h2>
+<p>Until 19 October 2026 the map showed the canopy cover of each CBS neighbourhood itself: the area under crowns in the
+neighbourhood divided by its land area. By that calculation 8.1% of the land in Zuid-Holland lies under a crown and 102
+of the 2,509 neighbourhoods reach 30%. Per home the mean comes out higher (12.7%), probably because homes stand near
+trees more often than near meadows and greenhouses, which take up much of the area in the neighbourhood figures.</p>
+<p>Before that, the 30 came from a calculation with the crown polygons of the NEO trees (2020–2022) on the CBS
+neighbourhoods of 2023. It gave higher values throughout, usually about 23% higher, mainly because a crown on a
+neighbourhood boundary counted in full in each neighbourhood and overlapping crowns were added up.</p>
 
 <h2>Limitations</h2>
 <ul>
-  <li><b>Land area in whole hectares.</b> CBS rounds the land area to whole hectares. For a small neighbourhood that can
-      shift the percentage by a few points.</li>
-  <li><b>Crowns over water count.</b> A crown over a ditch or canal counts as crown, while the water is not part of the
-      land area. In neighbourhoods with a lot of water along the banks the value can come out slightly higher.</li>
-  <li><b>What counts as a crown</b> is decided by Friedenau Society's map. Very small trees and shrubs may or may not be
-      in it, depending on how that map was made.</li>
+  <li><b>What a crown is</b> is up to Friedenau Society's map. Very small trees and shrubs may or may not be in it,
+      depending on how that map was made.</li>
+  <li><b>The land cover was checked, not confirmed.</b> That class 7 is buildings and class 8 bridges was checked against
+      the BAG and OpenStreetMap. Two other classes count as land either way.</li>
+  <li><b>Squares of 5 m.</b> A square counts when its centre lies in the zone. At the edge of a 500 m zone that is a
+      few metres at most.</li>
 </ul>
 
 <h2>Code and sources</h2>
 <div class="table-wrap"><table class="plain">
 <tr><th>Step</th><th>Script</th></tr>
-<tr><td>Count crown cells per neighbourhood</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_30_kroonbedekking/etl/bkb_per_gebied.py"><code>etl/bkb_per_gebied.py</code></a></td></tr>
-<tr><td>Per neighbourhood, district and municipality, with land area</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py"><code>etl/kroonbedekking_gebieden.py</code></a></td></tr>
+<tr><td>Crown and land per 5 m square</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_30_kroonbedekking/etl/kroon_raster_5m.py"><code>etl/kroon_raster_5m.py</code></a></td></tr>
+<tr><td>Per home within 500 m, and per neighbourhood, district and municipality</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/indicator_30_kroonbedekking/etl/kroon_500m_woningen.py"><code>etl/kroon_500m_woningen.py</code></a></td></tr>
 <tr><td>Map tiles</td><td><a href="https://github.com/RobertoTjesse/3-30-300-regel/blob/master/web/build_tiles_30_300.py"><code>web/build_tiles_30_300.py</code></a></td></tr>
 </table></div>
 <div class="table-wrap"><table class="plain">
-<tr><th>Data</th><th>Source</th><th>As of</th></tr>
+<tr><th>Data</th><th>Source</th><th>Date</th></tr>
 <tr><td>Tree crowns</td><td>Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, from lidar, 25 cm cells</td><td>2024</td></tr>
-<tr><td>Municipalities, districts, neighbourhoods and land area</td><td><a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2025">CBS Wijk- en Buurtkaart 2025</a> via PDOK</td><td>2025</td></tr>
+<tr><td>Land and water</td><td>Land cover 2024, Friedenau Society, 25 cm cells</td><td>2024</td></tr>
+<tr><td>Residential buildings</td><td>BAG via PDOK, the same buildings as the 3</td><td>27 September 2026</td></tr>
+<tr><td>Municipalities, districts and neighbourhoods</td><td><a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2025">CBS Wijk- en Buurtkaart 2025</a> via PDOK</td><td>2025</td></tr>
 </table></div>
 </main>
 <footer>3-30-300 rule · <a href="https://github.com/RobertoTjesse/3-30-300-regel">source code on GitHub</a> ·

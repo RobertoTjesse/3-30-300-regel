@@ -56,6 +56,17 @@ PROVINCE = "Zuid-Holland"
 # boomkroonbedekking from lidar by Friedenau Society; the Netherlands at
 # 0.25 m, 1 = crown. 9.2 GB, gitignored like everything under data/.
 BKB_TIF = BASE_DIR / "data" / "raw" / "bkb_2024.tif"
+# Land cover 2024 on the same 0.25 m grid: 1 water, 2 onverhard, 3 halfverhard,
+# 4 verhard, 7 gebouw, 8 brug over water (7 and 8 checked against BAG and
+# OSM; 5 and 6 are land, see indicator_30_kroonbedekking/README.md); 0 = no
+# data (sea). Land = LAND_CLASSES: everything but water, bridges and 9.
+LANDBEDEKKING_TIF = BASE_DIR / "data" / "raw" / "landbedekking_2024.tif"
+LAND_CLASSES = (2, 3, 4, 5, 6, 7)
+# The 30 per home: canopy cover on land within KROON_BUFFER_M of the facade,
+# from crown and land pixels counted per KROON_GRID_RES cell.
+KROON_BUFFER_M = 500.0
+KROON_GRID_RES = 5.0
+KROON_GRID_TIF = BASE_DIR / "data" / "interim" / "kroon_land_5m.tif"   # band 1 crown on land, band 2 land
 
 try:
     from config_local import *  # noqa: F401,F403 — machine-specific overrides

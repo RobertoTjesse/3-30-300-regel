@@ -1,15 +1,17 @@
 """
-build_tiles_30_300.py — Build the web map's vector tiles for the 30 (from BKB
-2024) and the 300 (from indicator_300_park/etl, GRASS), in two files. The 3 has
+build_tiles_30_300.py — Build the web map's vector tiles for the 30 (canopy
+within 500 m of every home, from BKB 2024) and the 300 (from indicator_300_park/etl, GRASS), in two files. The 3 has
 its own tile file (web/build_tiles.py -> web/data/3.pmtiles), the 300's green
 areas too (web/build_tiles_groen.py -> web/data/groen.pmtiles).
 
 web/data/30-300.pmtiles:
-  gemeenten   zoom 6-9    } the same areas as the 3 map, with canopy cover (the
-  wijken      zoom 9-11   } 30) and the share of homes within 300 m, 5 and 15
-  buurten     zoom 11-12  } minutes' walk of green (the 300)
-  woningen    zoom 13-16  every residential building of the 3, its walking class
-                          (by its nearest home) and that walking distance
+  gemeenten   zoom 6-9    } the same areas as the 3 map, with the share of homes
+  wijken      zoom 9-11   } with >= 30% canopy within 500 m and their mean (the
+  buurten     zoom 11-12  } 30), and the share of homes within 300 m, 5 and 15
+                            minutes' walk of green (the 300)
+  woningen    zoom 13-16  every residential building of the 3: canopy within
+                          500 m (the 30), its walking class (by its nearest
+                          home) and that walking distance (the 300)
 web/data/looptijd.pmtiles (the map's optional "walking zones" layers):
   iso5, iso15 zoom 9-16   5- and 15-minute Valhalla isochrones from the entrances
   ingangen    zoom 13-16  entrances of the green areas
@@ -21,16 +23,16 @@ Inputs:
   data/processed/<Province>_gebieden.gpkg   gemeenten, wijken 2025, buurten 2025
                                             (indicator_3_bomen/etl/06_area_summaries.py)
   data/processed/<Province>_woningen.gpkg   the residential buildings of the 3
-  data/processed/<Province>_kroonbedekking.csv   the 30: canopy cover per
-                    gemeente, wijk and buurt from BKB 2024 on the same CBS 2025
-                    areas (indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py)
+  data/processed/<Province>_kroon500_woningen.csv, _kroon500_gebieden.csv
+                    the 30 per building and per gemeente, wijk and buurt
+                    (indicator_30_kroonbedekking/etl/kroon_500m_woningen.py)
   data/interim/300/<Province>/grass.gpkg   the 300 per home (03_grass.py):
                     gr_m, the walking distance with GRASS to the nearest entrance
   data/interim/300/<Province>/prepared.gpkg, valhalla.gpkg   entrances and
                     isochrones of the 300
 
 Usage:
-    python web/build_tiles_30_300.py [--open GPKG] [--gebieden GPKG] [--kroon CSV]
+    python web/build_tiles_30_300.py [--open GPKG] [--gebieden GPKG] [--kroon CSV] [--kroon-woningen CSV]
 (all default to the paths in indicator_3_bomen/etl/config.py / config_local.py)
 """
 
@@ -54,8 +56,11 @@ _args.add_argument("--open", type=Path,
 _args.add_argument("--gebieden", type=Path,
                    default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_gebieden.gpkg")
 _args.add_argument("--kroon", type=Path,
-                   default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_kroonbedekking.csv",
-                   help="the 30 per area (kroonbedekking_gebieden.py)")
+                   default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_kroon500_gebieden.csv",
+                   help="the 30 per area (kroon_500m_woningen.py)")
+_args.add_argument("--kroon-woningen", type=Path,
+                   default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_kroon500_woningen.csv",
+                   help="the 30 per building (kroon_500m_woningen.py)")
 ARGS = _args.parse_args()
 GEBIEDEN = ARGS.gebieden
 BUILDINGS = config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_woningen.gpkg"
@@ -80,8 +85,9 @@ def num(v, digits=1):
 
 
 def woningen(dst):
-    """Residential buildings of the 3 with their walking class ('5', '15' or 'ver',
-    by the building's nearest home) and that distance; also returns a point layer
+    """Residential buildings of the 3 with their canopy cover within 500 m (the
+    30), their walking class ('5', '15' or 'ver', by the building's nearest home)
+    and that distance (the 300); also returns a point layer
     with the number of homes per building within 300 m, 5 and 15 minutes, for the
     area shares."""
     homes_ds = ogr.Open(str(ARGS.open))
@@ -94,6 +100,8 @@ def woningen(dst):
             for i, key in ((1, "300"), (2, "5"), (3, "15")):
                 row[i] += d <= LIMITS[key]
             row[4] = d if row[4] is None else min(row[4], d)
+    with open(ARGS.kroon_woningen, encoding="utf-8") as fh:
+        kroon = {r["pand_id"]: float(r["kroon"]) for r in csv.DictReader(fh) if r["kroon"]}
     src_ds = ogr.Open(str(BUILDINGS))
     src = src_ds.GetLayer(0)
     out = dst.CreateLayer("woningen", RD, ogr.wkbMultiPolygon)
@@ -102,6 +110,7 @@ def woningen(dst):
         lyr.CreateField(ogr.FieldDefn("klasse", ogr.OFTString))
         lyr.CreateField(ogr.FieldDefn("woningen", ogr.OFTInteger))
     out.CreateField(ogr.FieldDefn("afstand", ogr.OFTInteger))
+    out.CreateField(ogr.FieldDefn("kroon", ogr.OFTInteger))     # % canopy within 500 m, whole percent
     for name in ("n300", "n5", "n15"):
         pts.CreateField(ogr.FieldDefn(name, ogr.OFTInteger))
     dst.StartTransaction()                  # GPKG: one transaction for both layers
@@ -123,6 +132,9 @@ def woningen(dst):
         nf.SetField("woningen", homes)
         if nearest is not None:
             nf.SetField("afstand", round(nearest))
+        if f.GetField("pand_id") in kroon:
+            # rounded down, so that 29.9% stays below the 30 on the map
+            nf.SetField("kroon", int(kroon[f.GetField("pand_id")]))
         nf.SetGeometry(g)
         out.CreateFeature(nf)
         pf = ogr.Feature(pts.GetLayerDefn())
@@ -136,27 +148,28 @@ def woningen(dst):
 
 
 def kroonbedekking():
-    """The 30 from BKB 2024: {(level, key): (canopy %, crown m2)}, with the
-    gemeenten keyed by name (the map's gemeenten have no code) and the wijken
-    and buurten by CBS code."""
+    """The 30 per area: {(level, key): (share of homes with >= 30% canopy within
+    500 m, mean canopy within 500 m)}, with the gemeenten keyed by name (the
+    map's gemeenten have no code) and the wijken and buurten by CBS code."""
     out = {}
     with open(ARGS.kroon, encoding="utf-8") as fh:
         for r in csv.DictReader(fh):
             level = {"gemeente": "gemeenten", "wijk": "wijken", "buurt": "buurten"}[r["niveau"]]
             key = r["naam"] if level == "gemeenten" else r["code"]
-            out[(level, key)] = (float(r["pct"]) if r["pct"] else None, float(r["kroon_m2"]))
+            out[(level, key)] = tuple(float(r[k]) if r[k] else None for k in ("pct_30", "gem_kroon"))
     return out
 
 
 def areas(dst, pts, kroon):
-    """Gemeenten, wijken and buurten of the 3 map (same polygons): canopy
-    cover from BKB 2024 (the 30) and the share of homes by walking class (the 300)."""
+    """Gemeenten, wijken and buurten of the 3 map (same polygons): the share of
+    homes with >= 30% canopy within 500 m and their mean (the 30), and the share
+    of homes by walking class (the 300)."""
     src_ds = ogr.Open(str(GEBIEDEN))
     for level in ("gemeenten", "wijken", "buurten"):
         src = src_ds.GetLayerByName(level)
         out = dst.CreateLayer(level, RD, ogr.wkbMultiPolygon)
         for fname, ftype in (("naam", ogr.OFTString), ("gemeente", ogr.OFTString),
-                             ("groen", ogr.OFTReal), ("kroon_m2", ogr.OFTInteger),
+                             ("pct_30", ogr.OFTReal), ("kroon", ogr.OFTReal),
                              ("woningen", ogr.OFTInteger),
                              ("pct_300", ogr.OFTReal), ("pct_5", ogr.OFTReal), ("pct_15", ogr.OFTReal)):
             out.CreateField(ogr.FieldDefn(fname, ftype))
@@ -175,14 +188,14 @@ def areas(dst, pts, kroon):
             nf = ogr.Feature(out.GetLayerDefn())
             nf.SetField("naam", f.GetField("naam"))
             nf.SetField("gemeente", f.GetField("gemeente"))
-            # The 30 (no value for an area without land)
+            # The 30, from the homes in the area (none: an area without homes)
             key = f.GetField("naam") if level == "gemeenten" else f.GetField("code")
-            pct, kroon_m2 = kroon.get((level, key), (None, None))
-            if kroon_m2 is None:
+            pct_30, gem = kroon.get((level, key), (None, None))
+            if pct_30 is None:
                 missing += 1
-            elif pct is not None:
-                nf.SetField("groen", num(pct))
-                nf.SetField("kroon_m2", round(kroon_m2))
+            else:
+                nf.SetField("pct_30", num(pct_30))
+                nf.SetField("kroon", num(gem))
             nf.SetField("woningen", total)
             if total:
                 for k in counts:
@@ -191,7 +204,7 @@ def areas(dst, pts, kroon):
             out.CreateFeature(nf)
         dst.CommitTransaction()
         pts.SetSpatialFilter(None)
-        print(f"{level}: {out.GetFeatureCount():,}" + (f"  ({missing} without a 30 value!)" if missing else ""))
+        print(f"{level}: {out.GetFeatureCount():,}" + (f"  ({missing} without homes for the 30)" if missing else ""))
 
 
 def zones(dst):

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
 <title>3-30-300-regel</title>
-<meta name="description" content="De 3-30-300-regel per woning, buurt, wijk en gemeente: 3 zichtbare bomen per woning, 30% kroonbedekking per buurt, groen binnen 300 m lopen.">
+<meta name="description" content="De 3-30-300-regel per woning, buurt, wijk en gemeente: 3 zichtbare bomen per woning, 30% kroonbedekking binnen 500 m van elke woning, groen binnen 300 m lopen.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.css">
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pmtiles@4/dist/pmtiles.js"></script>
@@ -163,12 +163,20 @@ const LEVELS = [
   { layer: "buurten",   name: L("buurt", "neighbourhood"),    plural: L("de buurten", "neighbourhoods"),  from: 11.5, to: 13 },
 ];
 
-// --- 30: tree canopy cover per wijk / buurt (%) ---
+// --- 30: canopy cover on land within 500 m of the facade, per home (%) ---
 const STEPS_30 = [
   [0,  "#d7301f", "< 10%"],
   [10, "#fdae6b", "10-20%"],
   [20, "#c7e9c0", "20-30%"],
   [30, "#238b45", L("≥ 30% (voldoet)", "≥ 30% (meets the rule)")],
+];
+// Areas: share of homes with >= 30% within 500 m (0 has its own colour: most areas)
+const STEPS_30_AREA = [
+  [0,    "#d7301f", "0%"],
+  [0.05, "#fdae6b", "0-10%"],
+  [10,   "#c7e9c0", "10-25%"],
+  [25,   "#74c476", "25-50%"],
+  [50,   "#238b45", "≥ 50%"],
 ];
 
 // --- 300: homes within a 5-minute walk of a park or wood ---
@@ -207,14 +215,16 @@ const THEMES = {
               "A home gets the highest number of visible trees seen anywhere just outside its facade (within 1.5 m, at an eye height of 1.8 m)."),
   },
   "30": {
-    intro: L("Heeft elke buurt minstens 30% bedekking met boomkronen? Kroonoppervlak als aandeel van het landoppervlak, per gemeente, wijk en buurt.",
-             "Does every neighbourhood have at least 30% tree canopy cover? Crown area as a share of land area, per municipality, district and neighbourhood."),
-    method: L("Het oppervlak onder boomkronen komt uit de Boomkroonbedekking 2024 (BKB 2024) van Friedenau Society: een kaart met vakjes van 25 cm, " +
-              "gemaakt uit lidar (laserhoogtemetingen vanuit de lucht). Per buurt is dat oppervlak gedeeld door het landoppervlak van het CBS (2025). " +
-              "Elk stukje kroon telt in precies één buurt; wijken en gemeenten zijn de som van hun buurten. Grijs: geen land.",
-              "The area under tree crowns comes from Friedenau Society's Boomkroonbedekking 2024 (BKB 2024): a map with 25 cm cells, " +
-              "made from lidar (airborne laser measurements). Per neighbourhood, that area is divided by the CBS land area (2025). " +
-              "Every bit of crown counts in exactly one neighbourhood; districts and municipalities are the sum of their neighbourhoods. Grey: no land."),
+    intro: L("Woont iedereen in een buurt met minstens 30% boomkronen? Het kroondekkingspercentage binnen 500 m vanaf de gevel van elk pand, en per gebied het aandeel woningen met ≥ 30%.",
+             "Does everyone live in a neighbourhood with at least 30% tree canopy? The canopy cover within 500 m of the facade of every building, and per area the share of homes with ≥ 30%."),
+    method: L("De boomkronen komen uit de Boomkroonbedekking 2024 (BKB 2024) van Friedenau Society: een kaart met vakjes van 25 cm, " +
+              "gemaakt uit lidar (laserhoogtemetingen vanuit de lucht). Om elk woonpand is een zone van 500 m vanaf de gevel getrokken; " +
+              "daarin is het oppervlak onder kronen gedeeld door het landoppervlak (water en bruggen tellen niet mee, uit de landbedekking 2024). " +
+              "Een gebied telt zijn woningen op: het aandeel woningen met ≥ 30%, en hun gemiddelde staat in de pop-up.",
+              "The tree crowns come from Friedenau Society's Boomkroonbedekking 2024 (BKB 2024): a map with 25 cm cells, " +
+              "made from lidar (airborne laser measurements). Around every residential building, a zone of 500 m from the facade was drawn; " +
+              "in it, the area under crowns is divided by the land area (water and bridges do not count, from land cover 2024). " +
+              "An area adds up its homes: the share of homes with ≥ 30%; their mean is in the popup."),
   },
   "300": {
     intro: L("Woont iedereen binnen 300 m van een park? Loopafstand over straten en paden van elke woning tot de dichtstbijzijnde ingang van openbaar groen.",
@@ -243,8 +253,8 @@ const SOURCES = {
   "30": [
     [L("Boomkronen", "Tree crowns"), L("Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, uit lidar, 25 cm",
                                        "Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, from lidar, 25 cm"), "2024"],
-    [L("Landoppervlak", "Land area"), '<a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2025" target="_blank" rel="noopener">CBS Wijk- en Buurtkaart 2025</a>' +
-                                      L(", in hele hectares", ", in whole hectares"), "2025"],
+    [L("Land en water", "Land and water"), L("Landbedekking 2024, Friedenau Society, 25 cm", "Land cover 2024, Friedenau Society, 25 cm"), "2024"],
+    [L("Woningen", "Homes"), L("Zelfde als de 3 (BAG)", "Same as the 3 (BAG)"), L("27 september 2026", "27 September 2026")],
     [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
   "300": [
@@ -258,11 +268,11 @@ const SOURCES = {
     [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
 };
-const CAVEATS = L("Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 meet kronen in 2024; het landoppervlak " +
-  "van het CBS staat in hele hectares, wat bij een kleine buurt het percentage een paar punten kan verschuiven. De 3 en de 300 gebruiken dezelfde " +
+const CAVEATS = L("Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 meet kronen in 2024, binnen 500 m van de gevel: " +
+  "ook over de grens van de buurt en van de provincie heen. De 3, de 30 en de 300 gebruiken dezelfde " +
   "woningen (BAG 2026). De 300 meet de loopafstand tot een ingang, niet hemelsbreed tot de rand van het groen.",
-  "All tabs show the same municipalities, districts (CBS 2025) and neighbourhoods (CBS 2025). The 30 measures crowns in 2024; the CBS land area is " +
-  "in whole hectares, which can shift the percentage of a small neighbourhood by a few points. The 3 and the 300 use the same homes " +
+  "All tabs show the same municipalities, districts (CBS 2025) and neighbourhoods (CBS 2025). The 30 measures crowns in 2024, within 500 m of the facade: " +
+  "also across the boundary of the neighbourhood and of the province. The 3, the 30 and the 300 use the same homes " +
   "(BAG 2026). The 300 measures the walking distance to an entrance, not the straight-line distance to the edge of the green.");
 // Second background: aerial photo (WMS), highest resolution available nationwide
 const AERIAL_WMS = "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0";
@@ -321,20 +331,20 @@ add("3", { id: "3-woningen", type: "fill", source: "t3", "source-layer": "woning
            paint: { "fill-color": matchColour(CLASSES_3, NO_RING[0]), "fill-opacity": 0.9,
                     "fill-outline-color": "rgba(40,40,40,0.5)" } });
 
-// 30: buurten stay on beyond zoom 13 (there is nothing per building)
-const groenColour = ["case", ["!", ["has", "groen"]], NO_DATA,
-  ["step", ["get", "groen"], ...STEPS_30.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]];
 for (const lv of LEVELS) {
-  const to = lv.layer === "buurten" ? 24 : lv.to;
   add("30", { id: `30-${lv.layer}-fill`, type: "fill", source: "t30", "source-layer": lv.layer,
-              minzoom: lv.from, maxzoom: to, paint: { "fill-color": groenColour, "fill-opacity": 0.7 } });
+              minzoom: lv.from, maxzoom: lv.to, paint: { "fill-color": stepColour("pct_30", STEPS_30_AREA), "fill-opacity": 0.75 } });
   add("30", { id: `30-${lv.layer}-line`, type: "line", source: "t30", "source-layer": lv.layer,
-              minzoom: lv.from, maxzoom: to, paint: { "line-color": "#555", "line-width": 0.5 } });
+              minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
   add("300", { id: `300-${lv.layer}-fill`, type: "fill", source: "t30", "source-layer": lv.layer,
                minzoom: lv.from, maxzoom: lv.to, paint: { "fill-color": stepColour("pct_5", STEPS_300), "fill-opacity": 0.75 } });
   add("300", { id: `300-${lv.layer}-line`, type: "line", source: "t30", "source-layer": lv.layer,
                minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
 }
+add("30", { id: "30-woningen", type: "fill", source: "t30", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+            paint: { "fill-color": ["case", ["!", ["has", "kroon"]], NO_DATA,
+                       ["step", ["get", "kroon"], ...STEPS_30.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]],
+                     "fill-opacity": 0.9, "fill-outline-color": "rgba(40,40,40,0.5)" } });
 add("300", { id: "300-groen-fill", type: "fill", source: "tg", "source-layer": "groen", minzoom: BUILDINGS_FROM_ZOOM,
              paint: { "fill-color": GROEN_300.fill, "fill-opacity": 0.35 } });
 add("300", { id: "300-groen-line", type: "line", source: "tg", "source-layer": "groen", minzoom: GROEN_300.from,
@@ -519,9 +529,8 @@ function updateLegend() {
   const few = [NO_DATA, L(`minder dan ${MIN_HOMES} woningen`, `fewer than ${MIN_HOMES} homes`)];
   const z = map.getZoom();
   let i = LEVELS.findIndex((lv) => z >= lv.from && z < lv.to);
-  if (theme === "30" && i < 0) i = LEVELS.length - 1;       // the 30 stays on buurten
   const next = i + 1 < LEVELS.length ? LEVELS[i + 1].plural : L("de afzonderlijke woningen", "individual homes");
-  if (i >= 0 && !(theme === "30" && i === LEVELS.length - 1)) hint.textContent = L(`Zoom in voor ${next}.`, `Zoom in for ${next}.`);
+  if (i >= 0) hint.textContent = L(`Zoom in voor ${next}.`, `Zoom in for ${next}.`);
   if (theme === "3") {
     if (i < 0) {
       legend.appendChild(legendBlock(L("Zichtbare bomen per woning", "Visible trees per home"), [...CLASSES_3.map(([, c, l]) => [c, l]), NO_RING]));
@@ -531,8 +540,14 @@ function updateLegend() {
                                      [...STEPS_3.map(([, c, l]) => [c, l]), few]));
     }
   } else if (theme === "30") {
-    legend.appendChild(legendBlock(L(`Kroonbedekking per ${LEVELS[i].name}`, `Canopy cover per ${LEVELS[i].name}`),
-                                   [...STEPS_30.map(([, c, l]) => [c, l]), [NO_DATA, L("geen gegevens", "no data")]]));
+    if (i < 0) {
+      legend.appendChild(legendBlock(L("Kroonbedekking binnen 500 m", "Canopy cover within 500 m"), [...STEPS_30.map(([, c, l]) => [c, l])]));
+      legend.appendChild(homeNote(UITLEG + "30.html#mijn-woning"));
+    } else {
+      legend.appendChild(legendBlock(L(`Woningen met ≥ 30% kroonbedekking binnen 500 m, per ${LEVELS[i].name}`,
+                                       `Homes with ≥ 30% canopy cover within 500 m, per ${LEVELS[i].name}`),
+                                     [...STEPS_30_AREA.map(([, c, l]) => [c, l]), few]));
+    }
   } else {
     if (i < 0) {
       legend.appendChild(legendBlock(L("Loopafstand tot groen", "Walking distance to green"), [...CLASSES_300.map(([, c, l]) => [c, l])]));
@@ -623,6 +638,13 @@ map.on("click", "300-groen-fill", (e) => {
     [L("Oppervlak (land)", "Area (land)"), `${fmt(p.m2)} m²`],
   ], [L("Hoe telt dit groen mee?", "How does this green count?"), UITLEG + "300.html"]);
 });
+map.on("click", "30-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, p.kroon == null ? L("Geen gegevens", "No data") : L(`${fmt(p.kroon)}% kroonbedekking binnen 500 m`, `${fmt(p.kroon)}% canopy cover within 500 m`)],
+    [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+  ], (p.kroon ?? 0) < 30 ? [L("Er staan hier wel bomen: waarom deze kleur?", "But there are trees here: why this colour?"), UITLEG + "30.html#mijn-woning"] : null);
+});
 map.on("click", "300-woningen", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [
@@ -638,9 +660,9 @@ for (const lv of LEVELS) {
       const few = (p.woningen ?? 0) < MIN_HOMES;
       popup(e.lngLat, [
         [null, areaTitle(p, lv)],
-        [L("Kroonbedekking (30)", "Canopy cover (30)"), pct(p.groen)],
-        [L("Kroonoppervlak", "Crown area"), p.kroon_m2 == null ? "–" : `${fmt(p.kroon_m2)} m²`],
         [L("Woningen", "Homes"), fmt(p.woningen)],
+        [L("Met ≥ 30% kroonbedekking binnen 500 m (30)", "With ≥ 30% canopy cover within 500 m (30)"), few ? "–" : pct(p.pct_30)],
+        [L("Gemiddelde kroonbedekking binnen 500 m", "Mean canopy cover within 500 m"), few ? "–" : pct(p.kroon)],
         [L("Binnen 300 m lopen van groen (300)", "Within a 300 m walk of green (300)"), few ? "–" : pct(p.pct_300)],
         [L("Binnen 5 min lopen", "Within a 5-min walk"), few ? "–" : pct(p.pct_5)],
         [L("Binnen 15 min lopen", "Within a 15-min walk"), few ? "–" : pct(p.pct_15)],
