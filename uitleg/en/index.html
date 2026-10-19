@@ -33,7 +33,7 @@ another province.</p>
   <a class="card" href="3.html"><div class="num">3</div><h3>trees in view</h3>
     <p>Sightlines from every tree, a score per home just outside its facade.</p></a>
   <a class="card" href="30.html"><div class="num">30</div><h3>% canopy cover</h3>
-    <p>Tree crown area divided by land area, per neighbourhood.</p></a>
+    <p>Area under tree crowns divided by land area, within 500 m of every home.</p></a>
   <a class="card" href="300.html"><div class="num">300</div><h3>metres to green</h3>
     <p>Walking time over streets and paths to the entrance of a park or wood.</p></a>
 </div>
@@ -46,7 +46,7 @@ on the same areas, so you can compare them directly:</p>
 <tr><td>province</td><td>municipalities (gemeenten)</td><td>Administrative boundaries (Kadaster), current division</td></tr>
 <tr><td>city</td><td>districts (wijken)</td><td>CBS Wijk- en Buurtkaart 2025</td></tr>
 <tr><td>district</td><td>neighbourhoods (buurten)</td><td>CBS Wijk- en Buurtkaart 2025</td></tr>
-<tr><td>street</td><td>homes (3 and 300); the 30 stays at neighbourhood level</td><td>BAG</td></tr>
+<tr><td>street</td><td>homes (3, 30 and 300)</td><td>BAG</td></tr>
 </table></div>
 <p>Green always means "meets the rule", orange and red "does not", grey "no data" or fewer than 10 homes. The
 <b>i</b> button on the map lists the sources and their dates. As background you can choose the grey topographic map or
@@ -78,7 +78,7 @@ MUNICIPALITIES = []               # empty = all municipalities</code></pre></li>
     <code>06_area_summaries.py</code>; use the extent of your own province.</li>
   <li><strong>Run the six steps</strong> (<code>indicator_3_bomen/etl/01</code> to <code>06</code>) and then
     <code>web/build_tiles.py</code>. For the 30, run
-    <code>indicator_30_kroonbedekking/etl/kroonbedekking_gebieden.py</code> on the crown map (BKB 2024 covers all of
+    <code>indicator_30_kroonbedekking/etl/kroon_raster_5m.py</code> and <code>kroon_500m_woningen.py</code> on the crown map (BKB 2024 covers all of
     the Netherlands). For the 300, run <code>indicator_300_park/etl/</code> with green sources and an OpenStreetMap
     extract for your province. Then run <code>web/build_tiles_30_300.py</code> and
     <code>web/build_tiles_groen.py</code>.</li>
@@ -96,7 +96,7 @@ MUNICIPALITIES = []               # empty = all municipalities</code></pre></li>
   <li><b>The 3 and the 30 use different trees:</b> NEO tree points against the BKB crown map, so a tree can count for one
       and not for the other.</li>
   <li><b>A building belongs to the neighbourhood and municipality that hold its centre point.</b> Areas with fewer than
-      10 homes get no percentage for the 3 and the 300.</li>
+      10 homes get no percentage for the 3, the 30 and the 300.</li>
 </ul>
 
 <h2 id="toekomst">Future</h2>
