@@ -46,6 +46,16 @@
   .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
   .panel a { color: var(--accent); }
   label.toggle { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 8px; cursor: pointer; }
+  .tabs button[data-theme="samen"] { flex: 1.6; font-size: 13px; }
+  .weights { margin: 0 0 10px; }
+  .w-row { display: grid; grid-template-columns: 34px 1fr 38px; align-items: center; gap: 6px; font-weight: 600; }
+  .w-row input { accent-color: var(--accent); }
+  .w-row output { font: 12px/1 inherit; color: var(--muted); text-align: right; }
+  .w-mode { display: flex; flex-direction: column; gap: 2px; font-size: 13px; margin: 6px 0; }
+  .w-reset { padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
+             color: var(--fg); font: 12px/1.4 inherit; cursor: pointer; }
+  .ramp { height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,.25); }
+  .ramp-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
   details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 10px; }
   details p { font-size: 12px; margin-top: 6px; }
   .maplibregl-popup-content { background: var(--bg); color: var(--fg); font: inherit; }
@@ -83,6 +93,19 @@
     <button type="button" data-theme="3">3</button>
     <button type="button" data-theme="30">30</button>
     <button type="button" data-theme="300">300</button>
+    <button type="button" data-theme="samen" title="Samen (proef)" data-en-label="Combined (trial)">3·30·300</button>
+  </div>
+  <div id="weights" class="weights" hidden>
+    <div class="legend-title" data-en="Weights">Gewichten</div>
+    <label class="w-row"><span>3</span><input type="range" min="0" max="5" step="0.5" data-k="3"><output></output></label>
+    <label class="w-row"><span>30</span><input type="range" min="0" max="5" step="0.5" data-k="30"><output></output></label>
+    <label class="w-row"><span>300</span><input type="range" min="0" max="5" step="0.5" data-k="300"><output></output></label>
+    <div class="w-mode" role="group">
+      <label><input type="radio" name="mode" value="p"> <span data-en="Rule met (yes/no)">Regel gehaald (ja/nee)</span></label>
+      <label><input type="radio" name="mode" value="s"> <span data-en="Gradual (0 to target)">Geleidelijk (0 tot doel)</span></label>
+    </div>
+    <button type="button" id="w-reset" class="w-reset" data-en="Equal weights">Gelijke gewichten</button>
+    <p class="hint" id="w-note"></p>
   </div>
   <p class="intro" id="intro"></p>
 
@@ -133,6 +156,7 @@ const TILES_3 = "data/3.pmtiles";                 // web/build_tiles.py
 const TILES_30_300 = "data/30-300.pmtiles";       // web/build_tiles_30_300.py
 const TILES_GROEN = "data/groen.pmtiles";         // web/build_tiles_groen.py (the 300's parks and woods)
 const TILES_LOOPTIJD = "data/looptijd.pmtiles";   // web/build_tiles_30_300.py (walking zones, entrances)
+const TILES_SAMEN = "data/samen.pmtiles";         // web/build_tiles_samen.py (trial: the three combined)
 // The map opens on the extent of the tile files, so no coordinates to set per province.
 
 // Language: Dutch, or English with ?lang=en (link at the top of the panel).
@@ -243,6 +267,35 @@ const THEMES = {
   },
 };
 
+// --- Samen (trial): the three combined with weights from the sliders ---
+// Per home a score 0-100 per indicator (web/build_tiles_samen.py), two variants:
+//   p = rule met (0 or 100); per area: the share of homes meeting that rule
+//   s = gradual, min-max between the worst measured value (0) and the target (100):
+//       0-3 trees, 0-30% canopy, 1,275-425 m walk; beyond the target capped
+// Compound = sum(w*score) / sum(w) over the indicators with a value. That is
+// linear, so the area means in the tiles give the mean of the homes' compounds.
+const SAMEN_KEYS = ["3", "30", "300"];
+const SAMEN_RAMP = [[0, "#d7301f"], [25, "#fc8d59"], [50, "#fee08b"], [75, "#91cf60"], [100, "#1a9850"]];
+const samen = { w: { "3": 1, "30": 1, "300": 1 }, mode: "p" };   // ?w=1-1-1&m=p
+{
+  const q = new URLSearchParams(location.search);
+  const w = (q.get("w") || "").split("-").map(Number);
+  if (w.length === 3 && w.every((v) => v >= 0 && v <= 5)) SAMEN_KEYS.forEach((k, i) => samen.w[k] = w[i]);
+  if (q.get("m") === "s") samen.mode = "s";
+}
+THEMES.samen = {
+  intro: L("Proef: de 3, de 30 en de 300 in één kaart. Stel met de schuiven in hoe zwaar elk deel telt; een gebied krijgt het gemiddelde van zijn woningen.",
+           "Trial: the 3, the 30 and the 300 in one map. Set with the sliders how much each part counts; an area gets the mean of its homes."),
+  method: L("Per woning krijgt elk deel een score van 0 tot 100. <b>Regel gehaald</b>: 100 als de woning dat deel haalt, anders 0; per gebied is dat het aandeel woningen dat het haalt. " +
+            "<b>Geleidelijk</b>: lineair van de slechtste gemeten waarde (0 bomen, 0% kroon, 1.275 m lopen: verder meet de 300 niet) tot het doel (3 bomen, 30%, 425 m), daarboven 100 " +
+            "(min-max-normalisatie met vaste grenzen, OECD/JRC-handboek voor samengestelde indicatoren, 2008). " +
+            "Het totaal is het gewogen gemiddelde van de drie. Het artikel geeft geen gewichten: elk deel is een minimum. Daarom staat in elke pop-up ook het aandeel woningen dat alle drie haalt, zonder gewichten.",
+            "Per home, each part gets a score from 0 to 100. <b>Rule met</b>: 100 if the home meets that part, else 0; per area that is the share of homes meeting it. " +
+            "<b>Gradual</b>: linear from the worst measured value (0 trees, 0% canopy, a 1,275 m walk: the 300 measures no further) to the target (3 trees, 30%, 425 m), 100 beyond " +
+            "(min-max normalisation with fixed bounds, OECD/JRC Handbook on Constructing Composite Indicators, 2008). " +
+            "The total is the weighted mean of the three. The paper gives no weights: each part is a minimum. So every popup also shows the share of homes meeting all three, without weights."),
+};
+
 const SOURCES = {
   "3": [
     [L("Hoogtemodel", "Elevation model"), L('<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0,5 m',
@@ -328,7 +381,7 @@ const matchColour = (classes, fallback) =>
   ["match", ["coalesce", ["get", "klasse"], ""], ...classes.flatMap(([k, c]) => [k, c]), fallback];
 
 // Layers per theme: [layer, ...] ids get shown/hidden together
-const layers = { "3": [], "30": [], "300": [] };
+const layers = { "3": [], "30": [], "300": [], samen: [] };
 function add(theme, def) { def.layout = { ...(def.layout || {}), visibility: "none" }; layers[theme].push(def); }
 
 for (const lv of LEVELS) {
@@ -374,6 +427,25 @@ add("300", { id: "300-iso5", type: "line", source: "tl", "source-layer": "iso5",
 add("300", { id: "300-ingangen", type: "circle", source: "tl", "source-layer": "ingangen", minzoom: 13,
              paint: { "circle-radius": 3.5, "circle-color": "#006d2c", "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
 
+// Samen: the colour is the weighted mean of the scores the feature has
+// (a missing indicator drops out of numerator and denominator)
+function samenColour(area) {
+  const f = (k) => samen.mode + k;
+  const num = ["+", ...SAMEN_KEYS.map((k) => ["*", samen.w[k], ["coalesce", ["get", f(k)], 0]])];
+  const den = ["+", ...SAMEN_KEYS.map((k) => ["case", ["has", f(k)], samen.w[k], 0])];
+  const colour = ["case", ["<=", den, 0], NO_DATA,
+                  ["interpolate", ["linear"], ["/", num, den], ...SAMEN_RAMP.flat()]];
+  return area ? ["case", ["<", ["coalesce", ["get", "woningen"], 0], MIN_HOMES], NO_DATA, colour] : colour;
+}
+for (const lv of LEVELS) {
+  add("samen", { id: `samen-${lv.layer}-fill`, type: "fill", source: "ts", "source-layer": lv.layer,
+                 minzoom: lv.from, maxzoom: lv.to, paint: { "fill-color": samenColour(true), "fill-opacity": 0.75 } });
+  add("samen", { id: `samen-${lv.layer}-line`, type: "line", source: "ts", "source-layer": lv.layer,
+                 minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
+}
+add("samen", { id: "samen-woningen", type: "fill", source: "ts", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+               paint: { "fill-color": samenColour(false), "fill-opacity": 0.9, "fill-outline-color": "rgba(40,40,40,0.5)" } });
+
 const map = new maplibregl.Map({
   container: "map",
   center: [5.3, 52.2],     // the Netherlands until the tile extent is known (below)
@@ -406,13 +478,14 @@ const map = new maplibregl.Map({
              attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
       tg: { type: "vector", url: "pmtiles://" + new URL(TILES_GROEN, location.href).href },
       tl: { type: "vector", url: "pmtiles://" + new URL(TILES_LOOPTIJD, location.href).href },
+      ts: { type: "vector", url: "pmtiles://" + new URL(TILES_SAMEN, location.href).href },
     },
     layers: [{ id: "brt", type: "raster", source: "brt" },
              { id: "luchtfoto", type: "raster", source: "luchtfoto",
                layout: { visibility: aerialOn ? "visible" : "none" } },
              { id: "hitte", type: "raster", source: "hitte", paint: { "raster-opacity": HEAT_OPACITY },
                layout: { visibility: heatOn ? "visible" : "none" } },
-             ...layers["3"], ...layers["30"], ...layers["300"]],
+             ...layers["3"], ...layers["30"], ...layers["300"], ...layers.samen],
   },
 });
 
@@ -466,11 +539,40 @@ function setTheme(t) {
   document.getElementById("intro").textContent = THEMES[t].intro;
   document.getElementById("method").innerHTML = THEMES[t].method;   // fixed strings above (may hold a link)
   document.getElementById("iso-toggle").style.display = t === "300" ? "" : "none";
+  document.getElementById("weights").hidden = t !== "samen";
   const url = new URL(location.href);
   url.searchParams.set("t", t);
   history.replaceState(null, "", url);
   updateLegend();
 }
+
+// Samen: sliders and mode, remembered in the URL as ?w=1-1-1&m=p; the share
+// each weight gets is shown next to its slider
+const sliders = [...document.querySelectorAll(".w-row input")];
+const modeRadios = [...document.querySelectorAll('input[name="mode"]')];
+function setSamen() {
+  const total = SAMEN_KEYS.reduce((a, k) => a + samen.w[k], 0);
+  sliders.forEach((s) => {
+    s.value = samen.w[s.dataset.k];
+    s.nextElementSibling.textContent = total ? `${Math.round(100 * samen.w[s.dataset.k] / total)}%` : "–";
+  });
+  modeRadios.forEach((r) => r.checked = r.value === samen.mode);
+  document.getElementById("w-note").textContent = !total ? L("Zet minstens één gewicht hoger dan 0.", "Set at least one weight above 0.")
+    : samen.mode === "s" ? L("Geleidelijk: een goede score op het ene deel kan een slechte op het andere deels goedmaken; de regel zelf vraagt alle drie.",
+                             "Gradual: a good score on one part can partly make up for a poor one on another; the rule itself asks for all three.")
+    : L("Bij gelijke gewichten: het gemiddelde aantal gehaalde regels, als percentage van 3.",
+        "With equal weights: the mean number of rules met, as a percentage of 3.");
+  for (const lv of LEVELS) map.setPaintProperty(`samen-${lv.layer}-fill`, "fill-color", samenColour(true));
+  map.setPaintProperty("samen-woningen", "fill-color", samenColour(false));
+  const url = new URL(location.href);
+  url.searchParams.set("w", SAMEN_KEYS.map((k) => samen.w[k]).join("-"));
+  url.searchParams.set("m", samen.mode);
+  history.replaceState(null, "", url);
+  updateLegend();
+}
+sliders.forEach((s) => s.oninput = () => { samen.w[s.dataset.k] = Number(s.value); setSamen(); });
+modeRadios.forEach((r) => r.onchange = () => { samen.mode = r.value; setSamen(); });
+document.getElementById("w-reset").onclick = () => { SAMEN_KEYS.forEach((k) => samen.w[k] = 1); setSamen(); };
 document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => setTheme(b.dataset.theme));
 isoBox.onchange = () => setTheme(theme);
 
@@ -579,6 +681,19 @@ function updateLegend() {
                                        `Homes with ≥ 30% canopy cover within 500 m, per ${LEVELS[i].name}`),
                                      [...STEPS_30_AREA.map(([, c, l]) => [c, l]), few]));
     }
+  } else if (theme === "samen") {
+    const what = samen.mode === "p" ? L("Gewogen aandeel gehaalde regels", "Weighted share of rules met")
+                                    : L("Gewogen score (100 = doel gehaald)", "Weighted score (100 = target met)");
+    const block = legendBlock(i < 0 ? L(`${what}, per woning`, `${what}, per home`) : `${what}, ${L("gemiddelde per", "mean per")} ${LEVELS[i].name}`, []);
+    const ramp = document.createElement("div");
+    ramp.className = "ramp";
+    ramp.style.background = `linear-gradient(to right, ${SAMEN_RAMP.map(([v, c]) => `${c} ${v}%`).join(", ")})`;
+    const labels = document.createElement("div");
+    labels.className = "ramp-labels";
+    labels.innerHTML = "<span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>";
+    block.append(ramp, labels);
+    legend.appendChild(block);
+    legend.appendChild(legendBlock("", [i < 0 ? [NO_DATA, L("geen gegevens", "no data")] : few]));
   } else {
     if (i < 0) {
       legend.appendChild(legendBlock(L("Loopafstand tot groen", "Walking distance to green"), [...CLASSES_300.map(([, c, l]) => [c, l])]));
@@ -600,7 +715,7 @@ function updateLegend() {
   }
 }
 map.on("zoom", updateLegend);
-map.on("load", () => setTheme(theme));
+map.on("load", () => { setTheme(theme); setSamen(); });
 
 // On a phone the panel sits at the bottom (CSS: max-height 45vh, 24px up):
 // views are fitted into the part of the screen above it
@@ -705,7 +820,31 @@ for (const lv of LEVELS) {
     });
   }
 }
-const clickable = [...layers["3"], ...layers["30"], ...layers["300"]]
+// Samen: the scores per indicator, the compound for the current weights, and
+// (areas) the weight-free share of homes meeting all three
+function samenRows(p) {
+  const f = (k) => p[samen.mode + k];
+  const den = SAMEN_KEYS.reduce((a, k) => a + (f(k) == null ? 0 : samen.w[k]), 0);
+  const tot = den ? SAMEN_KEYS.reduce((a, k) => a + samen.w[k] * (f(k) ?? 0), 0) / den : null;
+  const unit = samen.mode === "p" ? L("gehaald", "met") : L("score", "score");
+  return [[L("Totaal (gewogen)", "Total (weighted)"), tot == null ? "–" : fmt(Math.round(tot))],
+          ...SAMEN_KEYS.map((k) => [`${k} (${unit})`, f(k) == null ? "–" : fmt(f(k))])];
+}
+map.on("click", "samen-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [[null, L("Woonpand", "Residential building")], [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+                   ...samenRows(p)]);
+});
+for (const lv of LEVELS) {
+  map.on("click", `samen-${lv.layer}-fill`, (e) => {
+    const p = e.features[0].properties;
+    const few = (p.woningen ?? 0) < MIN_HOMES;
+    popup(e.lngLat, [[null, areaTitle(p, lv)], [L("Woningen", "Homes"), fmt(p.woningen)],
+                     ...(few ? [] : samenRows(p)),
+                     [L("Haalt alle drie (zonder gewichten)", "Meets all three (no weights)"), few ? "–" : pct(p.alle)]]);
+  });
+}
+const clickable = [...layers["3"], ...layers["30"], ...layers["300"], ...layers.samen]
   .filter((d) => d.type === "fill").map((d) => d.id);
 for (const id of clickable) {
   map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
