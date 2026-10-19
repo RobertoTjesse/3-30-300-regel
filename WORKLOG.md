@@ -559,3 +559,20 @@ trees should be excluded, is still open.
   93% of buurten); buildings from zoom 13 by their own canopy. Explanation
   pages (NL/EN), READMEs and wiki updated.
 
+
+**34. The technische totaalkaart as the one source**
+- `vsk_2024_v3.tif` (technische totaalkaart 2024, Friedenau Society; 19
+  classes: land cover, and which of it lies under a crown) clipped from the
+  national file on R: to Zuid-Holland's bounding box + at least 1 km
+  (x 42-132 km, y 405-485 km): `data/raw/vsk_2024_v3_zh.tif`, COG, DEFLATE
+  level 9, nearest-neighbour overviews, 2.85 GB, 63 min (reading over the
+  network). A box, not the outline, so zones near the border stay whole.
+  Legend from `vsk_2024_v3_mapClassification.xlsx` and the class names in
+  `BasiskaartGroenVerharding.qgz` (same folder).
+- `kroon_raster_5m.py` reads only this raster: land = 2-8, 10, 12-17; crown
+  on land = 10, 12-17 (`config.LAND_CLASSES`, `CROWN_ON_LAND_CLASSES`).
+- Rerun: land 399,450 ha and crown on land 29,039 ha, exactly as with BKB
+  + landbedekking_2024; all 978,428 buildings the same value. So the land
+  mask worked out on the data in #33 was right, and the legend given with
+  landbedekking_2024 (#32) was off by one from class 6 on. The map tiles
+  did not change.

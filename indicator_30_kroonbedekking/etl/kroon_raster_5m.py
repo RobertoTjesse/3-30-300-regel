@@ -1,12 +1,14 @@
 """
 kroon_raster_5m.py — Crown and land counted per 5 m cell, for the 30 per home.
 
-BKB 2024 (1 = crown) and land cover 2024 share one 0.25 m grid. Every 5 m
+The technische totaalkaart 2024 (config.VSK_TIF, Friedenau Society) gives
+per 0.25 m pixel the land cover and whether a crown hangs over it. Every 5 m
 cell holds 20 x 20 of those pixels; this script counts per cell
-  band 1  crown pixels on land (crown over water is left out, so a cell's
-          crown never exceeds its land)
-  band 2  land pixels (land cover in config.LAND_CLASSES: not water, not a
-          bridge over water, not the sea outside the raster)
+  band 1  crown pixels on land (config.CROWN_ON_LAND_CLASSES; a crown over
+          water or a bridge is left out, so a cell's crown never exceeds
+          its land)
+  band 2  land pixels (config.LAND_CLASSES: not water, not a bridge over
+          water, not abroad, not the sea outside the raster)
 as UInt16 (0-400). kroon_500m_woningen.py adds these up within 500 m of
 every home.
 
@@ -36,17 +38,17 @@ gdal.UseExceptions()
 ogr.UseExceptions()
 
 BLOCK_M = 1000
-PX = 0.25                                   # source pixel (both rasters)
+PX = 0.25                                   # source pixel
 F = int(round(config.KROON_GRID_RES / PX))  # source pixels per cell side (20)
 
 _w = {}
 
 
 def _init():
-    bkb = gdal.Open(str(config.BKB_TIF))
-    land = gdal.Open(str(config.LANDBEDEKKING_TIF))
-    _w.update(bkb=bkb, land=land, bkb_gt=bkb.GetGeoTransform(), land_gt=land.GetGeoTransform(),
-              classes=np.array(config.LAND_CLASSES, dtype=np.uint8))
+    ds = gdal.Open(str(config.VSK_TIF))
+    _w.update(ds=ds, gt=ds.GetGeoTransform(),
+              land=np.array(config.LAND_CLASSES, dtype=np.uint8),
+              crown=np.array(config.CROWN_ON_LAND_CLASSES, dtype=np.uint8))
 
 
 def _read(ds, gt, x0, y1, n):
@@ -64,10 +66,11 @@ def _block(xy):
     """Crown-on-land and land counts per cell for the block with lower-left corner xy."""
     x0, y0 = xy
     n = int(BLOCK_M / PX)
-    land = np.isin(_read(_w["land"], _w["land_gt"], x0, y0 + BLOCK_M, n), _w["classes"])
+    cls = _read(_w["ds"], _w["gt"], x0, y0 + BLOCK_M, n)
+    land = np.isin(cls, _w["land"])
     if not land.any():
         return xy, None
-    crown = (_read(_w["bkb"], _w["bkb_gt"], x0, y0 + BLOCK_M, n) == 1) & land
+    crown = np.isin(cls, _w["crown"])
     m = n // F
     return xy, (crown.reshape(m, F, m, F).sum(axis=(1, 3), dtype=np.uint16),
                 land.reshape(m, F, m, F).sum(axis=(1, 3), dtype=np.uint16))

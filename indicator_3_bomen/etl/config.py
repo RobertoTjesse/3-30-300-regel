@@ -56,12 +56,17 @@ PROVINCE = "Zuid-Holland"
 # boomkroonbedekking from lidar by Friedenau Society; the Netherlands at
 # 0.25 m, 1 = crown. 9.2 GB, gitignored like everything under data/.
 BKB_TIF = BASE_DIR / "data" / "raw" / "bkb_2024.tif"
-# Land cover 2024 on the same 0.25 m grid: 1 water, 2 onverhard, 3 halfverhard,
-# 4 verhard, 7 gebouw, 8 brug over water (7 and 8 checked against BAG and
-# OSM; 5 and 6 are land, see indicator_30_kroonbedekking/README.md); 0 = no
-# data (sea). Land = LAND_CLASSES: everything but water, bridges and 9.
-LANDBEDEKKING_TIF = BASE_DIR / "data" / "raw" / "landbedekking_2024.tif"
-LAND_CLASSES = (2, 3, 4, 5, 6, 7)
+# Technische totaalkaart 2024 (vsk_2024_v3, Friedenau Society): land cover
+# and crowns in one 0.25 m raster, here clipped to the province + 1 km.
+#  1 water          2 gras          3 agrarisch      4 half verhard
+#  5 verhard        6 onverhard     7 struiken       8 gebouw
+#  9 brug boven water              10 boom zonder struik, verder onduidelijk
+# 11-18 boom boven water / onverhard / agrarisch / half verhard / verhard /
+#       struiken / gebouw / brug   19 buitenland     0 = no data (sea)
+# The 30 counts land (everything but water, bridges, abroad) and crown on land.
+VSK_TIF = BASE_DIR / "data" / "raw" / "vsk_2024_v3_zh.tif"
+LAND_CLASSES = (2, 3, 4, 5, 6, 7, 8, 10, 12, 13, 14, 15, 16, 17)
+CROWN_ON_LAND_CLASSES = (10, 12, 13, 14, 15, 16, 17)
 # The 30 per home: canopy cover on land within KROON_BUFFER_M of the facade,
 # from crown and land pixels counted per KROON_GRID_RES cell.
 KROON_BUFFER_M = 500.0

@@ -33,7 +33,7 @@ adds up its homes.</p>
   <div class="fact"><b>41</b><span>of the 2,393 neighbourhoods with homes where at least half of the homes reach 30%</span></div>
   <div class="fact"><b>27%</b><span>of the homes in Wassenaar reach 30%, far more than anywhere else</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland, crowns and land cover 2024, homes BAG 2026, neighbourhoods CBS 2025.</p>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, technische totaalkaart 2024, homes BAG 2026, neighbourhoods CBS 2025.</p>
 
 <h2>What is measured?</h2>
 <p>The <a href="konijnendijk.html">paper</a> asks for at least 30% canopy cover in every neighbourhood, and stresses that
@@ -63,12 +63,13 @@ to the figures. Where a choice pushes the result one way, it says so; the reason
 <h2>Steps</h2>
 <ol class="steps">
   <li><strong>Where are crowns?</strong>
-    Friedenau Society's Boomkroonbedekking 2024 (BKB 2024) divides the whole of the Netherlands into cells of 25 by 25 cm
-    and says for each cell whether a tree crown hangs over it. The map is made from lidar: laser height measurements from
-    an aircraft.</li>
+    Friedenau Society's technische totaalkaart 2024 divides the whole of the Netherlands into cells of 25 by 25 cm. For
+    each cell it gives what is there (water, grass, farmland, paving, shrubs, building, bridge) and whether a tree crown
+    hangs over it. The crowns are those of the Boomkroonbedekking 2024 (BKB 2024). The map is made from lidar: laser
+    height measurements from an aircraft.</li>
   <li><strong>Where is land?</strong>
-    Friedenau Society's land cover 2024 is on the same grid and gives per cell water, paved, unpaved, building or bridge.
-    Everything except water and bridges over water is land.</li>
+    Everything except water, bridges over water and land abroad is land. A crown over water or over a bridge does not
+    count.</li>
   <li><strong>Adding up per 5 m.</strong>
     For every 5 by 5 m square (400 cells of 25 cm) we counted how many cells are land and how many of those lie under a
     crown. That makes the calculation per home fast, while the result hardly changes.</li>
@@ -127,8 +128,6 @@ neighbourhood boundary counted in full in each neighbourhood and overlapping cro
 <ul>
   <li><b>What a crown is</b> is up to Friedenau Society's map. Very small trees and shrubs may or may not be in it,
       depending on how that map was made.</li>
-  <li><b>The land cover was checked, not confirmed.</b> That class 7 is buildings and class 8 bridges was checked against
-      the BAG and OpenStreetMap. Two other classes count as land either way.</li>
   <li><b>Squares of 5 m.</b> A square counts when its centre lies in the zone. At the edge of a 500 m zone that is a
       few metres at most.</li>
 </ul>
@@ -143,7 +142,7 @@ neighbourhood boundary counted in full in each neighbourhood and overlapping cro
 <div class="table-wrap"><table class="plain">
 <tr><th>Data</th><th>Source</th><th>Date</th></tr>
 <tr><td>Tree crowns</td><td>Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, from lidar, 25 cm cells</td><td>2024</td></tr>
-<tr><td>Land and water</td><td>Land cover 2024, Friedenau Society, 25 cm cells</td><td>2024</td></tr>
+<tr><td>Land, water and crowns together</td><td>Technische totaalkaart 2024 (vsk_2024_v3), Friedenau Society, 25 cm cells</td><td>2024</td></tr>
 <tr><td>Residential buildings</td><td>BAG via PDOK, the same buildings as the 3</td><td>27 September 2026</td></tr>
 <tr><td>Municipalities, districts and neighbourhoods</td><td><a href="https://www.cbs.nl/nl-nl/dossier/nederland-regionaal/geografische-data/wijk-en-buurtkaart-2025">CBS Wijk- en Buurtkaart 2025</a> via PDOK</td><td>2025</td></tr>
 </table></div>
