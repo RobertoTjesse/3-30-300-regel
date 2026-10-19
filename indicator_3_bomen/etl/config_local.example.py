@@ -19,7 +19,3 @@ MUNICIPALITIES = ["Papendrecht"]
 
 # The province, as named in PDOK's bestuurlijke gebieden (default "Zuid-Holland").
 # PROVINCE = "Utrecht"
-
-# FME results of the 30 and the 300 (30_regel_v2.gdb, 300.gdb), for the web map.
-# Default: data/fme_output in the repository; set this only if they are elsewhere.
-# FME_OUTPUT_DIR = Path(r"R:\path\to\3-30-300\fme output")

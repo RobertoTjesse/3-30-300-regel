@@ -1,12 +1,10 @@
 """
-04_compare.py — The 300 from GRASS and from Valhalla, side by side (and the old FME run).
+04_compare.py — The 300 from GRASS and from Valhalla, side by side.
 
 Per home it puts together:
   gr_m            walking distance with GRASS v.net.distance (03_grass.py)
   vh_m            walking distance with Valhalla expansion (02_valhalla.py)
   vh_iso_*        1 = inside Valhalla's merged isochrone polygons (the classic method)
-  fme_5min/15min  1 = its building was inside the old FME/Valhalla zones (300.gdb),
-                  0 = outside, empty = building not in that run
 
 and reports, for every threshold, the share of homes within it per method,
 how often GRASS and Valhalla agree, and how far their distances differ.
@@ -50,25 +48,6 @@ def read_homes(path, fields):
     out = {}
     for f in ds.GetLayerByName("homes"):
         out[f.GetField("home_id")] = [f.GetField(n) for n in fields] + [f.GetGeometryRef().GetX(), f.GetGeometryRef().GetY()]
-    return out
-
-
-def fme_flags(area):
-    """{pand_id: (in 5-min zone, in 15-min zone)} from the old FME result, inside the study area."""
-    path = config.FME_OUTPUT_DIR / "300.gdb"
-    if not path.exists():
-        return None
-    ds = ogr.Open(str(path))
-    minx, maxx, miny, maxy = area.GetEnvelope()
-    out = {}
-    for layer, i in (("_300regel", 0), ("_300regel_15", 1)):
-        lyr = ds.GetLayerByName(layer)
-        lyr.SetSpatialFilterRect(minx, miny, maxx, maxy)
-        for f in lyr:
-            pid = f.GetField("identificatie")
-            flags = list(out.get(pid, (0, 0)))
-            flags[i] = max(flags[i], int((f.GetField("_related_suppliers") or 0) >= 1))
-            out[pid] = tuple(flags)
     return out
 
 
@@ -155,7 +134,6 @@ def main():
     area_ds = ogr.Open(str(config.PREPARED_GPKG))
     area_f = area_ds.GetLayerByName("area").GetNextFeature()
     area = area_f.GetGeometryRef().Clone()
-    fme = fme_flags(area)
 
     rows = []
     for hid, (pid, gem, vm, *rest) in vh.items():
@@ -166,8 +144,6 @@ def main():
              "diff_m": round(vm - gm, 1) if vm is not None and gm is not None else None, "x": x, "y": y}
         for n, v in zip(names, iso):
             r[f"vh_iso_{n}"] = v
-        f = fme.get(pid) if fme is not None else None
-        r["fme_5min"], r["fme_15min"] = (f if f else (None, None))
         for n, m in config.THRESHOLDS_M.items():
             r[f"agree_{n}"] = agreement(gm, vm, m)
         rows.append(r)
@@ -182,7 +158,7 @@ def main():
     cols = [k for k in rows[0] if k not in ("x", "y")]
     types = {"gr_m": ogr.OFTReal, "vh_m": ogr.OFTReal, "diff_m": ogr.OFTReal}
     for k in cols:
-        lyr.CreateField(ogr.FieldDefn(k, types.get(k, ogr.OFTInteger if k.startswith(("vh_iso", "fme", "gr_ent"))
+        lyr.CreateField(ogr.FieldDefn(k, types.get(k, ogr.OFTInteger if k.startswith(("vh_iso", "gr_ent"))
                                                      else ogr.OFTString)))
     out.StartTransaction()
     for r in rows:
@@ -203,14 +179,11 @@ def main():
     table = []
     for name, m in config.THRESHOLDS_M.items():
         a = {k: sum(1 for r in rows if r[f"agree_{name}"] == k) for k in AGREE}
-        fme_col = {"5min": "fme_5min", "15min": "fme_15min"}.get(name)
-        fme_known = [r[fme_col] for r in rows if fme_col and r[fme_col] is not None]
         table.append({
             "drempel": name, "meter": m, "woningen": n,
             "grass_pct": round(100 * np.sum(g_arr <= m) / n, 1),
             "valhalla_expansion_pct": round(100 * np.sum(v_arr <= m) / n, 1),
             "valhalla_isochroon_pct": round(100 * sum(r[f"vh_iso_{name}"] for r in rows) / n, 1),
-            "fme_oud_pct": round(100 * sum(fme_known) / len(fme_known), 1) if fme_known else "",
             "eens_pct": round(100 * (a["beide"] + a["geen"]) / n, 1),
             "alleen_grass": a["alleen_grass"], "alleen_valhalla": a["alleen_valhalla"],
         })
@@ -222,10 +195,10 @@ def main():
         w.writerows(table)
 
     print(f"{', '.join(config.MUNICIPALITIES) or config.PROVINCE}: {n:,} homes")
-    print(f"{'':>6} {'GRASS':>7} {'Valh.exp':>9} {'Valh.iso':>9} {'FME old':>8} {'agree':>7} {'only GR':>8} {'only VH':>8}")
+    print(f"{'':>6} {'GRASS':>7} {'Valh.exp':>9} {'Valh.iso':>9} {'agree':>7} {'only GR':>8} {'only VH':>8}")
     for t in table:
         print(f"{t['drempel']:>6} {t['grass_pct']:>6}% {t['valhalla_expansion_pct']:>8}% "
-              f"{t['valhalla_isochroon_pct']:>8}% {str(t['fme_oud_pct']) + ('%' if t['fme_oud_pct'] != '' else ''):>8} "
+              f"{t['valhalla_isochroon_pct']:>8}% "
               f"{t['eens_pct']:>6}% {t['alleen_grass']:>8,} {t['alleen_valhalla']:>8,}")
     print(f"Distance Valhalla - GRASS (both known, {both.sum():,} homes): median {np.median(d):+.1f} m, "
           f"mean {np.mean(d):+.1f} m; |diff| <= 10 m: {np.mean(np.abs(d) <= 10):.1%}, "

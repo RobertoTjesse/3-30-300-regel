@@ -39,10 +39,9 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 │   ├── etl/                      stages 01-06, config.py, config_local.py (gitignored)
 │   ├── arcgis_tests/             experiments: ArcGIS comparisons, exact test (local only, not on GitHub)
 │   ├── sde_reexport/             one-off re-export of corrupted DEMs
-│   ├── fme/                      the original FME workbenches for the 3
 │   └── README.md, ARCHITECTURE.md, BENCHMARKS.md, IMPROVEMENTS.md
-├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 per area) + the earlier FME workbenches
-├── indicator_300_park/           the 300: etl/ (GDAL + GRASS from QGIS; Valhalla as a check) + the earlier FME workbenches
+├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 per area)
+├── indicator_300_park/           the 300: etl/ (GDAL + GRASS from QGIS; Valhalla as a check)
 ├── web/                          the web map for all three (published site)
 ├── docs/bronnen/                 source documents (Konijnendijk 2023, the Cobra Groeninzicht handbook)
 ├── qgis_validation/              builds the QGIS validation project for all three

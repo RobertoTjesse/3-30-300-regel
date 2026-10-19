@@ -52,9 +52,6 @@ web/data/
 
 # Study area runs (arcgis_tests/studiegebied.py prepare regenerates them)
 data/studiegebied/
-# Copies of the FME results and inputs for the 30 and 300 (from R:)
-data/fme_output/
-data/fme_input/
 
 
 # Database connection files (credentials), never committed

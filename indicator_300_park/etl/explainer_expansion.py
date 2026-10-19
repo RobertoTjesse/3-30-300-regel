@@ -42,7 +42,7 @@ ogr.UseExceptions()
 
 OUT_DIR = config.PROCESSED_DIR / "explainer"
 BUILDINGS = config.INTERIM_DIR / "province_buildings.gpkg"
-WATER = config.FME_INPUT_DIR / "localeversie_osm" / "gis_osm_water_a_free_1.shp"
+WATER = config.WATER_GPKG          # layer "osm": the OSM water polygons (01_prepare.py)
 
 # Walking-distance bands (m) and their colours: one blue ramp, darkest = nearest.
 BANDS = [(0, 150, "#0d366b"), (150, 300, "#1c5cab"), (300, 425, "#3987e5"),
@@ -149,7 +149,7 @@ def base_map(ax, x0, y0, half):
     box = (x0 - half, y0 - half, x0 + half, y0 + half)
     ax.set_facecolor(SURFACE)
     layers = [
-        (polygons(WATER, None, box), WATER_C),
+        (polygons(WATER, "osm", box), WATER_C),
         ([r for src in config.PARKS_SOURCES
           for r in polygons(src["path"], src.get("layer"), box, src.get("where"))], PARK),
         (polygons(BUILDINGS, None, box), BUILDING),

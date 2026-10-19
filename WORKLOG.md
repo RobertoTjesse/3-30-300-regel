@@ -204,19 +204,19 @@ trees should be excluded, is still open.
   Experimenten.
 
 **10. The 3-30-300 web map**
-- The 30 (FME canopy cover per CBS buurt 2023) and the 300 (FME walking
-  isochrones) added to the map behind a 3 / 30 / 300 switch, on the same
+- The 30 (the earlier canopy cover per CBS buurt 2023) and the 300 (the
+  earlier walking isochrones) added to the map behind a 3 / 30 / 300 switch, on the same
   gemeenten, wijken and buurten as the 3 (`web/build_tiles_30_300.py`);
   explanation pages in Dutch (`web/uitleg/`).
 - The 30's missing values (all of Voorne aan Zee, 28 buurten in Schiedam,
   some in Westland, Leiderdorp, Pijnacker-Nootdorp, Delft) turned out to be
-  an FME bug: 2023 codes looked up in the CBS map of 2022. The crown data
+  a bug in the earlier calculation: 2023 codes looked up in the CBS map of 2022. The crown data
   is complete.
 
 **11. One repository**
 - `3-regel` (the 3) and the earlier `3-30-300-regel` (the map) combined into
-  this repository with full history, one folder per indicator; the FME
-  workbenches of all three added. The old repositories were deleted, their
+  this repository with full history, one folder per indicator; the workbenches
+  of the earlier calculation added (removed again on 2026-10-19). The old repositories were deleted, their
   issues transferred here; the site is published from this repository's
   `gh-pages` branch.
 
@@ -235,7 +235,7 @@ trees should be excluded, is still open.
 
 **13. Consistency check, QGIS, comments, wiki**
 - The QGIS validation project now also holds the 3 per gemeente / wijk /
-  buurt and the FME results of the 30 and the 300.
+  buurt and the earlier results of the 30 and the 300.
 - Every Python script got docstrings and comments (no code changes;
   checked by comparing the syntax trees).
 - A GitHub wiki for new readers (overview, getting started, the three
@@ -253,8 +253,8 @@ trees should be excluded, is still open.
   outlines from zoom 11, filled from zoom 13; a click gives type, source
   (OSM / TOP10NL) and area. New `web/build_tiles_groen.py` ->
   `web/data/groen.pmtiles` (20,973 polygons, zoom 11-14, 7 MB).
-- The FME results hold only the entrances, so the green is read from the
-  workbench's input (`groenkaart.gdb`, new `config.FME_INPUT_DIR`) with the
+- The earlier results hold only the entrances, so the green is read from the
+  workbench's input (`groenkaart.gdb`) with the
   workbench's own selection: its reader leaves out `bron = 'top 10 water'`
   (8,681 lakes, watercourses and the sea, which are in the same layer) and
   its Tester keeps >= 300 m2 with perimeter / area <= 0.35.
@@ -328,9 +328,9 @@ trees should be excluded, is still open.
   centre decides, so no double counting on boundaries) and crown pixels and
   all pixels counted per area. ~100 MB per worker. Delft (91 buurten):
   3 s. `config.BKB_TIF` = `data/raw/bkb_2024.tif`.
-- Delft against the FME 30 on the same CBS 2023 buurten and land area:
-  crown area FME/NEO 553.6 ha vs BKB 469.3 ha (FME 18% higher); canopy
-  cover 24.7% vs 21.0%; per buurt r = 0.95, median FME - BKB +3.5 points;
+- Delft against the earlier 30 on the same CBS 2023 buurten and land area:
+  crown area earlier/NEO 553.6 ha vs BKB 469.3 ha (earlier 18% higher); canopy
+  cover 24.7% vs 21.0%; per buurt r = 0.95, median earlier - BKB +3.5 points;
   buurten >= 30%: 23 vs 17. Largest gap: Bedrijventerrein Delftech
   (59.8% vs 23.7%). Delft's 91 buurten are the same in CBS 2023 and 2025;
   on CBS 2025: 20.9%.
@@ -350,21 +350,21 @@ trees should be excluded, is still open.
   lowest Kaag en Braassem 2.5%); 16 of 518 wijken and 102 of 2,509 buurten
   do. Voorne aan Zee (12.8%), Schiedam (11.8%) and Leiderdorp (7.4%) now
   have values.
-- Against the FME 30: higher in all 39 gemeenten with complete FME data
+- Against the earlier 30: higher in all 39 gemeenten with complete data
   (median +23%; together 7.9% vs 6.5%), same ranking (r = 0.99). In Delft
-  FME's surplus per buurt grows with boundary length (~33 of 84 ha) and
+  the earlier surplus per buurt grows with boundary length (~33 of 84 ha) and
   with the amount of crown (~48 ha): crowns on boundaries counted in full
   in each buurt, overlapping crowns added up, and different years and
-  crown definitions. The empty NEO export (`D:\Temp\neo_kronen`) means the
+  crown definitions. The NEO crown export came out empty, so the
   split is not confirmed yet.
 - `web/build_tiles_30_300.py` reads the BKB 30 per area instead of
-  carrying the FME 30 over from the 2023 buurten. Map, explanation pages
+  carrying the earlier 30 over from the 2023 buurten. Map, explanation pages
   (NL/EN), READMEs and wiki updated with the sources (BKB 2024, Friedenau
   Society, lidar, 2024; CBS 2025 land area).
 - `bkb_2024.tif` moved from the repository root to `data/raw/` (gitignored).
 - Found but not used: `landbedekking_2024.tif` (land cover 2024, same grid,
-  classes 1-9 without names; class 1 looks like water) could give an exact
-  land/water split; it needs its legend first.
+  classes 1-9) could give an exact land/water split. Legend added on
+  2026-10-19 (#32).
 
 ## 2026-10-08: documentation on Read the Docs
 
@@ -448,7 +448,7 @@ trees should be excluded, is still open.
 ## 2026-10-12 / 13: the 300 with open software
 
 **28. Walking distance per home with GRASS and Valhalla**
-- `indicator_300_park/etl/`: the 300 without FME, on OSGeo4W. GDAL takes the
+- `indicator_300_park/etl/`: the 300 with open software, on OSGeo4W. GDAL takes the
   green, finds the park entrances (paths crossing the edge, OSM gates, open
   edge along a street) and builds the walkable network from the Geofabrik
   OSM extract, cut at shared OSM nodes. GRASS `v.net.distance` gives every
@@ -467,7 +467,7 @@ trees should be excluded, is still open.
 - Province, 1,797,970 homes: 36.8% within 300 m, 56.1% within 5 minutes,
   97.9% within 15 minutes (GRASS). GRASS and Valhalla agree for 97.8% of
   homes on 300 m; distances differ by at most 10 m for 71%. Isochrone zones
-  count 8-10 points more homes. The old FME run had 79.1% within 5 minutes,
+  count 8-10 points more homes. The earlier run had 79.1% within 5 minutes,
   mainly because its green also held woods, scrub, gardens and sports
   grounds.
 - Run time per engine about 23 minutes for the province (GRASS 18.5 min
@@ -476,7 +476,7 @@ trees should be excluded, is still open.
 - Explanation pages (expansion from the Provinciehuis, zones against
   walking distance, the cycle path, the comparisons), READMEs, wiki and the
   QGIS project (group "De 300: open methode") updated. The map keeps the
-  FME result until open water (Haringvliet, Voordelta, Biesbosch) has been
+  earlier result until open water (Haringvliet, Voordelta, Biesbosch) has been
   cut out of the green.
 
 **29. Water out of the green; the map moves to GRASS**
@@ -494,8 +494,8 @@ trees should be excluded, is still open.
 - 1,063 green areas in the province get no entrance (1.7% of the green):
   open issue #3.
 - Documentation (explanation pages, READMEs, wiki) rewritten around the new
-  method, stressing that only QGIS and its components are needed; FME is
-  described as the earlier calculation.
+  method, stressing that only QGIS and its components are needed; the old
+  method is described as the earlier calculation.
 
 **30. Documentation: one home per topic**
 - Ponytail check of the documentation: the README repeated five wiki pages,
@@ -509,3 +509,23 @@ trees should be excluded, is still open.
   in the wiki and ARCHITECTURE.md §14; planned work in IMPROVEMENTS.md.
   About 370 lines fewer, nothing lost: missing details were moved to the
   wiki first.
+
+## 2026-10-19: the earlier calculation out of the repository
+
+**31. No more FME**
+- The eight workbenches (`fme/` under each indicator) are deleted; they stay
+  in the git history.
+- No code reads the earlier results any more: `04_compare.py` compares
+  GRASS and Valhalla only, the QGIS project builder no longer adds the
+  earlier 30 and 300, and `FME_OUTPUT_DIR` / `FME_INPUT_DIR` are gone from
+  the config. `explainer_expansion.py` takes its water from the 300's own
+  `water.gpkg` (layer `osm`).
+- The local copies moved to `data/raw/eerdere_berekening/` (gitignored).
+- READMEs, explanation pages and this log call it "the earlier
+  calculation"; the comparison figures stay.
+
+**32. Land cover 2024: the legend**
+- `landbedekking_2024.tif`: 1 water, 2 onverhard, 3 halfverhard, 4 verhard,
+  5 onverhard met struiken, 6 gebouw, 7 brug over water, 8 buitenland;
+  9 still unknown. In `indicator_30_kroonbedekking/README.md`. Not used
+  yet; it could replace the CBS land area (whole hectares) for the 30.

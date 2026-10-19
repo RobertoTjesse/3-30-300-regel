@@ -23,17 +23,12 @@ First run creates the project with:
   - De 3 per gemeente / wijk / buurt
                     <Province>_gebieden.gpkg (06_area_summaries.py): share of
                     homes with >= 3 visible trees, web map colours
-  - De 30           the FME result (data/fme_output/30_regel_v2.gdb): canopy
-                    cover per CBS wijk and buurt 2023, grey = no crown data
-  - De 300          the FME result (data/fme_output/300.gdb): home buildings
-                    within / beyond 5 and 15 minutes' walk of green, the
-                    walking isochrones and the park entrances
   - De 300: open methode
                     the open 300 (indicator_300_park/etl, province run): the
                     merged green areas, the green per source and the entrances;
                     the Valhalla isochrones (300 m, 5 and 15 min); the walking
                     distance per home from GRASS; and per home GRASS against
-                    Valhalla (300 m) and GRASS and Valhalla against FME (5 min)
+                    Valhalla (300 m)
   - Experimenten    anything in data/processed/experiments/: rasters get the
                     viewshed styling, vectors (e.g. BAG footprints) a plain
                     outline; all switched off by default
@@ -103,8 +98,6 @@ GROUP_ONE_TREE = "Eén boom / boomgroep: GDAL vs ArcGIS vs benchmark (arcgis_tes
 GROUP_ONE_TREE_OLD = "Eén boom: GDAL vs ArcGIS vs exact (arcgis_tests/one_tree)"
 GROUP_STUDY = "Studiegebied: benchmark vs ArcGIS vs GDAL (arcgis_tests/studiegebied.py)"
 GROUP_AREAS_3 = "De 3 per gemeente / wijk / buurt (% woningen met >= 3 bomen)"
-GROUP_30 = "De 30: kroonbedekking per wijk / buurt 2023 (FME)"
-GROUP_300 = "De 300: groen op loopafstand (FME)"
 GROUP_300_OPEN = "De 300: open methode (OSGeo4W: GDAL en GRASS; Valhalla ter vergelijking)"
 
 # The open 300 (indicator_300_park/etl), province run
@@ -113,19 +106,10 @@ OPEN_PREPARED = OPEN_300_DIR / "prepared.gpkg"
 OPEN_VALHALLA = OPEN_300_DIR / "valhalla.gpkg"
 OPEN_RESULT = REPO / "data" / "processed" / "ZuidHolland_300.gpkg"
 
-# The FME results of the 30 and the 300 (config.FME_OUTPUT_DIR's default)
-FME_OUTPUT_DIR = REPO / "data" / "fme_output"
-FME_30 = FME_OUTPUT_DIR / "30_regel_v2.gdb"
-FME_300 = FME_OUTPUT_DIR / "300.gdb"
-# BAG panden that no longer / never existed, left out as in web/build_tiles_30_300.py
-PAND_GONE = ("Pand gesloopt", "Niet gerealiseerd pand", "Pand buiten gebruik")
-
-# Area colours as on the web map (web/index.html STEPS_3 / STEPS_30):
+# Area colours as on the web map (web/index.html STEPS_3):
 # (lower bound, colour, label)
 STEPS_3 = [(0, "#d7301f", "< 80%"), (80, "#fdae6b", "80-90%"), (90, "#c7e9c0", "90-95%"),
            (95, "#74c476", "95-98%"), (98, "#238b45", ">= 98%")]
-STEPS_30 = [(0, "#d7301f", "< 10%"), (10, "#fdae6b", "10-20%"), (20, "#c7e9c0", "20-30%"),
-            (30, "#238b45", ">= 30% (voldoet)")]
 MIN_HOMES = 10          # fewer homes: no percentage (grey), as on the web map
 NO_DATA = "#d9d9d9"
 
@@ -407,67 +391,6 @@ def _add_areas_3(project, root, have):
     return added
 
 
-def _add_30(project, root, have):
-    """The 30 as FME computed it (indicator_30_kroonbedekking): canopy cover
-    per CBS wijk and buurt 2023 (Percentage_groen = crown m2 / land area).
-    Grey = no crown data (the FME bug: codes new in 2023 not found)."""
-    if not FME_30.exists() or FME_30.resolve() in have:
-        return 0
-    group = _group(root, GROUP_30, 0)
-    rules = _step_rules("Percentage_groen", STEPS_30,
-                        "\"totaal_kroonoppervlak_m2\" IS NULL OR \"totaal_kroonoppervlak_m2\" = ''",
-                        "geen kroondata")
-    added = 0
-    for name, label in (("FeatureClass1", "wijken 2023"), ("FeatureClass_buurt", "buurten 2023")):
-        layer = QgsVectorLayer(f"{FME_30}|layername={name}", label, "ogr")
-        if _add(project, group, layer, visible=False):
-            _style_rules(layer, rules)
-            added += 1
-    return added
-
-
-def _add_300(project, root, have):
-    """The 300 as FME computed it (indicator_300_park): BAG panden with a
-    woonfunctie inside / outside the 5- and 15-minute walking isochrones from
-    the entrances of parks and woods, the isochrones and the entrances."""
-    if not FME_300.exists() or FME_300.resolve() in have:
-        return 0
-    group = _group(root, GROUP_300, 0)
-    added = 0
-
-    entrances = QgsVectorLayer(f"{FME_300}|layername=ingang_parken", "ingangen parken en bossen", "ogr")
-    if _add(project, group, entrances, visible=False):
-        entrances.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(
-            {"name": "circle", "color": "#006d2c", "outline_color": "#ffffff", "size": "2"})))
-        entrances.setScaleBasedVisibility(True)
-        entrances.setMinimumScale(50000)
-        entrances.setMaximumScale(0)
-        added += 1
-
-    for name, label, colour, style in (("isochrones_dissolved", "5 min lopen", "#238b45", "solid"),
-                                       ("isochrones_dissolved_15", "15 min lopen", "#238b45", "dash")):
-        layer = QgsVectorLayer(f"{FME_300}|layername={name}", f"looptijdzone {label}", "ogr")
-        if _add(project, group, layer, visible=False):
-            layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
-                {"color": "0,0,0,0", "outline_color": colour, "outline_width": "0.5",
-                 "outline_style": style})))
-            added += 1
-
-    gone = ", ".join(f"'{s}'" for s in PAND_GONE)
-    homes_filter = f'"gebr_woonfunctie" > 0 AND ("status" IS NULL OR "status" NOT IN ({gone}))'
-    for name, label in (("_300regel", "5 min"), ("_300regel_15", "15 min")):
-        layer = QgsVectorLayer(f"{FME_300}|layername={name}", f"woonpanden binnen {label} lopen", "ogr")
-        if _add(project, group, layer, visible=False):
-            layer.setSubsetString(homes_filter)
-            _style_rules(layer, [('"_related_suppliers" >= 1', "#238b45", f"binnen {label} lopen"),
-                                 ("ELSE", "#d7301f", f"verder dan {label} lopen")])
-            layer.setScaleBasedVisibility(True)
-            layer.setMinimumScale(25000)    # 1.9 M panden: only draw when zoomed in
-            layer.setMaximumScale(0)
-            added += 1
-    return added
-
-
 def _style_point_rules(layer, rules, size="1.8"):
     """rules: [(expression, colour, label)] for point layers — the first matching rule wins."""
     root_rule = QgsRuleBasedRenderer.Rule(None)
@@ -487,7 +410,7 @@ def _zoomed_in(layer, scale=25000):
 def _add_300_open(project, root, have):
     """The 300 computed with open software (indicator_300_park/etl, province run):
     the green areas and entrances, the Valhalla isochrones, the walking distance
-    per home from GRASS, and the comparison GRASS / Valhalla / FME per home."""
+    per home from GRASS, and the comparison GRASS / Valhalla per home."""
     added = 0
     group = _group(root, GROUP_300_OPEN, 0)
     inputs = _group(group, "Invoer: groen en ingangen")
@@ -526,7 +449,7 @@ def _add_300_open(project, root, have):
                     {"color": colour, "outline_style": "no"})))
                 added += 1
     homes_group = _group(group, "Woningen: loopafstand tot een park (GRASS)")
-    compare_group = _group(group, "Vergelijking GRASS / Valhalla / FME per woning")
+    compare_group = _group(group, "Vergelijking GRASS / Valhalla per woning")
     if OPEN_RESULT.exists() and OPEN_RESULT.resolve() not in have:
         homes = QgsVectorLayer(f"{OPEN_RESULT}|layername=homes", "loopafstand per woning (GRASS)", "ogr")
         if _add(project, homes_group, homes):
@@ -541,19 +464,7 @@ def _add_300_open(project, root, have):
                  [("\"agree_300m\" = 'alleen_grass'", "#2a78d6", "alleen GRASS binnen 300 m"),
                   ("\"agree_300m\" = 'alleen_valhalla'", "#eb6834", "alleen Valhalla binnen 300 m"),
                   ("\"agree_300m\" = 'beide'", "#c9c7c0", "beide binnen 300 m"),
-                  ("ELSE", "#efeeea", "beide verder")], True),
-                ("GRASS tegen FME, 5 minuten",
-                 [('"fme_5min" IS NULL', "#d9d9d9", "pand niet in FME-resultaat"),
-                  ('"gr_m" <= 425 AND "fme_5min" = 0', "#2a78d6", "alleen GRASS binnen 5 min"),
-                  ('("gr_m" IS NULL OR "gr_m" > 425) AND "fme_5min" = 1', "#eb6834", "alleen FME binnen 5 min"),
-                  ('"gr_m" <= 425 AND "fme_5min" = 1', "#c9c7c0", "beide binnen 5 min"),
-                  ("ELSE", "#efeeea", "beide verder")], False),
-                ("Valhalla tegen FME, 5 minuten",
-                 [('"fme_5min" IS NULL', "#d9d9d9", "pand niet in FME-resultaat"),
-                  ('"vh_m" <= 425 AND "fme_5min" = 0', "#2a78d6", "alleen Valhalla binnen 5 min"),
-                  ('("vh_m" IS NULL OR "vh_m" > 425) AND "fme_5min" = 1', "#eb6834", "alleen FME binnen 5 min"),
-                  ('"vh_m" <= 425 AND "fme_5min" = 1', "#c9c7c0", "beide binnen 5 min"),
-                  ("ELSE", "#efeeea", "beide verder")], False)):
+                  ("ELSE", "#efeeea", "beide verder")], True),):
             layer = QgsVectorLayer(f"{OPEN_RESULT}|layername=homes", name, "ogr")
             if _add(project, compare_group, layer, visible=False):
                 _style_point_rules(layer, expr_rules)
@@ -693,8 +604,6 @@ def main():
                 print(f"  NOTE: {BENCHMARK} not readable (R: drive?) — benchmark layer skipped")
 
         added += _add_areas_3(project, root, have)
-        added += _add_30(project, root, have)
-        added += _add_300(project, root, have)
         added += _add_300_open(project, root, have)
         added += _add_one_tree(project, root, have)
         added += _add_study_areas(project, root, have)

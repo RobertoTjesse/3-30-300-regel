@@ -7,7 +7,7 @@ compared:
   01_prepare.py      parks, park entrances, walking network and homes
   02_valhalla.py     walking distance per home with Valhalla (pyvalhalla)
   03_grass.py        walking distance per home with GRASS v.net.distance
-  04_compare.py      both against each other and against the old FME result
+  04_compare.py      both against each other
 
 Paths and the province come from indicator_3_bomen/etl/config.py (and its
 config_local.py), so the 300 uses the same BAG homes as the 3. Put your own
@@ -27,7 +27,7 @@ _c3 = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_c3)
 sys.path.remove(str(_etl3))
 for _name in ("BASE_DIR", "DATA_DIR", "RAW_DIR", "INTERIM_DIR", "PROCESSED_DIR", "OSGEO4W_ROOT",
-              "PROVINCE", "PROVINCE_SLUG", "FME_INPUT_DIR", "FME_OUTPUT_DIR",
+              "PROVINCE", "PROVINCE_SLUG",
               "PROVINCE_ADDRESSES_GPKG", "BAG_ADDRESS_USE", "BAG_ADDRESS_STATUS",
               "BAG_ADDRESS_BUILDING_ID", "BAG_STATUSES_IN_USE"):
     globals()[_name] = getattr(_c3, _name)
@@ -49,12 +49,7 @@ HOMES_GPKG = PROCESSED_DIR / f"{PROVINCE_SLUG}_woningen.gpkg"      # the homes o
 #                  heemtuin, landgoed, nationaal park, natuurgebied,
 #                  recreatiegebied, park), exported from the provincial SDE to
 #                  data/raw/top10_groen/ by a local arcpy script
-# Both are gitignored. The green of the old FME workbench, for comparison, as
-# the only source in config_local_300.py (which needs full paths):
-#   from pathlib import Path
-#   PARKS_SOURCES = [dict(bron="fme groen", layer="groen_uit_osm_top10_2024", type_field="type",
-#                         path=Path(r"D:\Repositories\330300regel\data\fme_input\groenvoorzieningen\groenkaart.gdb"),
-#                         where="\"bron\" <> 'top 10 water'")]
+# Both are gitignored.
 PARKS_SOURCES = [
     dict(bron="voorzieningen", path=RAW_DIR / "voorzieningen" / "voorzieningen.gdb",
          layer="parken_vlakken", type="park", name_field="naam"),
@@ -68,7 +63,7 @@ PARKS_SOURCES = [
 ]
 MIN_PARK_AREA_M2 = 300         # parks smaller than this are left out (WHO: 10,000)
 # Narrow strips are left out: perimeter / area at most this (1/m). 0.35 keeps a
-# strip of about 6 m wide or more, as the old FME workbench did. None = keep all.
+# strip of about 6 m wide or more. None = keep all.
 MAX_EDGE_RATIO = 0.35
 # Green only counts its land: open water is cut out of every green polygon
 # before the size and strip filters, so a path along a shore or dyke is not a

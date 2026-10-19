@@ -52,15 +52,6 @@ CORRUPTED_DEM_MUNICIPALITIES = []
 # province, set this in config_local.py — see README "Another province".
 PROVINCE = "Zuid-Holland"
 
-# Where the FME results of the 30 and the 300 live (30_regel_v2.gdb, 300.gdb),
-# read by web/build_tiles_30_300.py and the QGIS validation project. Default:
-# data/fme_output, a local copy of the results on R:. Override in
-# config_local.py only when they are elsewhere.
-FME_OUTPUT_DIR = BASE_DIR / "data" / "fme_output"
-# The workbenches' inputs (copied from R: as well); web/build_tiles_30_300.py
-# reads the green of the 300 from here (groenvoorzieningen/groenkaart.gdb).
-FME_INPUT_DIR = BASE_DIR / "data" / "fme_input"
-
 # Tree canopy raster for the 30 (indicator_30_kroonbedekking/etl/): BKB 2024,
 # boomkroonbedekking from lidar by Friedenau Society; the Netherlands at
 # 0.25 m, 1 = crown. 9.2 GB, gitignored like everything under data/.

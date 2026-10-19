@@ -22,7 +22,7 @@ the expansion never walks into private or destination-only roads, so a home
 on one is far from every reached street, while a route to it can use its own
 road; and where such a road leads only to more private roads, its junctions
 get no distance at all.
-  isochrone   the classic method of the old FME run: a polygon around what is
+  isochrone   the classic method: a polygon around what is
               reachable within 300 m, 5 and 15 minutes from each entrance. A
               home inside the merged polygons counts as reached. Kept for
               comparison: a polygon also covers blocks, water and railway

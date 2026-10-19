@@ -5,7 +5,7 @@ A summary of the prompts given to Claude Code in this project, taken from the se
 ## 29 September: consistency check and the ArcGIS viewshed
 
 - Check the whole project for inconsistencies and fix them, including the QGIS project, whose file paths were broken. The first wiki page was created.
-- For the 300 rule, read the FME workspace to find out which dataset was used.
+- For the 300 rule, read the earlier workspace to find out which dataset was used.
 - Recreate a colleague's ArcGIS Pro viewshed analysis for the study area with AHN5. The user ran the script from the ArcGIS Python prompt and reported the "Incorrect number of format variables" messages.
 - Compare the ArcGIS Pro settings with our GDAL settings, mainly on self-occlusion. Which height did the colleague use, why does ArcGIS show so little self-occlusion, when does NAP come into play, and does the tree dataset have a height value? A script for ArcGIS to test this.
 - Do not push the experiments to GitHub.
@@ -32,12 +32,11 @@ A summary of the prompts given to Claude Code in this project, taken from the se
 - List the open issues. Commit the `docs/bronnen` folder.
 - Make the README and the 3-30-300 explanation clearer about the assumptions that matter most, for example that using the tree centre avoids houses that only see branches, and that one green pixel turns the whole house green.
 - A speed table for arcpy against GDAL. Then a larger study area, a whole buurt near the Malieveld in The Hague, with optimised versions of both, the same results from each, and graphs of the speed. Several long arcpy runs followed.
-- Set up a Read the Docs site for the repo. Close the FME task.
+- Set up a Read the Docs site for the repo. Close the open task.
 
 ## 8 October: tree status, documentation hosting and the 300 rule
 
 - A summary of all prompts, covering methods, software, requirements, data sources and goals.
-- How could missing trees be collected from the public through public GIS, using FME Flow and its new data virtualisation feature?
 - Filter trees out of the 3 rule when they are recorded as disappeared or small. Fewer positives are better than false positives.
 - Read the Docs: dropped because the login failed, then GitHub Pages, then back to Read the Docs once the login worked, and finally the documentation went to the wiki only.
 - Find a way to compute the 300 rule on this workstation alone. Valhalla used to run on a Mac mini, and Docker cannot be installed here. A new dataset with green polygons is coming.
@@ -57,4 +56,4 @@ A summary of the prompts given to Claude Code in this project, taken from the se
 - Count cycle paths as walking routes.
 - Export the new green from the provincial SDE with an arcpy script, kept out of the repository; then use the copied voorzieningen geodatabase (`parken_vlakken`), TOP10NL functioneel gebied, and from the full TOP10NL list cemeteries and allotments, but no duck decoys.
 - Run the parks for the whole province first and add the homes later; show the isochrones as maps.
-- Run the homes with GRASS and Valhalla, benchmark and compare them and the FME result, put the comparison in the QGIS project, update the website and documentation (the analysis runs on OSGeo software), and clean up the repository.
+- Run the homes with GRASS and Valhalla, benchmark and compare them and the earlier result, put the comparison in the QGIS project, update the website and documentation (the analysis runs on OSGeo software), and clean up the repository.

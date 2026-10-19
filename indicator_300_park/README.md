@@ -12,7 +12,7 @@ Does every home lie within 300 m, or a 5-minute walk, of a park or other public 
 | 2 | `etl/03_grass.py` | GRASS `v.net.distance` from all entrances at once, then the walking distance per home |
 | | `etl/kaart_isochronen.py` | Maps of the green areas and walking zones, province and The Hague/Delft |
 | check | `etl/02_valhalla.py` | Optional: the same distances with Valhalla (expansion and `locate`), and the isochrone polygons of the old method |
-| check | `etl/04_compare.py` | Optional: GRASS, Valhalla, the isochrones and the old FME result per home |
+| check | `etl/04_compare.py` | Optional: GRASS, Valhalla and the isochrones per home |
 | check | `etl/00_valhalla_tiles.py` | Optional, once per OSM extract: Valhalla's walking network, with `valhalla/graph_fietspad.lua` (cycle paths open to pedestrians) |
 | | `etl/explainer_expansion.py` | The pictures on the explanation page (expansion from the Provinciehuis, zone against walk, cycle-path example) |
 | | `etl/run_300.sh` | Runs steps and logs each step's run time to `logs/300_benchmark.csv` |
@@ -57,7 +57,7 @@ Duck decoys are left out: they are mostly fenced and closed to visitors.
 
 **Zones against walking distance.** Valhalla's isochrone polygons also cover the inside of blocks, water and railway land that the walk goes round: 46.4% of homes inside the 300 m zones, 64.0% inside the 5-minute zones.
 
-**The earlier FME calculation** had 79.1% of homes within 5 minutes; per home it agrees with GRASS for 69%. Most of the difference is the green: the FME run counted every polygon of its green map, including small woods, scrub, gardens, golf courses and sports grounds. The rest comes from its zones.
+**The earlier calculation** had 79.1% of homes within 5 minutes; per home it agrees with GRASS for 69%. Most of the difference is the green: that run counted every polygon of its green map, including small woods, scrub, gardens, golf courses and sports grounds. The rest comes from its zones.
 
 ## Run times
 
@@ -86,10 +86,10 @@ See the wiki page [Known issues](https://github.com/RobertoTjesse/3-30-300-regel
 
 ## In QGIS
 
-`qgis_validation/build_project.py` adds the group "De 300: open methode" to the validation project: the green areas, the green per source and the entrances; the Valhalla isochrones; the walking distance per home from GRASS; and per home GRASS against Valhalla (300 m) and GRASS and Valhalla against FME (5 minutes).
+`qgis_validation/build_project.py` adds the group "De 300: open methode" to the validation project: the green areas, the green per source and the entrances; the Valhalla isochrones; the walking distance per home from GRASS; and per home GRASS against Valhalla (300 m).
 
-## The earlier FME method
+## The earlier method
 
-Until 13 October 2026 the map's 300 came from an FME workbench with PostGIS and a Valhalla server. The workbenches are in `fme/` (`300_2025 regel.fmw` is the latest); their results are in `data/fme_output/300.gdb` (gitignored, copied from `R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\fme output`) and are only used for the comparison. That run used OSM and TOP10NL green of 2024 (`data/fme_input/groenvoorzieningen/groenkaart.gdb`), the BAG of 9 December 2025, and 5- and 15-minute isochrones around 27,111 entrances; a building counted when any part of it lay in a 5-minute zone.
+Until 13 October 2026 the map's 300 came from an earlier calculation with PostGIS and a Valhalla server. That run used OSM and TOP10NL green of 2024, the BAG of 9 December 2025, and 5- and 15-minute isochrones around 27,111 entrances; a building counted when any part of it lay in a 5-minute zone.
 
 Method and caveats for readers: `web/uitleg/300.html` (Dutch) and `web/uitleg/en/300.html` (English).

@@ -22,7 +22,6 @@ It reads `config.BKB_TIF` (`data/raw/bkb_2024.tif`, 9.2 GB, gitignored) and `dat
 |---|---|
 | `etl/bkb_per_gebied.py` | counts crown pixels and all pixels per area, in 1 km tiles in parallel (about 100 MB per process). Also usable on its own for any polygon layer, e.g. `... bkb_per_gebied.py data/interim/buurten.gpkg buurten buurtcode out.csv --where "gemeentecode = 'GM0503'"` |
 | `etl/kroonbedekking_gebieden.py` | the province run: buurten, then wijken and gemeenten as sums of their buurten, divided by the CBS land area |
-| `fme/30_2024.fmw`, `fme/30_2025.fmw` | the earlier FME calculation (NEO crown polygons on the CBS buurten of 2023), kept for comparison; its result is in `data/fme_output/30_regel_v2.gdb` |
 
 ## How the pixels are assigned
 
@@ -32,7 +31,25 @@ A pixel belongs to the buurt that holds its centre, so a crown on a boundary cou
 
 8.1% of the land lies under a crown (21,854 ha of 269,840 ha). No gemeente reaches 30%; Wassenaar comes closest with 27.9%, Kaag en Braassem is lowest with 2.5%. 16 of the 518 wijken and 102 of the 2,509 buurten reach 30%.
 
-The earlier FME calculation gave higher values: higher in all 39 gemeenten with complete FME data, by a median of 23%, with almost the same ranking (r = 0.99). It counted every NEO crown that touched a buurt in full and added up overlapping crowns; in Delft its surplus per buurt grows with the length of the buurt boundary and with the amount of crown. It also had no values for Voorne aan Zee and parts of Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp and Delft, because 2023 buurt codes were looked up in the CBS map of 2022.
+The earlier calculation (NEO crown polygons on the CBS buurten of 2023) gave higher values: higher in all 39 gemeenten with complete data, by a median of 23%, with almost the same ranking (r = 0.99). It counted every NEO crown that touched a buurt in full and added up overlapping crowns; in Delft its surplus per buurt grows with the length of the buurt boundary and with the amount of crown. It also had no values for Voorne aan Zee and parts of Schiedam, Leiderdorp, Westland, Pijnacker-Nootdorp and Delft, because 2023 buurt codes were looked up in the CBS map of 2022.
+
+## Land cover 2024 (not used yet)
+
+`data/raw/landbedekking_2024.tif` comes with BKB 2024 and has the same grid. Its classes:
+
+| Class | Land cover |
+|---|---|
+| 1 | water |
+| 2 | onverhard (unpaved) |
+| 3 | halfverhard (semi-paved) |
+| 4 | verhard (paved) |
+| 5 | onverhard met struiken (unpaved with shrubs) |
+| 6 | gebouw (building) |
+| 7 | brug over water (bridge over water) |
+| 8 | buitenland (outside the Netherlands) |
+| 9 | not known yet |
+
+The 30 now divides by the CBS land area, which is rounded to whole hectares. Class 1 (plus 7, if bridges count as water) would give an exact land area per buurt from the same pixels as the crowns.
 
 ## Caveats
 
