@@ -526,6 +526,6 @@ trees should be excluded, is still open.
 
 **32. Land cover 2024: the legend**
 - `landbedekking_2024.tif`: 1 water, 2 onverhard, 3 halfverhard, 4 verhard,
-  5 onverhard met struiken, 6 gebouw, 7 brug over water, 8 buitenland;
-  9 still unknown. In `indicator_30_kroonbedekking/README.md`. Not used
+  5 onverhard met struiken, 6 gebouw, 7 brug over water, 8 buitenland,
+  9 the border with another country. In `indicator_30_kroonbedekking/README.md`. Not used
   yet; it could replace the CBS land area (whole hectares) for the 30.

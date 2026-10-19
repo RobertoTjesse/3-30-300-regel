@@ -47,7 +47,7 @@ The earlier calculation (NEO crown polygons on the CBS buurten of 2023) gave hig
 | 6 | gebouw (building) |
 | 7 | brug over water (bridge over water) |
 | 8 | buitenland (outside the Netherlands) |
-| 9 | not known yet |
+| 9 | grens met het buitenland (border with another country) |
 
 The 30 now divides by the CBS land area, which is rounded to whole hectares. Class 1 (plus 7, if bridges count as water) would give an exact land area per buurt from the same pixels as the crowns.
 
