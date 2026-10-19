@@ -90,10 +90,10 @@
   <a class="lang" id="lang" href="?lang=en" hreflang="en" lang="en">English</a>
   <h1 id="title">3-30-300</h1>
   <div class="tabs" role="group" aria-label="Onderdeel van de regel" data-en-label="Part of the rule">
+    <button type="button" data-theme="samen" title="Samen (proef)" data-en-label="Combined (trial)">3·30·300</button>
     <button type="button" data-theme="3">3</button>
     <button type="button" data-theme="30">30</button>
     <button type="button" data-theme="300">300</button>
-    <button type="button" data-theme="samen" title="Samen (proef)" data-en-label="Combined (trial)">3·30·300</button>
   </div>
   <div id="weights" class="weights" hidden>
     <div class="legend-title" data-en="Weights">Gewichten</div>
@@ -115,6 +115,8 @@
   </form>
   <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="aerial"> <span data-en="Aerial photo as background">Luchtfoto als achtergrond</span></label>
   <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="heat"> <span data-en="Show heat stress underneath">Hittestress eronder tonen</span></label>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="oud"> <span data-en="Residents aged 65+ (per 100 m)">Inwoners van 65+ (per 100 m)</span></label>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="geb"> <span data-en="Babies: births per neighbourhood">Baby's: geboorten per buurt</span></label>
 
   <div id="legend"></div>
   <label class="toggle" id="iso-toggle"><input type="checkbox" id="iso"> <span data-en="Show walking zones and entrances of green">Looptijdzones en ingangen van groen tonen</span></label>
@@ -344,6 +346,23 @@ const HEAT_CLASSES = [["#2973A2", "< 32 °C"], ["#8BAEC2", "32–34 °C"], ["#CA
                       ["#F8E497", "38–40 °C"], ["#C69188", "41–43 °C"], ["#C9796F", "44–45 °C"],
                       ["#8E2F2C", "46–48 °C"], ["#730000", "49–50 °C"], ["#330000", "> 50 °C"]];
 let heatOn = new URLSearchParams(location.search).get("hitte") === "1";
+// Optional layers on top, on every tab: where the groups most sensitive to heat live
+// (web/build_tiles_kwetsbaar.py), remembered in the URL as ?oud=1 and ?geb=1.
+// Circle area is proportional to the number of people.
+const TILES_KWETSBAAR = "data/kwetsbaar.pmtiles";
+const KWETSBAAR = {
+  oud: { layer: "ouderen", colour: "#6a3d9a", sizes: [10, 50, 200],
+         radius: [10, 0.15, 14, 0.6, 16, 1.5],                     // [zoom, px per √person, ...]
+         label: L("Inwoners van 65 jaar en ouder, per vierkant van 100 m", "Residents aged 65 and older, per 100 m square"),
+         source: [L("65-plussers", "Aged 65+"), L("CBS vierkantstatistieken 100 m (via PDOK); afgerond op 5, vierkanten met minder dan 5 weggelaten",
+                                                   "CBS 100 m square statistics (via PDOK); rounded to 5, squares with fewer than 5 left out"), "2024"] },
+  geb: { layer: "geboorten", colour: "#e7298a", sizes: [5, 25, 100],
+         radius: [8, 0.4, 12, 1.2, 14, 2],
+         label: L("Geboorten per buurt (baby's onder 1 jaar)", "Births per neighbourhood (babies under 1)"),
+         source: [L("Geboorten", "Births"), L("CBS kerncijfers wijken en buurten (via PDOK); CBS heeft geen leeftijdsgroep 0-4 jaar, geboorten per 100 m zijn bijna alle geheim",
+                                              "CBS district and neighbourhood figures (via PDOK); CBS has no 0-4 age group, births per 100 m are nearly all suppressed"), "2024"] },
+};
+const kwetsbaarOn = Object.fromEntries(Object.keys(KWETSBAAR).map((k) => [k, new URLSearchParams(location.search).get(k) === "1"]));
 // ---------------------------------------------------------------------------
 
 const protocol = new pmtiles.Protocol();
@@ -479,13 +498,21 @@ const map = new maplibregl.Map({
       tg: { type: "vector", url: "pmtiles://" + new URL(TILES_GROEN, location.href).href },
       tl: { type: "vector", url: "pmtiles://" + new URL(TILES_LOOPTIJD, location.href).href },
       ts: { type: "vector", url: "pmtiles://" + new URL(TILES_SAMEN, location.href).href },
+      tk: { type: "vector", url: "pmtiles://" + new URL(TILES_KWETSBAAR, location.href).href, attribution: "CBS" },
     },
     layers: [{ id: "brt", type: "raster", source: "brt" },
              { id: "luchtfoto", type: "raster", source: "luchtfoto",
                layout: { visibility: aerialOn ? "visible" : "none" } },
              { id: "hitte", type: "raster", source: "hitte", paint: { "raster-opacity": HEAT_OPACITY },
                layout: { visibility: heatOn ? "visible" : "none" } },
-             ...layers["3"], ...layers["30"], ...layers["300"], ...layers.samen],
+             ...layers["3"], ...layers["30"], ...layers["300"], ...layers.samen,
+             ...Object.entries(KWETSBAAR).map(([k, v]) => ({
+               id: `kw-${k}`, type: "circle", source: "tk", "source-layer": v.layer,
+               layout: { visibility: kwetsbaarOn[k] ? "visible" : "none" },
+               paint: { "circle-color": v.colour, "circle-opacity": 0.65,
+                        "circle-stroke-color": "#fff", "circle-stroke-width": 0.6,
+                        "circle-radius": ["interpolate", ["linear"], ["zoom"],
+                          ...v.radius.flatMap((x, i) => i % 2 ? [] : [x, ["*", v.radius[i + 1], ["sqrt", ["get", "n"]]]])] } }))],
   },
 });
 
@@ -511,7 +538,7 @@ map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-ri
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 
 const table = document.getElementById("sources");
-for (const [theme, rows] of [...Object.entries(SOURCES), ["", BASE_SOURCES]]) {
+for (const [theme, rows] of [...Object.entries(SOURCES), ["", [...BASE_SOURCES, ...Object.values(KWETSBAAR).map((v) => v.source)]]]) {
   for (const [what, src, when] of rows) {
     const tr = table.insertRow();
     tr.insertCell().textContent = theme ? `${theme} · ${what}` : what;
@@ -524,7 +551,7 @@ document.getElementById("info-close").onclick = () => info.close();
 
 // Theme switch (3 / 30 / 300), remembered in the URL as ?t=
 let theme = new URLSearchParams(location.search).get("t");
-if (!THEMES[theme]) theme = "3";
+if (!THEMES[theme]) theme = "samen";
 const isoBox = document.getElementById("iso");
 
 function setTheme(t) {
@@ -618,6 +645,45 @@ heatBox.onchange = () => {
   history.replaceState(null, "", url);
   updateLegend();
 };
+
+// Heat-sensitive groups on top, on every tab
+for (const k of Object.keys(KWETSBAAR)) {
+  const box = document.getElementById(k);
+  box.checked = kwetsbaarOn[k];
+  box.onchange = () => {
+    kwetsbaarOn[k] = box.checked;
+    if (map.getLayer(`kw-${k}`)) map.setLayoutProperty(`kw-${k}`, "visibility", box.checked ? "visible" : "none");
+    const url = new URL(location.href);
+    if (box.checked) url.searchParams.set(k, "1"); else url.searchParams.delete(k);
+    history.replaceState(null, "", url);
+    updateLegend();
+  };
+}
+// Legend circles at the current zoom, so their size matches the map
+function circleBlock(v) {
+  const z = map.getZoom();
+  const r = v.radius;
+  let k = r[1];
+  for (let i = 0; i + 2 < r.length; i += 2) {
+    if (z >= r[i]) k = z >= r[i + 2] ? r[i + 3] : r[i + 1] + (r[i + 3] - r[i + 1]) * (z - r[i]) / (r[i + 2] - r[i]);
+  }
+  const div = legendBlock(v.label, []);
+  const row = document.createElement("div");
+  row.className = "legend-row";
+  row.style.alignItems = "flex-end";
+  for (const n of v.sizes) {
+    const d = Math.max(2 * k * Math.sqrt(n), 3);
+    const c = document.createElement("span");
+    Object.assign(c.style, { width: `${d}px`, height: `${d}px`, borderRadius: "50%", background: v.colour,
+                             opacity: 0.65, border: "1px solid #fff", flex: "none" });
+    const t = document.createElement("span");
+    t.textContent = fmt(n);
+    t.style.marginRight = "6px";
+    row.append(c, t);
+  }
+  div.appendChild(row);
+  return div;
+}
 
 // Legend: depends on theme and zoom
 function legendRow(colour, label, line) {
@@ -713,6 +779,16 @@ function updateLegend() {
     legend.appendChild(legendBlock(L("Hittestress: gevoelstemperatuur op een hete zomerdag", "Heat stress: felt temperature on a hot summer day"),
                                    HEAT_CLASSES));
   }
+  for (const [k, v] of Object.entries(KWETSBAAR)) {
+    if (!kwetsbaarOn[k]) continue;
+    legend.appendChild(circleBlock(v));
+    if (k === "oud" && z < v.radius[0]) {
+      const p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = L(`Zoom in tot niveau ${v.radius[0]} om de 65-plussers te zien.`, `Zoom in to level ${v.radius[0]} to see the residents aged 65+.`);
+      legend.appendChild(p);
+    }
+  }
 }
 map.on("zoom", updateLegend);
 map.on("load", () => { setTheme(theme); setSamen(); });
@@ -756,8 +832,11 @@ function popup(lngLat, rows, link) {
     a.style.cssText = "display:block;margin-top:6px;color:var(--accent)";
     div.appendChild(a);
   }
-  new maplibregl.Popup({ maxWidth: "280px" }).setLngLat(lngLat).setDOMContent(div).addTo(map);
+  // One popup at a time: a click on a circle on top of an area replaces the area's popup
+  openPopup?.remove();
+  openPopup = new maplibregl.Popup({ maxWidth: "280px" }).setLngLat(lngLat).setDOMContent(div).addTo(map);
 }
+let openPopup = null;
 map.on("click", "3-woningen", (e) => {
   const p = e.features[0].properties;
   popup(e.lngLat, [
@@ -844,8 +923,19 @@ for (const lv of LEVELS) {
                      [L("Haalt alle drie (zonder gewichten)", "Meets all three (no weights)"), few ? "–" : pct(p.alle)]]);
   });
 }
+// Registered last, so this popup replaces the one of the area below
+map.on("click", "kw-oud", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [[null, L("Vierkant van 100 m", "100 m square")], [L("Inwoners", "Residents"), fmt(p.inwoners)],
+                   [L("Van 65 jaar en ouder", "Aged 65 and older"), fmt(p.n)]]);
+});
+map.on("click", "kw-geb", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [[null, p.naam || L("Buurt", "Neighbourhood")], [L("Inwoners", "Residents"), fmt(p.inwoners)],
+                   [L(`Geboorten in 2024`, "Births in 2024"), fmt(p.n)]]);
+});
 const clickable = [...layers["3"], ...layers["30"], ...layers["300"], ...layers.samen]
-  .filter((d) => d.type === "fill").map((d) => d.id);
+  .filter((d) => d.type === "fill").map((d) => d.id).concat(["kw-oud", "kw-geb"]);
 for (const id of clickable) {
   map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
   map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");

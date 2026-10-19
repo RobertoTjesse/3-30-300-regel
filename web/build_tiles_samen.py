@@ -26,9 +26,10 @@ Layers (same areas and zooms as the other maps):
   buurten     zoom 11-12  } (p3, p30, p300); alle = share meeting all three
   woningen    zoom 13-16  every residential building: the same scores
 
-A building without a free facade has no 3, a building without a result for
-the 30 or the 300 none for that indicator: its weight drops out (per building
-and in the area mean of that indicator).
+A building without a free facade scores 0 on the 3, as the 3's own area
+shares count it (06_area_summaries.py). A building without a result for the
+30 or the 300 has none for that indicator: its weight drops out (per
+building and in the area mean of that indicator).
 
 Usage:
     python web/build_tiles_samen.py [--data DIR]
@@ -106,10 +107,13 @@ def woningen(dst):
         k30 = kroon.get(pid)
         r300 = per_pand.get(pid)
         # Per building: gradual score and pass (0/100) per indicator, None = no value
-        s = {"3": None if bomen is None else 100.0 * min(bomen, 3) / 3,
+        # No free facade: 0 visible trees for the 3, as 06_area_summaries.py
+        # counts these homes (in the denominator, not meeting the 3)
+        bomen = bomen or 0
+        s = {"3": 100.0 * min(bomen, 3) / 3,
              "30": None if k30 is None else 100.0 * min(k30 / 30, 1),
              "300": None if r300 is None else r300[1] / r300[0]}
-        p = {"3": None if bomen is None else 100 * (bomen >= 3),
+        p = {"3": 100 * (bomen >= 3),
              "30": None if k30 is None else 100 * (k30 >= 30),
              # the building's share of its homes within 5 min
              "300": None if r300 is None else 100.0 * r300[2] / r300[0]}
