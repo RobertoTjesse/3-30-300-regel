@@ -8,6 +8,8 @@ compared:
   02_valhalla.py     walking distance per home with Valhalla (pyvalhalla)
   03_grass.py        walking distance per home with GRASS v.net.distance
   04_compare.py      both against each other
+  05_combine.py      the distance the map shows: GRASS, and Valhalla where it
+                     finds a shorter way to a home GRASS puts beyond 300 m
 
 Paths and the province come from indicator_3_bomen/etl/config.py (and its
 config_local.py), so the 300 uses the same BAG homes as the 3. Put your own
@@ -166,5 +168,6 @@ VALHALLA_GPKG = WORK_DIR / "valhalla.gpkg"
 # A GRASS run without some road types is a variant, with its own outputs.
 VARIANT = ("_zonder_" + "_".join(GRASS_EXCLUDE_HIGHWAYS)) if GRASS_EXCLUDE_HIGHWAYS else ""
 GRASS_GPKG = WORK_DIR / f"grass{VARIANT}.gpkg"
+FINAL_GPKG = WORK_DIR / f"300{VARIANT}.gpkg"      # what the map shows (05_combine.py)
 RESULT_GPKG = PROCESSED_DIR / f"{AREA_SLUG}_300{VARIANT}.gpkg"
 RESULT_CSV = PROCESSED_DIR / f"{AREA_SLUG}_300_vergelijking{VARIANT}.csv"

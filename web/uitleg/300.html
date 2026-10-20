@@ -28,15 +28,16 @@ berekend tot de dichtstbijzijnde ingang van een park of ander openbaar groen. Ee
 (groen op de kaart).</p>
 
 <div class="facts">
-  <div class="fact"><b>36,7%</b><span>van de woningen binnen 300 m lopen van groen</span></div>
-  <div class="fact"><b>56,0%</b><span>binnen 5 min lopen (425 m)</span></div>
-  <div class="fact"><b>97,8%</b><span>binnen 15 min lopen</span></div>
+  <div class="fact"><b>38,5%</b><span>van de woningen binnen 300 m lopen van groen</span></div>
+  <div class="fact"><b>57,6%</b><span>binnen 5 min lopen (425 m)</span></div>
+  <div class="fact"><b>98,1%</b><span>binnen 15 min lopen</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1.797.970 woningen. Per gemeente van 20,3% (Voorne aan Zee) tot
-86,7% (Oegstgeest) binnen 5 minuten.</p>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1.797.970 woningen. Per gemeente van 21,4% (Voorne aan Zee) tot
+87,8% (Oegstgeest) binnen 5 minuten.</p>
 <p class="note ok">De hele berekening is gemaakt met <b>QGIS en de onderdelen die QGIS meelevert</b>: GDAL voor de
 gegevens, de ingangen en het wandelnetwerk, GRASS GIS voor de loopafstanden, en de Python van QGIS voor de stappen
-ertussen. Er is geen andere software nodig. Iedereen met QGIS kan het herhalen.</p>
+ertussen. Alleen voor een tweede kijk bij woningen boven 300 m komt er een los programma bij, Valhalla (zie
+<a href="#vergelijking">hieronder</a>).</p>
 
 <h2>Wat wordt er gemeten?</h2>
 <p>Het <a href="konijnendijk.html">artikel</a> vraagt een grote openbare groenvoorziening binnen 300 m van elke
@@ -83,7 +84,11 @@ Achter elke keuze staat de kant waarop ze de uitkomst duwt.</p>
     fietspaden, straten en wegen, zonder snelwegen en privéwegen.</li>
   <li><strong>Woningen koppelen.</strong>
     Elke woning (BAG-adres met woonfunctie, dezelfde als bij de 3) neemt het dichtstbijzijnde punt op het netwerk.
-    Haar loopafstand is de afstand van dat punt tot de ingang, plus het stukje van de woning naar de straat.</li>
+    Haar loopafstand is de afstand van dat punt tot de ingang, plus het stukje van de woning naar de straat.
+    Een woning die binnen een groengebied ligt, woont al in het groen: 0 m.</li>
+  <li><strong>Tweede kijk bij meer dan 300 m.</strong>
+    Komt GRASS boven 300 m uit, of vindt het geen route, dan telt de afstand van Valhalla als die korter is. Een
+    woning die ten onrechte te ver lijkt, is de ergere fout; zo krijgt ze het voordeel van de twijfel.</li>
   <li><strong>Per gemeente, wijk en buurt.</strong>
     Het aandeel woningen binnen 300 m, 5 en 15 minuten, op dezelfde gebieden als de 3 en de 30.</li>
 </ol>
@@ -139,7 +144,7 @@ te liggen? Dan kan dat hierdoor komen:</p>
 
 <h2 id="vergelijking">Gecontroleerd met een tweede programma</h2>
 <p>Ter controle is alles nog een keer berekend met <a href="https://github.com/valhalla/valhalla">Valhalla</a>, een
-open-source routeplanner (niet uit QGIS, alleen voor deze controle). Valhalla kan vanaf een punt alle straten en
+open-source routeplanner (niet uit QGIS). Valhalla kan vanaf een punt alle straten en
 paden teruggeven die je lopend bereikt: de <i>expansion</i>. Hieronder vanaf het Provinciehuis in Den Haag.</p>
 <figure>
   <img src="img/300-expansion.png" alt="Kaart rond het Provinciehuis in Den Haag met alle straten en paden binnen 15 minuten lopen, donkerblauw dichtbij en lichtblauw verder weg" loading="lazy">
@@ -147,14 +152,15 @@ paden teruggeven die je lopend bereikt: de <i>expansion</i>. Hieronder vanaf het
   de wandeling.</figcaption>
 </figure>
 <div class="table-wrap"><table>
-<tr><th>Aandeel woningen binnen</th><th>GRASS (de kaart)</th><th>Valhalla</th><th>Valhalla, zones</th><th>Eerdere berekening</th></tr>
-<tr><td>300 m</td><td>36,7%</td><td>38,0%</td><td>46,4%</td><td>niet berekend</td></tr>
-<tr><td>5 minuten (425 m)</td><td>56,0%</td><td>57,0%</td><td>64,0%</td><td>79,1%</td></tr>
-<tr><td>15 minuten (1.275 m)</td><td>97,8%</td><td>98,0%</td><td>98,2%</td><td>99,2%</td></tr>
+<tr><th>Aandeel woningen binnen</th><th>De kaart</th><th>GRASS</th><th>Valhalla</th><th>Valhalla, zones</th><th>Eerdere berekening</th></tr>
+<tr><td>300 m</td><td>38,5%</td><td>36,7%</td><td>38,0%</td><td>46,4%</td><td>niet berekend</td></tr>
+<tr><td>5 minuten (425 m)</td><td>57,6%</td><td>56,0%</td><td>57,0%</td><td>64,0%</td><td>79,1%</td></tr>
+<tr><td>15 minuten (1.275 m)</td><td>98,1%</td><td>97,8%</td><td>98,0%</td><td>98,2%</td><td>99,2%</td></tr>
 </table></div>
 <p>GRASS en Valhalla zijn het voor 97,8% van de woningen eens of die binnen 300 m van groen wonen. Bij
 71% van de woningen scheelt de afstand hoogstens 10 m, bij 93% hoogstens 50 m. Waar ze verschillen,
-rekent Valhalla vaker korter: het kan een woning ook over haar eigen privéweg bereiken.</p>
+rekent Valhalla vaker korter: het kan een woning ook over haar eigen privéweg bereiken. Daarom neemt de kaart bij
+woningen die bij GRASS boven 300 m uitkomen de kortste van de twee. Zo komen 31.587 woningen alsnog binnen 300 m.</p>
 <figure>
   <img src="img/300-vergelijking-spreiding.png" alt="Spreidingsdiagram van de loopafstand per woning: GRASS op de horizontale as, Valhalla op de verticale; bijna alle woningen liggen op de diagonaal" loading="lazy">
   <figcaption>Loopafstand per woning in Zuid-Holland, GRASS tegen Valhalla. Op de diagonaal zijn beide het eens.</figcaption>

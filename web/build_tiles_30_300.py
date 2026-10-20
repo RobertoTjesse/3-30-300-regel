@@ -1,6 +1,6 @@
 """
 build_tiles_30_300.py — Build the web map's vector tiles for the 30 (canopy
-within 500 m of every home, from BKB 2024) and the 300 (from indicator_300_park/etl, GRASS), in two files. The 3 has
+within 500 m of every home, from BKB 2024) and the 300 (from indicator_300_park/etl), in two files. The 3 has
 its own tile file (web/build_tiles.py -> web/data/3.pmtiles), the 300's green
 areas too (web/build_tiles_groen.py -> web/data/groen.pmtiles).
 
@@ -26,8 +26,10 @@ Inputs:
   data/processed/<Province>_kroon500_woningen.csv, _kroon500_gebieden.csv
                     the 30 per building and per gemeente, wijk and buurt
                     (indicator_30_kroonbedekking/etl/kroon_500m_woningen.py)
-  data/interim/300/<Province>/grass.gpkg   the 300 per home (03_grass.py):
-                    gr_m, the walking distance with GRASS to the nearest entrance
+  data/interim/300/<Province>/300.gpkg   the 300 per home (05_combine.py):
+                    afstand_m, the walking distance to the nearest entrance
+                    (GRASS, or Valhalla where GRASS has more than 300 m and
+                    Valhalla finds a shorter way; 0 inside a green area)
   data/interim/300/<Province>/prepared.gpkg, valhalla.gpkg   entrances and
                     isochrones of the 300
 
@@ -51,8 +53,8 @@ ogr.UseExceptions()
 
 _args = argparse.ArgumentParser(description=__doc__.splitlines()[1])
 _args.add_argument("--open", type=Path,
-                   default=config.INTERIM_DIR / "300" / config.PROVINCE_SLUG / "grass.gpkg",
-                   help="the 300 per home (indicator_300_park/etl/03_grass.py)")
+                   default=config.INTERIM_DIR / "300" / config.PROVINCE_SLUG / "300.gpkg",
+                   help="the 300 per home (indicator_300_park/etl/05_combine.py)")
 _args.add_argument("--gebieden", type=Path,
                    default=config.PROCESSED_DIR / f"{config.PROVINCE_SLUG}_gebieden.gpkg")
 _args.add_argument("--kroon", type=Path,
@@ -93,7 +95,7 @@ def woningen(dst):
     homes_ds = ogr.Open(str(ARGS.open))
     per_pand = {}      # pand_id: [homes, within 300 m, within 5 min, within 15 min, nearest m]
     for f in homes_ds.GetLayerByName("homes"):
-        d = f.GetField("gr_m")
+        d = f.GetField("afstand_m")
         row = per_pand.setdefault(f.GetField("pand_id"), [0, 0, 0, 0, None])
         row[0] += 1
         if d is not None:

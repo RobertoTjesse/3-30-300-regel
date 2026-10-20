@@ -10,7 +10,7 @@ De 3-30-300-regel (Konijnendijk, 2023) vraagt op drie manieren om groen dicht bi
 |---|---|
 | 3 | 85,9% van de woningen ziet minstens 3 bomen; 5,0% ziet er geen |
 | 30 | 1,8% van de woningen heeft minstens 30% kroonbedekking binnen 500 m; gemiddeld is het 12,7%. Wassenaar springt eruit met 27% van de woningen |
-| 300 | 36,7% van de woningen ligt binnen 300 m lopen van een park of ander openbaar groen, 56,0% binnen 5 minuten en 97,8% binnen 15 minuten |
+| 300 | 38,5% van de woningen ligt binnen 300 m lopen van een park of ander openbaar groen, 57,6% binnen 5 minuten en 98,1% binnen 15 minuten |
 
 Alles draait op QGIS en de onderdelen die QGIS meelevert (GDAL, GRASS, de Python van QGIS); er is geen andere software of licentie nodig. Elke provincie kan het herhalen zonder de code te veranderen.
 

@@ -20,7 +20,7 @@ Zuid-Holland, latest runs:
 |---|---|
 | 3 | 85.9% of homes see at least 3 trees; 5.0% see none |
 | 30 | 1.8% of the homes have at least 30% canopy within 500 m; the mean is 12.7%. Wassenaar stands out with 27% of its homes |
-| 300 | 36.7% of homes lie within a 300 m walk of a park or other public green, 56.0% within 5 minutes and 97.8% within 15 minutes. Per gemeente from 20.3% (Voorne aan Zee) to 86.7% (Oegstgeest) within 5 minutes |
+| 300 | 38.5% of homes lie within a 300 m walk of a park or other public green, 57.6% within 5 minutes and 98.1% within 15 minutes. Per gemeente from 21.4% (Voorne aan Zee) to 87.8% (Oegstgeest) within 5 minutes |
 
 The figures per gemeente, wijk and buurt are sound. For a single home the map gives an indication, and the assumptions explain most of the cases where it disagrees with what a resident sees.
 
