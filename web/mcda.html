@@ -259,11 +259,13 @@ const THEMES = {
     method: L("Groen: parken, natuur, recreatiegebieden, landgoederen, begraafplaatsen en volkstuinen van minstens 300 m², zonder open water. " +
               "Een ingang ligt waar een pad of straat het groen in gaat. " +
               `Voor elke woning is met een netwerkanalyse ${GRASS} de loopafstand tot de dichtstbijzijnde ingang berekend, ook over fietspaden. ` +
+              "Boven 300 m telt een kortere route van Valhalla, een tweede routeplanner. Een woning in het groen telt als 0 m. " +
               "De kleuren gaan over 5 minuten lopen (425 m, ongeveer 300 m hemelsbreed): een pand waarvan een woning zo dichtbij ligt is groen. " +
               "Per gebied: het aandeel woningen binnen 5 minuten; 300 m en 15 minuten staan in de pop-ups. Donkergroen omlijnd: het groen dat meetelt.",
               "Green: parks, nature, recreation areas, estates, cemeteries and allotments of at least 300 m², without open water. " +
               "An entrance is where a path or street enters the green. " +
               `For every home, a network analysis ${GRASS_EN} calculated the walking distance to the nearest entrance, cycle paths included. ` +
+              "Beyond 300 m, a shorter route from Valhalla, a second route planner, counts. A home inside the green counts as 0 m. " +
               "The colours are about a 5-minute walk (425 m, about 300 m as the crow flies): a building with a home that close is green. " +
               "Per area: the share of homes within 5 minutes; 300 m and 15 minutes are in the popups. Dark green outlines: the green that counts."),
   },
@@ -319,7 +321,7 @@ const SOURCES = {
                                          "TOP10NL functional areas: recreation area, nature area, estate, cemetery, allotments and more"), "2025"],
     [L("Water", "Water"), L("CBS Wijk- en Buurtkaart 2025 en OpenStreetMap (uit het groen geknipt)", "CBS district and neighbourhood map 2025 and OpenStreetMap (cut out of the green)"), "2025–2026"],
     [L("Paden en straten", "Paths and streets"), L("OpenStreetMap, extract Zuid-Holland (Geofabrik)", "OpenStreetMap, Zuid-Holland extract (Geofabrik)"), L("12 oktober 2026", "12 October 2026")],
-    [L("Loopafstand", "Walking distance"), L(`Netwerkanalyse ${GRASS}`, `Network analysis ${GRASS_EN}`), "2026"],
+    [L("Loopafstand", "Walking distance"), L(`Netwerkanalyse ${GRASS}, boven 300 m ook Valhalla`, `Network analysis ${GRASS_EN}, beyond 300 m also Valhalla`), "2026"],
     [L("Woningen", "Homes"), L("Zelfde als de 3 (BAG)", "Same as the 3 (BAG)"), L("27 september 2026", "27 September 2026")],
     [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
   ],
