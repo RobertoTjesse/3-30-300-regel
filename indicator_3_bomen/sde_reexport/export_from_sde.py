@@ -48,10 +48,11 @@ import arcpy
 # EDIT THESE
 # ---------------------------------------------------------------------------
 SDE_CONNECTION = r"R:\ESRI\BEHEER\Database_verbindingen\Geodatabase\Productie\Geo_raster\Geodatabase@Geo_raster@topografie.sde"
-# The surface model, 0.5 m, raw (not interpolated). AHN4 was
-# "Geo_raster.TOPOGRAFIE.AHN4_05M_RUW"; check the exact AHN5 name in Catalog
-# (if it does not exist, the script stops and lists the AHN rasters it sees).
-SDE_RASTER_DATASET = "Geo_raster.TOPOGRAFIE.AHN5_05M_RUW"
+# The surface model, 0.5 m. AHN5: the highest point per cell (water excepted;
+# AHN2/3/4 used an IDW-weighted mean). AHN4 was
+# "Geo_raster.TOPOGRAFIE.AHN4_05M_RUW". If the name is wrong,
+# the script stops and lists the AHN rasters it sees.
+SDE_RASTER_DATASET = "Geo_raster.TOPOGRAFIE.AHN5_05M_DSM"
 
 REEXPORT_DIR = r"D:\Repositories\330300regel\indicator_3_bomen\sde_reexport"
 OSGEO4W_ROOT = r"C:\Users\bethrt\AppData\Local\Programs\OSGeo4W"
@@ -61,7 +62,7 @@ EXTENTS_CSV = os.path.join(REEXPORT_DIR, "municipality_extents_all.csv")   # nam
 
 # Restrict to these names (as spelled in EXTENTS_CSV);
 # [] = every extent in the CSV that isn't finished yet.
-ONLY = []
+ONLY = ["Delft"]
 # ---------------------------------------------------------------------------
 
 RAW_DIR = os.path.join(REEXPORT_DIR, "raw_clips")         # ArcGIS clips, one at a time, deleted once finished
