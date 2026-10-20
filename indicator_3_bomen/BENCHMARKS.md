@@ -29,7 +29,7 @@ Do not edit by hand — regenerate instead.
 | Bodegraven-Reeuwijk | 750 | 175238 | 1703.1 | 353.7 | 191.2 | 37m28.0s | 495 |
 | Brielle | 285 | 86589 | 737.7 | 165.1 | 74.4 | 16m17.2s | 524 |
 | Capelle aan den IJssel | 168 | 133988 | 502.5 | 250.4 | 56.7 | 13m29.6s | 535 |
-| Delft | 208 | 149849 | 875.8 | 1094.0 | 285.3 | 37m35.1s | 137 |
+| Delft | 208 | 149849 | 1105.4 | 1167.3 | 306.6 | 42m59.3s | 128 |
 | Dordrecht | 950 | 287711 | 1825.4 | 566.1 | 212.1 | 43m23.6s | 508 |
 | Goeree-Overflakkee | 4410 | 685485 | 7473.1 | 1419.4 | 1000.3 | 164m52.8s | 483 |
 | Gorinchem | 176 | 61211 | 393.5 | 120.9 | 41.3 | 9m15.7s | 506 |
@@ -74,6 +74,6 @@ Do not edit by hand — regenerate instead.
 | Zuidplas | 600 | 228911 | 1685.2 | 448.8 | 180.1 | 38m34.1s | 510 |
 | Zwijndrecht | 187 | 107180 | 471.8 | 222.4 | 60.2 | 12m34.4s | 482 |
 
-**52 municipalities, 28,723 tiles, 10,241,760 tree viewsheds computed, 1535m35.9s total processing time.**
+**52 municipalities, 28,723 tiles, 10,241,760 tree viewsheds computed, 1541m00.1s total processing time.**
 
 Note: Papendrecht and 's-Gravenhage `tile_dem` timings are approximate (measured before per-stage timing instrumentation was added); all other figures are precisely measured.
