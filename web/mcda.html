@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%226.5%22 r=%225.5%22 fill=%22%23238b45%22/%3E%3Crect x=%227%22 y=%2210%22 width=%222%22 height=%225%22 fill=%22%236b4f2a%22/%3E%3C/svg%3E">
+<title>3-30-300-regel</title>
+<meta name="description" content="De 3-30-300-regel per woning, buurt, wijk en gemeente: 3 zichtbare bomen per woning, 30% kroonbedekking binnen 500 m van elke woning, groen binnen 300 m lopen.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pmtiles@4/dist/pmtiles.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0; --accent: #238b45;
+    --panel-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c2128; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --accent: #3fb950;
+      --panel-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+    }
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+               font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  .panel { position: absolute; top: 12px; left: 12px; width: 310px; max-width: calc(100vw - 24px);
+           max-height: calc(100vh - 48px); overflow-y: auto;
+           box-sizing: border-box; background: var(--bg); border: 1px solid var(--border);
+           border-radius: 8px; box-shadow: var(--panel-shadow); padding: 14px 16px; z-index: 1; }
+  .panel h1 { font-size: 17px; margin: 0 0 8px; }
+  .lang { float: right; font-size: 12px; font-weight: 400; margin-top: 3px; }
+  .panel p { margin: 0 0 10px; color: var(--muted); }
+  .tabs { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+  .tabs button { flex: 1; padding: 6px 0; border: 0; background: var(--bg); color: var(--fg);
+                 font: 600 15px/1.2 inherit; font-family: inherit; cursor: pointer; }
+  .tabs button + button { border-left: 1px solid var(--border); }
+  .tabs button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .search { display: flex; gap: 6px; margin-bottom: 12px; }
+  .search input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border);
+                  border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+  .search button { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+                   background: var(--bg); color: var(--fg); font: inherit; cursor: pointer; }
+  .legend-title { font-weight: 600; margin: 8px 0 4px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+  .swatch { width: 16px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,.25); flex: none; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .panel a { color: var(--accent); }
+  label.toggle { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 8px; cursor: pointer; }
+  .tabs button[data-theme="samen"] { flex: 1.6; font-size: 13px; }
+  .weights { margin: 0 0 10px; }
+  .w-row { display: grid; grid-template-columns: 34px 1fr 38px; align-items: center; gap: 6px; font-weight: 600; }
+  .w-row input { accent-color: var(--accent); }
+  .w-row output { font: 12px/1 inherit; color: var(--muted); text-align: right; }
+  .w-mode { display: flex; flex-direction: column; gap: 2px; font-size: 13px; margin: 6px 0; }
+  .w-reset { padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
+             color: var(--fg); font: 12px/1.4 inherit; cursor: pointer; }
+  .ramp { height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,.25); }
+  .ramp-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 10px; }
+  details p { font-size: 12px; margin-top: 6px; }
+  .maplibregl-popup-content { background: var(--bg); color: var(--fg); font: inherit; }
+  .maplibregl-popup-tip { border-top-color: var(--bg) !important; border-bottom-color: var(--bg) !important; }
+  .popup-sub { margin-top: 6px; font-weight: 600; }
+  .info-btn { font: 600 16px/29px Georgia, serif !important; color: #333; }
+  .maplibregl-ctrl-group button.bg-btn { width: auto; padding: 0 10px; font: 600 13px/29px system-ui, sans-serif;
+                                         color: #333; white-space: nowrap; }
+  dialog#info { max-width: 600px; width: calc(100vw - 48px); box-sizing: border-box;
+                border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+                color: var(--fg); padding: 18px 20px; }
+  dialog#info::backdrop { background: rgba(0, 0, 0, .35); }
+  dialog#info h2 { font-size: 16px; margin: 0 0 10px; }
+  dialog#info h3 { font-size: 13px; margin: 14px 0 4px; }
+  dialog#info table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  dialog#info td, dialog#info th { text-align: left; vertical-align: top; padding: 4px 6px;
+                                   border-bottom: 1px solid var(--border); }
+  dialog#info p { font-size: 13px; margin: 6px 0; }
+  dialog#info a { color: inherit; }
+  dialog#info .close { float: right; border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+                       border-radius: 6px; padding: 3px 10px; cursor: pointer; font: inherit; }
+  @media (max-width: 600px) {
+    .panel { top: auto; bottom: 24px; padding: 10px 12px; max-height: 45vh; }
+    .panel p.intro, details { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="panel">
+  <a class="lang" id="lang" href="?lang=en" hreflang="en" lang="en">English</a>
+  <h1 id="title">3-30-300</h1>
+  <div class="tabs" role="group" aria-label="Onderdeel van de regel" data-en-label="Part of the rule">
+    <button type="button" data-theme="samen" title="Samen (proef)" data-en-label="Combined (trial)">3·30·300</button>
+    <button type="button" data-theme="3">3</button>
+    <button type="button" data-theme="30">30</button>
+    <button type="button" data-theme="300">300</button>
+  </div>
+  <div id="weights" class="weights" hidden>
+    <div class="legend-title" data-en="Weights">Gewichten</div>
+    <label class="w-row"><span>3</span><input type="range" min="0" max="5" step="0.5" data-k="3"><output></output></label>
+    <label class="w-row"><span>30</span><input type="range" min="0" max="5" step="0.5" data-k="30"><output></output></label>
+    <label class="w-row"><span>300</span><input type="range" min="0" max="5" step="0.5" data-k="300"><output></output></label>
+    <div class="w-mode" role="group">
+      <label><input type="radio" name="mode" value="p"> <span data-en="Rule met (yes/no)">Regel gehaald (ja/nee)</span></label>
+      <label><input type="radio" name="mode" value="s"> <span data-en="Gradual (0 to target)">Geleidelijk (0 tot doel)</span></label>
+    </div>
+    <button type="button" id="w-reset" class="w-reset" data-en="Equal weights">Gelijke gewichten</button>
+    <p class="hint" id="w-note"></p>
+  </div>
+  <p class="intro" id="intro"></p>
+
+  <form class="search" id="search">
+    <input id="q" type="search" placeholder="Zoek adres of plaats" aria-label="Zoek adres of plaats" data-en-label="Search address or place">
+    <button type="submit" data-en="Search">Zoek</button>
+  </form>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="aerial"> <span data-en="Aerial photo as background">Luchtfoto als achtergrond</span></label>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="heat"> <span data-en="Show heat stress underneath">Hittestress eronder tonen</span></label>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="oud"> <span data-en="Residents aged 65+ (per 100 m)">Inwoners van 65+ (per 100 m)</span></label>
+  <label class="toggle" style="margin: -4px 0 8px"><input type="checkbox" id="geb"> <span data-en="Babies: births per neighbourhood">Baby's: geboorten per buurt</span></label>
+
+  <div id="legend"></div>
+  <label class="toggle" id="iso-toggle"><input type="checkbox" id="iso"> <span data-en="Show walking zones and entrances of green">Looptijdzones en ingangen van groen tonen</span></label>
+  <div class="hint" id="hint"></div>
+
+  <details>
+    <summary data-en="How was this calculated?">Hoe is dit berekend?</summary>
+    <p id="method"></p>
+  </details>
+  <p class="hint"><span data-en="Method and choices:">Uitleg en keuzes:</span>
+     <a href="uitleg/" data-en="overview">overzicht</a> ·
+     <a href="uitleg/3.html">3</a> · <a href="uitleg/30.html">30</a> · <a href="uitleg/300.html">300</a> ·
+     <a href="uitleg/konijnendijk.html" data-en="the paper">het artikel</a></p>
+</div>
+
+<dialog id="info">
+  <button class="close" id="info-close" type="button" data-en="Close">Sluiten</button>
+  <h2 data-en="Sources and dates">Bronnen en actualiteit</h2>
+  <table id="sources"><tr><th data-en="Data">Gegevens</th><th data-en="Source">Bron</th><th data-en="As of">Stand</th></tr></table>
+  <h3 data-en="Caveats">Kanttekeningen</h3>
+  <p id="caveats"></p>
+  <h3 data-en="Method and code">Methode en code</h3>
+  <p data-en='How each indicator was calculated, and why, is on the explanation pages:
+     <a href="uitleg/3.html">3</a>, <a href="uitleg/30.html">30</a> and <a href="uitleg/300.html">300</a>.
+     The code of the 3 and of this map is in the
+     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub repository</a>.'>Hoe elke indicator is berekend en waarom, staat op de uitlegpagina's:
+     <a href="uitleg/3.html">3</a>, <a href="uitleg/30.html">30</a> en <a href="uitleg/300.html">300</a>.
+     De code van de 3 en van deze kaart staat in de
+     <a id="repo-link" href="#" target="_blank" rel="noopener">GitHub-repository</a>.</p>
+</dialog>
+
+<script>
+// ---------------------------------------------------------------------------
+// Settings — edit colours and texts here
+// ---------------------------------------------------------------------------
+const PROVINCE = "Zuid-Holland";                  // as in PDOK (also filters the address search)
+const REPO = "https://github.com/RobertoTjesse/3-30-300-regel";
+const TILES_3 = "data/3.pmtiles";                 // web/build_tiles.py
+const TILES_30_300 = "data/30-300.pmtiles";       // web/build_tiles_30_300.py
+const TILES_GROEN = "data/groen.pmtiles";         // web/build_tiles_groen.py (the 300's parks and woods)
+const TILES_LOOPTIJD = "data/looptijd.pmtiles";   // web/build_tiles_30_300.py (walking zones, entrances)
+const TILES_SAMEN = "data/samen.pmtiles";         // web/build_tiles_samen.py (trial: the three combined)
+// The map opens on the extent of the tile files, so no coordinates to set per province.
+
+// Language: Dutch, or English with ?lang=en (link at the top of the panel).
+// Every text below is written as L("Nederlands", "English").
+const EN = new URLSearchParams(location.search).get("lang") === "en";
+const L = (nl, en) => EN ? en : nl;
+const UITLEG = EN ? "uitleg/en/" : "uitleg/";   // explanation pages in that language
+
+// --- 3: visible trees per home (same colours as the 3-regel map) ---
+const CLASSES_3 = [
+  ["0",   "#d7191c", L("0 bomen", "0 trees")],
+  ["1-2", "#fd8d3c", L("1-2 bomen", "1-2 trees")],
+  ["3-5", "#74c476", L("3-5 bomen", "3-5 trees")],
+  ["6-7", "#31a354", L("6-7 bomen", "6-7 trees")],
+  ["8+",  "#006d2c", L("8 of meer bomen", "8 or more trees")],
+];
+const NO_RING = ["#bdbdbd", L("geen vrije gevel", "no free facade")];
+const STEPS_3 = [
+  [0,  "#d7301f", "< 80%"],
+  [80, "#fdae6b", "80-90%"],
+  [90, "#c7e9c0", "90-95%"],
+  [95, "#74c476", "95-98%"],
+  [98, "#238b45", "≥ 98%"],
+];
+// Areas: the same gemeenten / wijken / buurten and zooms for 3, 30 and 300
+const LEVELS = [
+  { layer: "gemeenten", name: L("gemeente", "municipality"), plural: L("de gemeenten", "municipalities"), from: 0,    to: 10 },
+  { layer: "wijken",    name: L("wijk", "district"),          plural: L("de wijken", "districts"),        from: 10,   to: 11.5 },
+  { layer: "buurten",   name: L("buurt", "neighbourhood"),    plural: L("de buurten", "neighbourhoods"),  from: 11.5, to: 13 },
+];
+
+// --- 30: canopy cover on land within 500 m of the facade, per home (%) ---
+const STEPS_30 = [
+  [0,  "#d7301f", "< 10%"],
+  [10, "#fdae6b", "10-20%"],
+  [20, "#c7e9c0", "20-30%"],
+  [30, "#238b45", L("≥ 30% (voldoet)", "≥ 30% (meets the rule)")],
+];
+// Areas: share of homes with >= 30% within 500 m (0 has its own colour: most areas)
+const STEPS_30_AREA = [
+  [0,    "#d7301f", "0%"],
+  [0.05, "#fdae6b", "0-10%"],
+  [10,   "#c7e9c0", "10-25%"],
+  [25,   "#74c476", "25-50%"],
+  [50,   "#238b45", "≥ 50%"],
+];
+
+// --- 300: homes within a 5-minute walk of a park or wood ---
+const CLASSES_300 = [
+  ["5",   "#238b45", L("binnen 5 min lopen (≈ 300 m)", "within a 5-min walk (≈ 300 m)")],
+  ["ver", "#d7301f", L("verder dan 5 min lopen", "more than a 5-min walk")],
+];
+// Colours follow the 5 minutes only; the tiles also hold 15 minutes (klasse "15",
+// pct_15), shown in the popups and as a zone line.
+const POPUP_300 = { "5": L("Binnen 5 min lopen van groen", "Within a 5-minute walk of green"),
+                    "15": L("Verder dan 5 min lopen (wel binnen 15 min)", "More than a 5-minute walk (but within 15 min)"),
+                    "ver": L("Verder dan 15 min lopen van groen", "More than a 15-minute walk from green") };
+const GRASS = '(<a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html" target="_blank" rel="noopener">GRASS GIS</a>, meegeleverd met QGIS)';
+const GRASS_EN = '(<a href="https://grass.osgeo.org/grass-stable/manuals/v.net.distance.html" target="_blank" rel="noopener">GRASS GIS</a>, part of QGIS)';
+const STEPS_300 = [
+  [0,  "#d7301f", "< 50%"],
+  [50, "#fdae6b", "50-70%"],
+  [70, "#c7e9c0", "70-85%"],
+  [85, "#74c476", "85-95%"],
+  [95, "#238b45", "≥ 95%"],
+];
+// The parks and woods themselves (>= 300 m², as in the calculation): outline from
+// zoom 11, a light fill once the buildings show
+const GROEN_300 = { line: "#00441b", fill: "#41ab5d", from: 11 };
+const MIN_HOMES = 10;                        // fewer homes: no percentage shown
+const NO_DATA = "#d9d9d9";
+const BUILDINGS_FROM_ZOOM = 13;
+
+const THEMES = {
+  "3": {
+    intro: L("Ziet elke woning minstens 3 bomen? Aantal zichtbare bomen per woning, en het aandeel woningen met ≥ 3 zichtbare bomen per gebied.",
+             "Does every home see at least 3 trees? Number of visible trees per home, and the share of homes with ≥ 3 visible trees per area."),
+    method: L("Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin (AHN4, 0,5 m). " +
+              "Een woning krijgt het hoogste aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte) gezien wordt.",
+              "For every tree, the part of its surroundings within 30 m that is visible from the crown top was calculated (AHN4, 0.5 m). " +
+              "A home gets the highest number of visible trees seen anywhere just outside its facade (within 1.5 m, at an eye height of 1.8 m)."),
+  },
+  "30": {
+    intro: L("Woont iedereen in een buurt met minstens 30% boomkronen? Het kroondekkingspercentage binnen 500 m vanaf de gevel van elk pand, en per gebied het aandeel woningen met ≥ 30%.",
+             "Does everyone live in a neighbourhood with at least 30% tree canopy? The canopy cover within 500 m of the facade of every building, and per area the share of homes with ≥ 30%."),
+    method: L("De boomkronen komen uit de Boomkroonbedekking 2024 (BKB 2024) van Friedenau Society: een kaart met vakjes van 25 cm, " +
+              "gemaakt uit lidar (laserhoogtemetingen vanuit de lucht). Om elk woonpand is een zone van 500 m vanaf de gevel getrokken; " +
+              "daarin is het oppervlak onder kronen gedeeld door het landoppervlak (water en bruggen tellen niet mee; uit de technische totaalkaart 2024). " +
+              "Een gebied telt zijn woningen op: het aandeel woningen met ≥ 30%, en hun gemiddelde staat in de pop-up.",
+              "The tree crowns come from Friedenau Society's Boomkroonbedekking 2024 (BKB 2024): a map with 25 cm cells, " +
+              "made from lidar (airborne laser measurements). Around every residential building, a zone of 500 m from the facade was drawn; " +
+              "in it, the area under crowns is divided by the land area (water and bridges do not count; from the technische totaalkaart 2024). " +
+              "An area adds up its homes: the share of homes with ≥ 30%; their mean is in the popup."),
+  },
+  "300": {
+    intro: L("Woont iedereen binnen 300 m van een park? Loopafstand over straten en paden van elke woning tot de dichtstbijzijnde ingang van openbaar groen.",
+             "Does everyone live within 300 m of a park? Walking distance over streets and paths from every home to the nearest entrance of public green."),
+    method: L("Groen: parken, natuur, recreatiegebieden, landgoederen, begraafplaatsen en volkstuinen van minstens 300 m², zonder open water. " +
+              "Een ingang ligt waar een pad of straat het groen in gaat. " +
+              `Voor elke woning is met een netwerkanalyse ${GRASS} de loopafstand tot de dichtstbijzijnde ingang berekend, ook over fietspaden. ` +
+              "De kleuren gaan over 5 minuten lopen (425 m, ongeveer 300 m hemelsbreed): een pand waarvan een woning zo dichtbij ligt is groen. " +
+              "Per gebied: het aandeel woningen binnen 5 minuten; 300 m en 15 minuten staan in de pop-ups. Donkergroen omlijnd: het groen dat meetelt.",
+              "Green: parks, nature, recreation areas, estates, cemeteries and allotments of at least 300 m², without open water. " +
+              "An entrance is where a path or street enters the green. " +
+              `For every home, a network analysis ${GRASS_EN} calculated the walking distance to the nearest entrance, cycle paths included. ` +
+              "The colours are about a 5-minute walk (425 m, about 300 m as the crow flies): a building with a home that close is green. " +
+              "Per area: the share of homes within 5 minutes; 300 m and 15 minutes are in the popups. Dark green outlines: the green that counts."),
+  },
+};
+
+// --- Samen (trial): the three combined with weights from the sliders ---
+// Per home a score 0-100 per indicator (web/build_tiles_samen.py), two variants:
+//   p = rule met (0 or 100); per area: the share of homes meeting that rule
+//   s = gradual, min-max between the worst measured value (0) and the target (100):
+//       0-3 trees, 0-30% canopy, 1,275-425 m walk; beyond the target capped
+// Compound = sum(w*score) / sum(w) over the indicators with a value. That is
+// linear, so the area means in the tiles give the mean of the homes' compounds.
+const SAMEN_KEYS = ["3", "30", "300"];
+const SAMEN_RAMP = [[0, "#d7301f"], [25, "#fc8d59"], [50, "#fee08b"], [75, "#91cf60"], [100, "#1a9850"]];
+const samen = { w: { "3": 1, "30": 1, "300": 1 }, mode: "p" };   // ?w=1-1-1&m=p
+{
+  const q = new URLSearchParams(location.search);
+  const w = (q.get("w") || "").split("-").map(Number);
+  if (w.length === 3 && w.every((v) => v >= 0 && v <= 5)) SAMEN_KEYS.forEach((k, i) => samen.w[k] = w[i]);
+  if (q.get("m") === "s") samen.mode = "s";
+}
+THEMES.samen = {
+  intro: L("Proef: de 3, de 30 en de 300 in één kaart. Stel met de schuiven in hoe zwaar elk deel telt; een gebied krijgt het gemiddelde van zijn woningen.",
+           "Trial: the 3, the 30 and the 300 in one map. Set with the sliders how much each part counts; an area gets the mean of its homes."),
+  method: L("Per woning krijgt elk deel een score van 0 tot 100. <b>Regel gehaald</b>: 100 als de woning dat deel haalt, anders 0; per gebied is dat het aandeel woningen dat het haalt. " +
+            "<b>Geleidelijk</b>: lineair van de slechtste gemeten waarde (0 bomen, 0% kroon, 1.275 m lopen: verder meet de 300 niet) tot het doel (3 bomen, 30%, 425 m), daarboven 100 " +
+            "(min-max-normalisatie met vaste grenzen, OECD/JRC-handboek voor samengestelde indicatoren, 2008). " +
+            "Het totaal is het gewogen gemiddelde van de drie. Het artikel geeft geen gewichten: elk deel is een minimum. Daarom staat in elke pop-up ook het aandeel woningen dat alle drie haalt, zonder gewichten.",
+            "Per home, each part gets a score from 0 to 100. <b>Rule met</b>: 100 if the home meets that part, else 0; per area that is the share of homes meeting it. " +
+            "<b>Gradual</b>: linear from the worst measured value (0 trees, 0% canopy, a 1,275 m walk: the 300 measures no further) to the target (3 trees, 30%, 425 m), 100 beyond " +
+            "(min-max normalisation with fixed bounds, OECD/JRC Handbook on Constructing Composite Indicators, 2008). " +
+            "The total is the weighted mean of the three. The paper gives no weights: each part is a minimum. So every popup also shows the share of homes meeting all three, without weights."),
+};
+
+const SOURCES = {
+  "3": [
+    [L("Hoogtemodel", "Elevation model"), L('<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0,5 m',
+                                             '<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0.5 m'), "2020–2022"],
+    [L("Bomen", "Trees"), L("NEO boomdata (aangekocht)", "NEO tree data (purchased)"), "2020–2022"],
+    [L("Woningen", "Homes"), "BAG via PDOK", L("27 september 2026", "27 September 2026")],
+    [L("Gebieden", "Areas"), L("Bestuurlijke gebieden; CBS wijken en buurten 2025", "Administrative boundaries; CBS districts and neighbourhoods 2025"), "2025–2026"],
+  ],
+  "30": [
+    [L("Boomkronen", "Tree crowns"), L("Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, uit lidar, 25 cm",
+                                       "Boomkroonbedekking 2024 (BKB 2024), Friedenau Society, from lidar, 25 cm"), "2024"],
+    [L("Land en water", "Land and water"), L("Technische totaalkaart 2024, Friedenau Society, 25 cm", "Technische totaalkaart 2024, Friedenau Society, 25 cm"), "2024"],
+    [L("Woningen", "Homes"), L("Zelfde als de 3 (BAG)", "Same as the 3 (BAG)"), L("27 september 2026", "27 September 2026")],
+    [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
+  ],
+  "300": [
+    [L("Parken", "Parks"), L("Provinciale voorzieningenkaart (OpenStreetMap en TOP10NL)", "Provincial facilities map (OpenStreetMap and TOP10NL)"), L("17 september 2025", "17 September 2025")],
+    [L("Overig groen", "Other green"), L("TOP10NL functioneel gebied: recreatiegebied, natuurgebied, landgoed, begraafplaats, volkstuinen e.a.",
+                                         "TOP10NL functional areas: recreation area, nature area, estate, cemetery, allotments and more"), "2025"],
+    [L("Water", "Water"), L("CBS Wijk- en Buurtkaart 2025 en OpenStreetMap (uit het groen geknipt)", "CBS district and neighbourhood map 2025 and OpenStreetMap (cut out of the green)"), "2025–2026"],
+    [L("Paden en straten", "Paths and streets"), L("OpenStreetMap, extract Zuid-Holland (Geofabrik)", "OpenStreetMap, Zuid-Holland extract (Geofabrik)"), L("12 oktober 2026", "12 October 2026")],
+    [L("Loopafstand", "Walking distance"), L(`Netwerkanalyse ${GRASS}`, `Network analysis ${GRASS_EN}`), "2026"],
+    [L("Woningen", "Homes"), L("Zelfde als de 3 (BAG)", "Same as the 3 (BAG)"), L("27 september 2026", "27 September 2026")],
+    [L("Gebieden", "Areas"), L("Zelfde als de 3", "Same as the 3"), "2025–2026"],
+  ],
+};
+const CAVEATS = L("Alle tabbladen tonen dezelfde gemeenten, wijken (CBS 2025) en buurten (CBS 2025). De 30 meet kronen in 2024, binnen 500 m van de gevel: " +
+  "ook over de grens van de buurt en van de provincie heen. De 3, de 30 en de 300 gebruiken dezelfde " +
+  "woningen (BAG 2026). De 300 meet de loopafstand tot een ingang, niet hemelsbreed tot de rand van het groen.",
+  "All tabs show the same municipalities, districts (CBS 2025) and neighbourhoods (CBS 2025). The 30 measures crowns in 2024, within 500 m of the facade: " +
+  "also across the boundary of the neighbourhood and of the province. The 3, the 30 and the 300 use the same homes " +
+  "(BAG 2026). The 300 measures the walking distance to an entrance, not the straight-line distance to the edge of the green.");
+// Second background: aerial photo (WMS), highest resolution available nationwide
+const AERIAL_WMS = "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0";
+const AERIAL_LAYER = "Actueel_orthoHR";      // latest complete year, 8 cm
+const BASE_SOURCES = [[L("Achtergrondkaart", "Background map"), L("BRT-achtergrondkaart grijs (Kadaster) via PDOK", "BRT background map, grey (Kadaster) via PDOK"), L("actueel", "current")],
+                      [L("Luchtfoto", "Aerial photo"), L("Beeldmateriaal Nederland, ortho 8 cm RGB (WMS) via PDOK", "Beeldmateriaal Nederland, ortho 8 cm RGB (WMS) via PDOK"), L("meest recente jaar", "latest year")],
+                      [L("Hittestress", "Heat stress"), L('Gevoelstemperatuur op een hete zomerdag, <a href="https://www.klimaateffectatlas.nl" target="_blank" rel="noopener">Klimaateffectatlas</a> (WMS)',
+                                                          'Felt temperature on a hot summer day, <a href="https://www.klimaateffectatlas.nl" target="_blank" rel="noopener">Klimaateffectatlas</a> (WMS)'), "2022"]];
+let aerialOn = new URLSearchParams(location.search).get("bg") === "luchtfoto";
+// Optional layer under the data: heat stress (felt temperature, PET), remembered in the URL as ?hitte=1
+const HEAT_WMS = "https://cas.cloud.sogelink.com/public/data/org/gws/YWFMLMWERURF/kea_public/wms";
+const HEAT_LAYER = "gevoelstemperatuur_2022";
+const HEAT_OPACITY = 0.6;
+const HEAT_CLASSES = [["#2973A2", "< 32 °C"], ["#8BAEC2", "32–34 °C"], ["#CAE2A4", "35–37 °C"],   // the service's own colours
+                      ["#F8E497", "38–40 °C"], ["#C69188", "41–43 °C"], ["#C9796F", "44–45 °C"],
+                      ["#8E2F2C", "46–48 °C"], ["#730000", "49–50 °C"], ["#330000", "> 50 °C"]];
+let heatOn = new URLSearchParams(location.search).get("hitte") === "1";
+// Optional layers on top, on every tab: where the groups most sensitive to heat live
+// (web/build_tiles_kwetsbaar.py), remembered in the URL as ?oud=1 and ?geb=1.
+// Circle area is proportional to the number of people.
+const TILES_KWETSBAAR = "data/kwetsbaar.pmtiles";
+const KWETSBAAR = {
+  oud: { layer: "ouderen", colour: "#6a3d9a", sizes: [10, 50, 200],
+         radius: [10, 0.15, 14, 0.6, 16, 1.5],                     // [zoom, px per √person, ...]
+         label: L("Inwoners van 65 jaar en ouder, per vierkant van 100 m", "Residents aged 65 and older, per 100 m square"),
+         source: [L("65-plussers", "Aged 65+"), L("CBS vierkantstatistieken 100 m (via PDOK); afgerond op 5, vierkanten met minder dan 5 weggelaten",
+                                                   "CBS 100 m square statistics (via PDOK); rounded to 5, squares with fewer than 5 left out"), "2024"] },
+  geb: { layer: "geboorten", colour: "#e7298a", sizes: [5, 25, 100],
+         radius: [8, 0.4, 12, 1.2, 14, 2],
+         label: L("Geboorten per buurt (baby's onder 1 jaar)", "Births per neighbourhood (babies under 1)"),
+         source: [L("Geboorten", "Births"), L("CBS kerncijfers wijken en buurten (via PDOK); CBS heeft geen leeftijdsgroep 0-4 jaar, geboorten per 100 m zijn bijna alle geheim",
+                                              "CBS district and neighbourhood figures (via PDOK); CBS has no 0-4 age group, births per 100 m are nearly all suppressed"), "2024"] },
+};
+const kwetsbaarOn = Object.fromEntries(Object.keys(KWETSBAAR).map((k) => [k, new URLSearchParams(location.search).get(k) === "1"]));
+// ---------------------------------------------------------------------------
+
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol("pmtiles", protocol.tile);
+const tiles3 = new pmtiles.PMTiles(new URL(TILES_3, location.href).href);
+protocol.add(tiles3);
+
+// Static texts and links in the chosen language; the switch keeps theme,
+// background and position (read at click time, they change while browsing)
+if (EN) {
+  document.documentElement.lang = "en";
+  document.querySelectorAll("[data-en]").forEach((el) => el.innerHTML = el.dataset.en);
+  document.querySelectorAll("[data-en-label]").forEach((el) => {
+    el.ariaLabel = el.dataset.enLabel;
+    if (el.placeholder) el.placeholder = el.dataset.enLabel;
+  });
+  document.querySelectorAll('a[href^="uitleg/"]').forEach((a) => a.href = a.getAttribute("href").replace("uitleg/", UITLEG));
+}
+const langLink = document.getElementById("lang");
+Object.assign(langLink, EN ? { textContent: "Nederlands", hreflang: "nl", lang: "nl" } : {});
+langLink.onclick = (ev) => {
+  ev.preventDefault();
+  const url = new URL(location.href);
+  if (EN) url.searchParams.delete("lang"); else url.searchParams.set("lang", "en");
+  location.href = url;
+};
+document.getElementById("title").textContent = `3-30-300 in ${PROVINCE}`;
+document.title = L(`3-30-300-regel ${PROVINCE}`, `3-30-300 rule ${PROVINCE}`);
+document.getElementById("repo-link").href = REPO;
+
+const stepColour = (field, steps) => ["case",
+  ["<", ["coalesce", ["get", "woningen"], 0], MIN_HOMES], NO_DATA,
+  ["step", ["coalesce", ["get", field], 0], ...steps.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]];
+const matchColour = (classes, fallback) =>
+  ["match", ["coalesce", ["get", "klasse"], ""], ...classes.flatMap(([k, c]) => [k, c]), fallback];
+
+// Layers per theme: [layer, ...] ids get shown/hidden together
+const layers = { "3": [], "30": [], "300": [], samen: [] };
+function add(theme, def) { def.layout = { ...(def.layout || {}), visibility: "none" }; layers[theme].push(def); }
+
+for (const lv of LEVELS) {
+  add("3", { id: `3-${lv.layer}-fill`, type: "fill", source: "t3", "source-layer": lv.layer,
+             minzoom: lv.from, maxzoom: lv.to,
+             paint: { "fill-color": stepColour("pct_3_of_meer", STEPS_3), "fill-opacity": 0.75 } });
+  add("3", { id: `3-${lv.layer}-line`, type: "line", source: "t3", "source-layer": lv.layer,
+             minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
+}
+add("3", { id: "3-woningen", type: "fill", source: "t3", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+           paint: { "fill-color": matchColour(CLASSES_3, NO_RING[0]), "fill-opacity": 0.9,
+                    "fill-outline-color": "rgba(40,40,40,0.5)" } });
+
+for (const lv of LEVELS) {
+  add("30", { id: `30-${lv.layer}-fill`, type: "fill", source: "t30", "source-layer": lv.layer,
+              minzoom: lv.from, maxzoom: lv.to, paint: { "fill-color": stepColour("pct_30", STEPS_30_AREA), "fill-opacity": 0.75 } });
+  add("30", { id: `30-${lv.layer}-line`, type: "line", source: "t30", "source-layer": lv.layer,
+              minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
+  add("300", { id: `300-${lv.layer}-fill`, type: "fill", source: "t30", "source-layer": lv.layer,
+               minzoom: lv.from, maxzoom: lv.to, paint: { "fill-color": stepColour("pct_5", STEPS_300), "fill-opacity": 0.75 } });
+  add("300", { id: `300-${lv.layer}-line`, type: "line", source: "t30", "source-layer": lv.layer,
+               minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
+}
+add("30", { id: "30-woningen", type: "fill", source: "t30", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+            paint: { "fill-color": ["case", ["!", ["has", "kroon"]], NO_DATA,
+                       ["step", ["get", "kroon"], ...STEPS_30.flatMap(([v, c], i) => i === 0 ? [c] : [v, c])]],
+                     "fill-opacity": 0.9, "fill-outline-color": "rgba(40,40,40,0.5)" } });
+add("300", { id: "300-groen-fill", type: "fill", source: "tg", "source-layer": "groen", minzoom: BUILDINGS_FROM_ZOOM,
+             paint: { "fill-color": GROEN_300.fill, "fill-opacity": 0.35 } });
+add("300", { id: "300-groen-line", type: "line", source: "tg", "source-layer": "groen", minzoom: GROEN_300.from,
+             paint: { "line-color": GROEN_300.line, "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.6, 15, 1.5] } });
+add("300", { id: "300-woningen", type: "fill", source: "t30", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+             paint: { "fill-color": ["case", ["==", ["get", "klasse"], "5"], CLASSES_300[0][1], CLASSES_300[1][1]],
+                      "fill-opacity": 0.9,
+                      "fill-outline-color": "rgba(40,40,40,0.5)" } });
+// Optional: the walking zones and entrances (checkbox), from a source of their own:
+// switching a layer on or off makes MapLibre re-process every tile of its source
+const ISO_LAYERS = ["300-iso15", "300-iso5", "300-ingangen"];
+add("300", { id: "300-iso15", type: "line", source: "tl", "source-layer": "iso15", minzoom: 9,
+             paint: { "line-color": "#e6550d", "line-width": 1.2, "line-dasharray": [2, 2] } });
+add("300", { id: "300-iso5", type: "line", source: "tl", "source-layer": "iso5", minzoom: 9,
+             paint: { "line-color": "#006d2c", "line-width": 1.5 } });
+add("300", { id: "300-ingangen", type: "circle", source: "tl", "source-layer": "ingangen", minzoom: 13,
+             paint: { "circle-radius": 3.5, "circle-color": "#006d2c", "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
+
+// Samen: the colour is the weighted mean of the scores the feature has
+// (a missing indicator drops out of numerator and denominator)
+function samenColour(area) {
+  const f = (k) => samen.mode + k;
+  const num = ["+", ...SAMEN_KEYS.map((k) => ["*", samen.w[k], ["coalesce", ["get", f(k)], 0]])];
+  const den = ["+", ...SAMEN_KEYS.map((k) => ["case", ["has", f(k)], samen.w[k], 0])];
+  const colour = ["case", ["<=", den, 0], NO_DATA,
+                  ["interpolate", ["linear"], ["/", num, den], ...SAMEN_RAMP.flat()]];
+  return area ? ["case", ["<", ["coalesce", ["get", "woningen"], 0], MIN_HOMES], NO_DATA, colour] : colour;
+}
+for (const lv of LEVELS) {
+  add("samen", { id: `samen-${lv.layer}-fill`, type: "fill", source: "ts", "source-layer": lv.layer,
+                 minzoom: lv.from, maxzoom: lv.to, paint: { "fill-color": samenColour(true), "fill-opacity": 0.75 } });
+  add("samen", { id: `samen-${lv.layer}-line`, type: "line", source: "ts", "source-layer": lv.layer,
+                 minzoom: lv.from, maxzoom: lv.to, paint: { "line-color": "#555", "line-width": 0.5 } });
+}
+add("samen", { id: "samen-woningen", type: "fill", source: "ts", "source-layer": "woningen", minzoom: BUILDINGS_FROM_ZOOM,
+               paint: { "fill-color": samenColour(false), "fill-opacity": 0.9, "fill-outline-color": "rgba(40,40,40,0.5)" } });
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: [5.3, 52.2],     // the Netherlands until the tile extent is known (below)
+  zoom: 7,
+  minZoom: 6,
+  hash: true,              // position in the URL, so a link opens the same view
+  style: {
+    version: 8,
+    sources: {
+      brt: {
+        type: "raster", tileSize: 256, maxzoom: 19,
+        tiles: ["https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png"],
+        attribution: L("Achtergrond", "Background") + ': <a href="https://www.pdok.nl">PDOK</a> BRT-achtergrondkaart (Kadaster)',
+      },
+      luchtfoto: {
+        type: "raster", tileSize: 256, maxzoom: 21,
+        tiles: [AERIAL_WMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=" + AERIAL_LAYER +
+                "&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/jpeg"],
+        attribution: L("Luchtfoto", "Aerial photo") + ': <a href="https://www.beeldmateriaal.nl">Beeldmateriaal Nederland</a> via PDOK',
+      },
+      hitte: {
+        type: "raster", tileSize: 256, maxzoom: 18,
+        tiles: [HEAT_WMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=" + HEAT_LAYER +
+                "&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true"],
+        attribution: L("Hittestress", "Heat stress") + ': <a href="https://www.klimaateffectatlas.nl">Klimaateffectatlas</a>',
+      },
+      t3: { type: "vector", url: "pmtiles://" + new URL(TILES_3, location.href).href,
+            attribution: L("AHN4, BAG, CBS, bomen: NEO", "AHN4, BAG, CBS, trees: NEO") },
+      t30: { type: "vector", url: "pmtiles://" + new URL(TILES_30_300, location.href).href,
+             attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
+      tg: { type: "vector", url: "pmtiles://" + new URL(TILES_GROEN, location.href).href },
+      tl: { type: "vector", url: "pmtiles://" + new URL(TILES_LOOPTIJD, location.href).href },
+      ts: { type: "vector", url: "pmtiles://" + new URL(TILES_SAMEN, location.href).href },
+      tk: { type: "vector", url: "pmtiles://" + new URL(TILES_KWETSBAAR, location.href).href, attribution: "CBS" },
+    },
+    layers: [{ id: "brt", type: "raster", source: "brt" },
+             { id: "luchtfoto", type: "raster", source: "luchtfoto",
+               layout: { visibility: aerialOn ? "visible" : "none" } },
+             { id: "hitte", type: "raster", source: "hitte", paint: { "raster-opacity": HEAT_OPACITY },
+               layout: { visibility: heatOn ? "visible" : "none" } },
+             ...layers["3"], ...layers["30"], ...layers["300"], ...layers.samen,
+             ...Object.entries(KWETSBAAR).map(([k, v]) => ({
+               id: `kw-${k}`, type: "circle", source: "tk", "source-layer": v.layer,
+               layout: { visibility: kwetsbaarOn[k] ? "visible" : "none" },
+               paint: { "circle-color": v.colour, "circle-opacity": 0.65,
+                        "circle-stroke-color": "#fff", "circle-stroke-width": 0.6,
+                        "circle-radius": ["interpolate", ["linear"], ["zoom"],
+                          ...v.radius.flatMap((x, i) => i % 2 ? [] : [x, ["*", v.radius[i + 1], ["sqrt", ["get", "n"]]]])] } }))],
+  },
+});
+
+// (i) button: sources and dates
+const info = document.getElementById("info");
+class InfoControl {
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "info-btn";
+    btn.title = btn.ariaLabel = L("Bronnen en actualiteit", "Sources and dates");
+    btn.textContent = "i";
+    btn.onclick = () => info.showModal();
+    div.appendChild(btn);
+    return div;
+  }
+  onRemove() {}
+}
+map.addControl(new InfoControl(), "top-right");
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+
+const table = document.getElementById("sources");
+for (const [theme, rows] of [...Object.entries(SOURCES), ["", [...BASE_SOURCES, ...Object.values(KWETSBAAR).map((v) => v.source)]]]) {
+  for (const [what, src, when] of rows) {
+    const tr = table.insertRow();
+    tr.insertCell().textContent = theme ? `${theme} · ${what}` : what;
+    tr.insertCell().innerHTML = src;
+    tr.insertCell().textContent = when;
+  }
+}
+document.getElementById("caveats").textContent = CAVEATS;
+document.getElementById("info-close").onclick = () => info.close();
+
+// Theme switch (3 / 30 / 300), remembered in the URL as ?t=
+let theme = new URLSearchParams(location.search).get("t");
+if (!THEMES[theme]) theme = "samen";
+const isoBox = document.getElementById("iso");
+
+function setTheme(t) {
+  theme = t;
+  for (const [k, defs] of Object.entries(layers)) {
+    for (const d of defs) {
+      const on = k === t && (!ISO_LAYERS.includes(d.id) || isoBox.checked);
+      map.setLayoutProperty(d.id, "visibility", on ? "visible" : "none");
+    }
+  }
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.theme === t));
+  document.getElementById("intro").textContent = THEMES[t].intro;
+  document.getElementById("method").innerHTML = THEMES[t].method;   // fixed strings above (may hold a link)
+  document.getElementById("iso-toggle").style.display = t === "300" ? "" : "none";
+  document.getElementById("weights").hidden = t !== "samen";
+  const url = new URL(location.href);
+  url.searchParams.set("t", t);
+  history.replaceState(null, "", url);
+  updateLegend();
+}
+
+// Samen: sliders and mode, remembered in the URL as ?w=1-1-1&m=p; the share
+// each weight gets is shown next to its slider
+const sliders = [...document.querySelectorAll(".w-row input")];
+const modeRadios = [...document.querySelectorAll('input[name="mode"]')];
+function setSamen() {
+  const total = SAMEN_KEYS.reduce((a, k) => a + samen.w[k], 0);
+  sliders.forEach((s) => {
+    s.value = samen.w[s.dataset.k];
+    s.nextElementSibling.textContent = total ? `${Math.round(100 * samen.w[s.dataset.k] / total)}%` : "–";
+  });
+  modeRadios.forEach((r) => r.checked = r.value === samen.mode);
+  document.getElementById("w-note").textContent = !total ? L("Zet minstens één gewicht hoger dan 0.", "Set at least one weight above 0.")
+    : samen.mode === "s" ? L("Geleidelijk: een goede score op het ene deel kan een slechte op het andere deels goedmaken; de regel zelf vraagt alle drie.",
+                             "Gradual: a good score on one part can partly make up for a poor one on another; the rule itself asks for all three.")
+    : L("Bij gelijke gewichten: het gemiddelde aantal gehaalde regels, als percentage van 3.",
+        "With equal weights: the mean number of rules met, as a percentage of 3.");
+  for (const lv of LEVELS) map.setPaintProperty(`samen-${lv.layer}-fill`, "fill-color", samenColour(true));
+  map.setPaintProperty("samen-woningen", "fill-color", samenColour(false));
+  const url = new URL(location.href);
+  url.searchParams.set("w", SAMEN_KEYS.map((k) => samen.w[k]).join("-"));
+  url.searchParams.set("m", samen.mode);
+  history.replaceState(null, "", url);
+  updateLegend();
+}
+sliders.forEach((s) => s.oninput = () => { samen.w[s.dataset.k] = Number(s.value); setSamen(); });
+modeRadios.forEach((r) => r.onchange = () => { samen.mode = r.value; setSamen(); });
+document.getElementById("w-reset").onclick = () => { SAMEN_KEYS.forEach((k) => samen.w[k] = 1); setSamen(); };
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => setTheme(b.dataset.theme));
+isoBox.onchange = () => setTheme(theme);
+
+// Background: grey map or aerial photo, remembered in the URL as ?bg=luchtfoto
+// Two switches: the checkbox in the panel and a button on the map (top right).
+const aerialBox = document.getElementById("aerial");
+const bgBtn = document.createElement("button");
+function setAerial(on) {
+  aerialOn = on;
+  aerialBox.checked = on;
+  bgBtn.textContent = on ? L("Kaart", "Map") : L("Luchtfoto", "Aerial");     // what a click switches to
+  bgBtn.title = bgBtn.ariaLabel = on ? L("Achtergrond: grijze kaart", "Background: grey map")
+                                     : L("Achtergrond: luchtfoto", "Background: aerial photo");
+  if (map.getLayer("luchtfoto")) map.setLayoutProperty("luchtfoto", "visibility", on ? "visible" : "none");
+  const url = new URL(location.href);
+  if (on) url.searchParams.set("bg", "luchtfoto"); else url.searchParams.delete("bg");
+  history.replaceState(null, "", url);
+}
+aerialBox.onchange = () => setAerial(aerialBox.checked);
+class BackgroundControl {
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    bgBtn.type = "button";
+    bgBtn.className = "bg-btn";
+    bgBtn.onclick = () => setAerial(!aerialOn);
+    div.appendChild(bgBtn);
+    return div;
+  }
+  onRemove() {}
+}
+map.addControl(new BackgroundControl(), "top-right");
+setAerial(aerialOn);
+
+// Heat stress under the data layers, on every tab
+const heatBox = document.getElementById("heat");
+heatBox.checked = heatOn;
+heatBox.onchange = () => {
+  heatOn = heatBox.checked;
+  if (map.getLayer("hitte")) map.setLayoutProperty("hitte", "visibility", heatOn ? "visible" : "none");
+  const url = new URL(location.href);
+  if (heatOn) url.searchParams.set("hitte", "1"); else url.searchParams.delete("hitte");
+  history.replaceState(null, "", url);
+  updateLegend();
+};
+
+// Heat-sensitive groups on top, on every tab
+for (const k of Object.keys(KWETSBAAR)) {
+  const box = document.getElementById(k);
+  box.checked = kwetsbaarOn[k];
+  box.onchange = () => {
+    kwetsbaarOn[k] = box.checked;
+    if (map.getLayer(`kw-${k}`)) map.setLayoutProperty(`kw-${k}`, "visibility", box.checked ? "visible" : "none");
+    const url = new URL(location.href);
+    if (box.checked) url.searchParams.set(k, "1"); else url.searchParams.delete(k);
+    history.replaceState(null, "", url);
+    updateLegend();
+  };
+}
+// Legend circles at the current zoom, so their size matches the map
+function circleBlock(v) {
+  const z = map.getZoom();
+  const r = v.radius;
+  let k = r[1];
+  for (let i = 0; i + 2 < r.length; i += 2) {
+    if (z >= r[i]) k = z >= r[i + 2] ? r[i + 3] : r[i + 1] + (r[i + 3] - r[i + 1]) * (z - r[i]) / (r[i + 2] - r[i]);
+  }
+  const div = legendBlock(v.label, []);
+  const row = document.createElement("div");
+  row.className = "legend-row";
+  row.style.alignItems = "flex-end";
+  for (const n of v.sizes) {
+    const d = Math.max(2 * k * Math.sqrt(n), 3);
+    const c = document.createElement("span");
+    Object.assign(c.style, { width: `${d}px`, height: `${d}px`, borderRadius: "50%", background: v.colour,
+                             opacity: 0.65, border: "1px solid #fff", flex: "none" });
+    const t = document.createElement("span");
+    t.textContent = fmt(n);
+    t.style.marginRight = "6px";
+    row.append(c, t);
+  }
+  div.appendChild(row);
+  return div;
+}
+
+// Legend: depends on theme and zoom
+function legendRow(colour, label, line) {
+  const row = document.createElement("div");
+  row.className = "legend-row";
+  const sw = document.createElement("span");
+  sw.className = "swatch";
+  if (line) Object.assign(sw.style, { background: "none", border: 0, borderTop: `2px ${line} ${colour}`, height: 0 });
+  else sw.style.background = colour;
+  const text = document.createElement("span");
+  text.textContent = label;
+  row.append(sw, text);
+  return row;
+}
+function legendBlock(title, rows) {
+  const div = document.createElement("div");
+  const h = document.createElement("div");
+  h.className = "legend-title";
+  h.textContent = title;
+  div.appendChild(h);
+  rows.forEach((r) => div.appendChild(legendRow(...r)));
+  return div;
+}
+// Under the per-home legend: a model result per home is an indication
+function homeNote(href) {
+  const p = document.createElement("p");
+  p.className = "hint";
+  p.append(L("Per woning is dit een indicatie uit een model, geen meting ter plekke. ",
+             "Per home this is an indication from a model, not a measurement on site. "));
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.textContent = L("Klopt het niet voor jouw woning?", "Not right for your home?");
+  p.appendChild(a);
+  return p;
+}
+function updateLegend() {
+  const legend = document.getElementById("legend");
+  const hint = document.getElementById("hint");
+  legend.replaceChildren();
+  hint.textContent = "";
+  const few = [NO_DATA, L(`minder dan ${MIN_HOMES} woningen`, `fewer than ${MIN_HOMES} homes`)];
+  const z = map.getZoom();
+  let i = LEVELS.findIndex((lv) => z >= lv.from && z < lv.to);
+  const next = i + 1 < LEVELS.length ? LEVELS[i + 1].plural : L("de afzonderlijke woningen", "individual homes");
+  if (i >= 0) hint.textContent = L(`Zoom in voor ${next}.`, `Zoom in for ${next}.`);
+  if (theme === "3") {
+    if (i < 0) {
+      legend.appendChild(legendBlock(L("Zichtbare bomen per woning", "Visible trees per home"), [...CLASSES_3.map(([, c, l]) => [c, l]), NO_RING]));
+      legend.appendChild(homeNote(UITLEG + "3.html#mijn-woning"));
+    } else {
+      legend.appendChild(legendBlock(L(`Woningen met ≥ 3 zichtbare bomen, per ${LEVELS[i].name}`, `Homes with ≥ 3 visible trees, per ${LEVELS[i].name}`),
+                                     [...STEPS_3.map(([, c, l]) => [c, l]), few]));
+    }
+  } else if (theme === "30") {
+    if (i < 0) {
+      legend.appendChild(legendBlock(L("Kroonbedekking binnen 500 m", "Canopy cover within 500 m"), [...STEPS_30.map(([, c, l]) => [c, l])]));
+      legend.appendChild(homeNote(UITLEG + "30.html#mijn-woning"));
+    } else {
+      legend.appendChild(legendBlock(L(`Woningen met ≥ 30% kroonbedekking binnen 500 m, per ${LEVELS[i].name}`,
+                                       `Homes with ≥ 30% canopy cover within 500 m, per ${LEVELS[i].name}`),
+                                     [...STEPS_30_AREA.map(([, c, l]) => [c, l]), few]));
+    }
+  } else if (theme === "samen") {
+    const what = samen.mode === "p" ? L("Gewogen aandeel gehaalde regels", "Weighted share of rules met")
+                                    : L("Gewogen score (100 = doel gehaald)", "Weighted score (100 = target met)");
+    const block = legendBlock(i < 0 ? L(`${what}, per woning`, `${what}, per home`) : `${what}, ${L("gemiddelde per", "mean per")} ${LEVELS[i].name}`, []);
+    const ramp = document.createElement("div");
+    ramp.className = "ramp";
+    ramp.style.background = `linear-gradient(to right, ${SAMEN_RAMP.map(([v, c]) => `${c} ${v}%`).join(", ")})`;
+    const labels = document.createElement("div");
+    labels.className = "ramp-labels";
+    labels.innerHTML = "<span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>";
+    block.append(ramp, labels);
+    legend.appendChild(block);
+    legend.appendChild(legendBlock("", [i < 0 ? [NO_DATA, L("geen gegevens", "no data")] : few]));
+  } else {
+    if (i < 0) {
+      legend.appendChild(legendBlock(L("Loopafstand tot groen", "Walking distance to green"), [...CLASSES_300.map(([, c, l]) => [c, l])]));
+      legend.appendChild(homeNote(UITLEG + "300.html#mijn-woning"));
+    } else {
+      legend.appendChild(legendBlock(L(`Woningen binnen 5 min lopen van groen, per ${LEVELS[i].name}`, `Homes within a 5-min walk of green, per ${LEVELS[i].name}`),
+                                     [...STEPS_300.map(([, c, l]) => [c, l]), few]));
+    }
+    if (z >= GROEN_300.from) {
+      legend.appendChild(legendBlock(L("Groen", "Green"), [[GROEN_300.line, L("park of ander openbaar groen (≥ 300 m²)", "park or other public green (≥ 300 m²)"), "solid"]]));
+    }
+    if (isoBox.checked) {
+      legend.appendChild(legendBlock(L("Looptijdzones", "Walking zones"), [["#006d2c", L("5 minuten", "5 minutes"), "solid"], ["#e6550d", L("15 minuten", "15 minutes"), "dashed"]]));
+    }
+  }
+  if (heatOn) {
+    legend.appendChild(legendBlock(L("Hittestress: gevoelstemperatuur op een hete zomerdag", "Heat stress: felt temperature on a hot summer day"),
+                                   HEAT_CLASSES));
+  }
+  for (const [k, v] of Object.entries(KWETSBAAR)) {
+    if (!kwetsbaarOn[k]) continue;
+    legend.appendChild(circleBlock(v));
+    if (k === "oud" && z < v.radius[0]) {
+      const p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = L(`Zoom in tot niveau ${v.radius[0]} om de 65-plussers te zien.`, `Zoom in to level ${v.radius[0]} to see the residents aged 65+.`);
+      legend.appendChild(p);
+    }
+  }
+}
+map.on("zoom", updateLegend);
+map.on("load", () => { setTheme(theme); setSamen(); });
+
+// On a phone the panel sits at the bottom (CSS: max-height 45vh, 24px up):
+// views are fitted into the part of the screen above it
+const PHONE = window.matchMedia("(max-width: 600px)").matches;
+const viewPadding = () => PHONE ? { top: 20, left: 20, right: 20, bottom: Math.round(innerHeight * 0.45) + 36 } : 20;
+
+// Open on the extent of the data (unless the URL already holds a position),
+// and keep the view near it
+tiles3.getHeader().then((h) => {
+  const bounds = [[h.minLon, h.minLat], [h.maxLon, h.maxLat]];
+  const pad = 0.6;   // degrees
+  let south = h.minLat - pad / 2;
+  if (PHONE && !location.hash) {
+    // The pan limits would pull the view back south, under the panel: fit
+    // without them first, then let the south limit include the screen's bottom edge
+    map.fitBounds(bounds, { padding: viewPadding(), animate: false });
+    south = Math.min(south, map.unproject([innerWidth / 2, innerHeight]).lat);
+  }
+  map.setMaxBounds([[h.minLon - pad, south], [h.maxLon + pad, h.maxLat + pad / 2]]);
+  if (!location.hash && !PHONE) map.fitBounds(bounds, { padding: viewPadding(), animate: false });
+});
+
+// Popups
+const fmt = (n) => n == null ? "–" : Number(n).toLocaleString(L("nl-NL", "en-GB"));
+const pct = (n) => n == null ? "–" : `${fmt(n)}%`;
+function popup(lngLat, rows, link) {
+  const div = document.createElement("div");
+  rows.forEach(([k, v], i) => {
+    const line = document.createElement(i === 0 ? "strong" : "div");
+    line.textContent = k === null ? v : `${k}: ${v}`;
+    div.appendChild(line);
+  });
+  if (link) {                                   // [text, href]: e.g. "Waarom rood?" to the explanation
+    const a = document.createElement("a");
+    a.textContent = link[0];
+    a.href = link[1];
+    a.target = "_blank";
+    a.style.cssText = "display:block;margin-top:6px;color:var(--accent)";
+    div.appendChild(a);
+  }
+  // One popup at a time: a click on a circle on top of an area replaces the area's popup
+  openPopup?.remove();
+  openPopup = new maplibregl.Popup({ maxWidth: "280px" }).setLngLat(lngLat).setDOMContent(div).addTo(map);
+}
+let openPopup = null;
+map.on("click", "3-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, p.bomen == null ? L("Geen vrije gevel", "No free facade") : L(`${fmt(p.bomen)} zichtbare bomen`, `${fmt(p.bomen)} visible trees`)],
+    [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+    [L("Gemeente", "Municipality"), p.gemeente],
+  ], (p.bomen ?? 0) < 3 ? [L("Ik zie wel bomen: waarom deze kleur?", "But I do see trees: why this colour?"), UITLEG + "3.html#mijn-woning"] : null);
+});
+const areaTitle = (p, lv) => lv.layer === "gemeenten" ? p.naam : `${p.naam} (${lv.name}, ${p.gemeente})`;
+for (const lv of LEVELS) {
+  map.on("click", `3-${lv.layer}-fill`, (e) => {
+    const p = e.features[0].properties;
+    const few = (p.woningen ?? 0) < MIN_HOMES;
+    popup(e.lngLat, [
+      [null, areaTitle(p, lv)],
+      [L("Woningen", "Homes"), fmt(p.woningen)],
+      [L("Met ≥ 3 zichtbare bomen", "With ≥ 3 visible trees"), few ? "–" : pct(p.pct_3_of_meer)],
+      [L("Met 0 zichtbare bomen", "With 0 visible trees"), few ? "–" : pct(p.pct_0)],
+    ]);
+  });
+}
+map.on("click", "300-groen-fill", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, p.namen || L("Groen", "Green")],
+    [L("Soort", "Type"), p.soorten || "–"],
+    [L("Bron", "Source"), (p.bronnen || "–").replace("voorzieningen", L("voorzieningenkaart", "facilities map")).replace("top10nl recreatie", "TOP10NL").replace("top10nl", "TOP10NL")],
+    [L("Oppervlak (land)", "Area (land)"), `${fmt(p.m2)} m²`],
+  ], [L("Hoe telt dit groen mee?", "How does this green count?"), UITLEG + "300.html"]);
+});
+map.on("click", "30-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, p.kroon == null ? L("Geen gegevens", "No data") : L(`${fmt(p.kroon)}% kroonbedekking binnen 500 m`, `${fmt(p.kroon)}% canopy cover within 500 m`)],
+    [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+  ], (p.kroon ?? 0) < 30 ? [L("Er staan hier wel bomen: waarom deze kleur?", "But there are trees here: why this colour?"), UITLEG + "30.html#mijn-woning"] : null);
+});
+map.on("click", "300-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [
+    [null, POPUP_300[p.klasse] ?? L("onbekend", "unknown")],
+    [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+    [L("Loopafstand tot groen", "Walking distance to green"), p.afstand == null ? L("meer dan 1.275 m", "more than 1,275 m")
+      : p.afstand === 0 ? L("0 m: ligt in het groen", "0 m: lies inside the green") : `${fmt(p.afstand)} m`],
+  ], p.klasse !== "5" ? [L("Er is wel groen dichtbij: waarom rood?", "But there is green nearby: why red?"), UITLEG + "300.html#mijn-woning"] : null);
+});
+for (const lv of LEVELS) {
+  for (const t of ["30", "300"]) {
+    map.on("click", `${t}-${lv.layer}-fill`, (e) => {
+      const p = e.features[0].properties;
+      const few = (p.woningen ?? 0) < MIN_HOMES;
+      popup(e.lngLat, [
+        [null, areaTitle(p, lv)],
+        [L("Woningen", "Homes"), fmt(p.woningen)],
+        [L("Met ≥ 30% kroonbedekking binnen 500 m (30)", "With ≥ 30% canopy cover within 500 m (30)"), few ? "–" : pct(p.pct_30)],
+        [L("Gemiddelde kroonbedekking binnen 500 m", "Mean canopy cover within 500 m"), few ? "–" : pct(p.kroon)],
+        [L("Binnen 300 m lopen van groen (300)", "Within a 300 m walk of green (300)"), few ? "–" : pct(p.pct_300)],
+        [L("Binnen 5 min lopen", "Within a 5-min walk"), few ? "–" : pct(p.pct_5)],
+        [L("Binnen 15 min lopen", "Within a 15-min walk"), few ? "–" : pct(p.pct_15)],
+      ]);
+    });
+  }
+}
+// Samen: the scores per indicator, the compound for the current weights, and
+// (areas) the weight-free share of homes meeting all three
+function samenRows(p) {
+  const f = (k) => p[samen.mode + k];
+  const den = SAMEN_KEYS.reduce((a, k) => a + (f(k) == null ? 0 : samen.w[k]), 0);
+  const tot = den ? SAMEN_KEYS.reduce((a, k) => a + samen.w[k] * (f(k) ?? 0), 0) / den : null;
+  const unit = samen.mode === "p" ? L("gehaald", "met") : L("score", "score");
+  return [[L("Totaal (gewogen)", "Total (weighted)"), tot == null ? "–" : fmt(Math.round(tot))],
+          ...SAMEN_KEYS.map((k) => [`${k} (${unit})`, f(k) == null ? "–" : fmt(f(k))])];
+}
+map.on("click", "samen-woningen", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [[null, L("Woonpand", "Residential building")], [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
+                   ...samenRows(p)]);
+});
+for (const lv of LEVELS) {
+  map.on("click", `samen-${lv.layer}-fill`, (e) => {
+    const p = e.features[0].properties;
+    const few = (p.woningen ?? 0) < MIN_HOMES;
+    popup(e.lngLat, [[null, areaTitle(p, lv)], [L("Woningen", "Homes"), fmt(p.woningen)],
+                     ...(few ? [] : samenRows(p)),
+                     [L("Haalt alle drie (zonder gewichten)", "Meets all three (no weights)"), few ? "–" : pct(p.alle)]]);
+  });
+}
+// Registered last, so this popup replaces the one of the area below
+map.on("click", "kw-oud", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [[null, L("Vierkant van 100 m", "100 m square")], [L("Inwoners", "Residents"), fmt(p.inwoners)],
+                   [L("Van 65 jaar en ouder", "Aged 65 and older"), fmt(p.n)]]);
+});
+map.on("click", "kw-geb", (e) => {
+  const p = e.features[0].properties;
+  popup(e.lngLat, [[null, p.naam || L("Buurt", "Neighbourhood")], [L("Inwoners", "Residents"), fmt(p.inwoners)],
+                   [L(`Geboorten in 2024`, "Births in 2024"), fmt(p.n)]]);
+});
+const clickable = [...layers["3"], ...layers["30"], ...layers["300"], ...layers.samen]
+  .filter((d) => d.type === "fill").map((d) => d.id).concat(["kw-oud", "kw-geb"]);
+for (const id of clickable) {
+  map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
+}
+
+// Address search: PDOK Locatieserver
+document.getElementById("search").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const q = document.getElementById("q").value.trim();
+  if (!q) return;
+  const url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?rows=1&fl=weergavenaam,centroide_ll,type"
+            + `&fq=provincienaam:"${PROVINCE}"&q=` + encodeURIComponent(q);
+  try {
+    const doc = (await (await fetch(url)).json()).response.docs[0];
+    if (!doc) { alert(L("Niets gevonden voor: ", "Nothing found for: ") + q); return; }
+    const [lon, lat] = doc.centroide_ll.match(/POINT\(([^ ]+) ([^)]+)\)/).slice(1).map(Number);
+    const zoom = { adres: 18, weg: 16, postcode: 16, woonplaats: 13, gemeente: 11 }[doc.type] ?? 15;
+    // On a phone: the address in the middle of the part above the panel
+    const offset = PHONE ? [0, -viewPadding().bottom / 2] : [0, 0];
+    map.flyTo({ center: [lon, lat], zoom, offset });
+  } catch (err) {
+    alert(L("Zoeken lukt niet: ", "Search failed: ") + err.message);
+  }
+});
+</script>
+</body>
+</html>

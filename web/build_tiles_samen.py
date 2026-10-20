@@ -78,9 +78,9 @@ def woningen(dst):
     with the sums the areas need (layer punten)."""
     # The 300 per home, summed per building: [homes, sum of gradual scores, homes within 5 min]
     per_pand = {}
-    homes_ds = ogr.Open(str(ARGS.data / "interim" / "300" / SLUG / "grass.gpkg"))
+    homes_ds = ogr.Open(str(ARGS.data / "interim" / "300" / SLUG / "300.gpkg"))   # 05_combine.py
     for f in homes_ds.GetLayerByName("homes"):
-        d = f.GetField("gr_m")
+        d = f.GetField("afstand_m")
         row = per_pand.setdefault(f.GetField("pand_id"), [0, 0.0, 0])
         row[0] += 1
         row[1] += score_300(d)
