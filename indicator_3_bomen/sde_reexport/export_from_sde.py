@@ -62,7 +62,7 @@ EXTENTS_CSV = os.path.join(REEXPORT_DIR, "municipality_extents_all.csv")   # nam
 
 # Restrict to these names (as spelled in EXTENTS_CSV);
 # [] = every extent in the CSV that isn't finished yet.
-ONLY = ["Delft"]
+ONLY = []
 # ---------------------------------------------------------------------------
 
 RAW_DIR = os.path.join(REEXPORT_DIR, "raw_clips")         # ArcGIS clips, one at a time, deleted once finished
