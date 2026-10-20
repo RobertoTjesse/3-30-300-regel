@@ -2,15 +2,17 @@ r"""
 export_from_sde.py — Re-export municipality DEM extents from the SDE raster,
 end to end, from inside ArcGIS Pro.
 
-Originally built for the 12 corrupted-DEM municipalities; now used for the
-remaining re-export batch (every extent listed in
-sde_reexport/municipality_extents.csv). For each municipality:
+Originally built for the 12 corrupted-DEM municipalities, then for a
+re-export batch (sde_reexport/municipality_extents.csv); now for the AHN5
+DSM of every municipality (municipality_extents_all.csv: the extents of the
+52 AHN4 DEMs on the share, so AHN5 covers exactly the same ground). For each
+municipality:
 
   1. arcpy Clip of its bounding box out of the SDE raster, with the source's
      real NoData value (or -9999 if it has none) → raw_clips/<name>.tif.
      Pyramids and statistics are switched off: they're thrown away anyway,
      and were most of the extra disk usage (the .ovr files) last time.
-  2. Finishing pass with OSGeo4W's gdal_translate → finished/<name>.tif:
+  2. Finishing pass with OSGeo4W's gdal_translate → FINISHED_DIR/<name>.tif:
      COMPRESS=DEFLATE, PREDICTOR=3, TILED=YES 512x512, BIGTIFF=IF_SAFER.
      arcpy doesn't reliably control TIFF compression/internal tiling —
      getting that wrong is how the original files ended up strip-organized
@@ -18,13 +20,13 @@ sde_reexport/municipality_extents.csv). For each municipality:
      everywhere else. Called as a subprocess, so it works from Pro's Python.
   3. Check the finished file has NoData set, then delete the raw clip.
 
-Municipalities that already have a finished/<name>.tif are skipped, so the
-script can simply be re-run after an interruption. A failure on one
+Municipalities that already have a FINISHED_DIR/<name>.tif are skipped, so
+the script can simply be re-run after an interruption. A failure on one
 municipality is logged and the batch continues.
 
-It does NOT copy anything to R:\ — inspect the finished files first, then
-replace the originals on the share by hand and rebuild province_dem.vrt
-(see README, "Cross-municipality context").
+FINISHED_DIR is a folder of its own on R:\ (AHN5), next to the AHN4 DEMs in
+fme_input\viewanalyse, which it never touches. The pipeline then reads it
+via VIEWANALYSE_DIR in config_local.py.
 
 HOW TO RUN (either works):
   - ArcGIS Pro → Analysis → Python window: paste this file's contents, or
@@ -46,19 +48,23 @@ import arcpy
 # EDIT THESE
 # ---------------------------------------------------------------------------
 SDE_CONNECTION = r"R:\ESRI\BEHEER\Database_verbindingen\Geodatabase\Productie\Geo_raster\Geodatabase@Geo_raster@topografie.sde"
-SDE_RASTER_DATASET = "Geo_raster.TOPOGRAFIE.AHN4_05M_RUW"  # AHN4, 0.5m, raw/unfiltered surface model
+# The surface model, 0.5 m, raw (not interpolated). AHN4 was
+# "Geo_raster.TOPOGRAFIE.AHN4_05M_RUW"; check the exact AHN5 name in Catalog
+# (if it does not exist, the script stops and lists the AHN rasters it sees).
+SDE_RASTER_DATASET = "Geo_raster.TOPOGRAFIE.AHN5_05M_RUW"
 
 REEXPORT_DIR = r"D:\Repositories\330300regel\indicator_3_bomen\sde_reexport"
 OSGEO4W_ROOT = r"C:\Users\bethrt\AppData\Local\Programs\OSGeo4W"
+# The finished DEMs, about 120 GB for the province (D: is too small).
+FINISHED_DIR = r"R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\ahn5\viewanalyse"
+EXTENTS_CSV = os.path.join(REEXPORT_DIR, "municipality_extents_all.csv")   # name, xmin, ymin, xmax, ymax
 
-# Restrict to these names (as spelled in municipality_extents.csv);
+# Restrict to these names (as spelled in EXTENTS_CSV);
 # [] = every extent in the CSV that isn't finished yet.
 ONLY = []
 # ---------------------------------------------------------------------------
 
-EXTENTS_CSV = os.path.join(REEXPORT_DIR, "municipality_extents.csv")   # name, xmin, ymin, xmax, ymax
-RAW_DIR = os.path.join(REEXPORT_DIR, "raw_clips")         # ArcGIS clips, deleted once finished
-FINISHED_DIR = os.path.join(REEXPORT_DIR, "finished")     # the final DEMs
+RAW_DIR = os.path.join(REEXPORT_DIR, "raw_clips")         # ArcGIS clips, one at a time, deleted once finished
 NODATA_FALLBACK = -9999     # NoData value when the source declares none
 
 # The OSGeo4W GDAL tools for the finishing pass, and the pipeline's standard
@@ -160,6 +166,10 @@ def main():
     arcpy.env.rasterStatistics = "NONE"
 
     src_raster = os.path.join(SDE_CONNECTION, SDE_RASTER_DATASET)
+    if not arcpy.Exists(src_raster):
+        arcpy.env.workspace = SDE_CONNECTION
+        ahn = [r for r in (arcpy.ListRasters() or []) if "AHN" in r.upper()]
+        raise SystemExit(f"Not found: {SDE_RASTER_DATASET}\nAHN rasters in the SDE: {', '.join(ahn) or 'none'}")
 
     # Use the source's own NoData value if it has one; only fall back to our
     # own sentinel if it genuinely doesn't. Void areas exported as literal
@@ -201,7 +211,7 @@ def main():
     print(f"\nFinished: {len(todo) - len(failed)}/{len(todo)}")
     if failed:
         print("Failed (re-run the script to retry just these):", ", ".join(failed))
-    print(f"Next: inspect {FINISHED_DIR}, replace the originals on R:\\, rebuild province_dem.vrt.")
+    print(f"Next: inspect {FINISHED_DIR}; then the pipeline reads it via VIEWANALYSE_DIR.")
 
 
 main()
