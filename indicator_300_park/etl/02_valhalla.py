@@ -30,7 +30,8 @@ get no distance at all.
 
 Output config.VALHALLA_GPKG:
   homes       home_id, pand_id, gemeente, vh_m (walking distance, empty when
-              beyond config.MAX_DISTANCE_M), vh_snap_m (home to its street),
+              beyond config.MAX_DISTANCE_M; 0 for a home inside a green area,
+              as in 03_grass.py), vh_snap_m (home to its street),
               vh_iso_300m / vh_iso_5min / vh_iso_15min (1 = inside the isochrones)
   edges       the streets reached, with the walking distance at both junctions
   isochrones  the merged isochrone polygons per contour
@@ -55,6 +56,7 @@ import config  # noqa: E402
 import numpy as np  # noqa: E402
 from scipy.spatial import cKDTree  # noqa: E402  nearest-point lookup only; the routing is Valhalla's
 from sampling import along  # noqa: E402
+from in_green import homes_in_green  # noqa: E402
 from osgeo import gdal, ogr, osr  # noqa: E402
 gdal.UseExceptions()
 ogr.UseExceptions()
@@ -301,6 +303,7 @@ def main():
             homes.SetSpatialFilter(part)
             inside[name].update(f.GetFID() for f in homes)
     homes.SetSpatialFilter(None)
+    in_green = homes_in_green(prepared)
 
     hl = out.CreateLayer("homes", RD, ogr.wkbPoint)
     fields = [("home_id", ogr.OFTString), ("pand_id", ogr.OFTString), ("gemeente", ogr.OFTString),
@@ -339,6 +342,8 @@ def main():
                 nf.SetField("vh_snap_m", round(float(snap_near), 1))
         else:
             no_street += 1
+        if fid in in_green:
+            d = 0.0   # in the green already
         if np.isfinite(d) and d <= config.MAX_DISTANCE_M:
             nf.SetField("vh_m", round(float(d), 1))
             walks.append(d)

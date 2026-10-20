@@ -685,7 +685,8 @@ map.on("click", "300-woningen", (e) => {
   popup(e.lngLat, [
     [null, POPUP_300[p.klasse] ?? L("onbekend", "unknown")],
     [L("Woningen in dit pand", "Homes in this building"), fmt(p.woningen)],
-    [L("Loopafstand tot groen", "Walking distance to green"), p.afstand == null ? L("meer dan 1.275 m", "more than 1,275 m") : `${fmt(p.afstand)} m`],
+    [L("Loopafstand tot groen", "Walking distance to green"), p.afstand == null ? L("meer dan 1.275 m", "more than 1,275 m")
+      : p.afstand === 0 ? L("0 m: ligt in het groen", "0 m: lies inside the green") : `${fmt(p.afstand)} m`],
   ], p.klasse !== "5" ? [L("Er is wel groen dichtbij: waarom rood?", "But there is green nearby: why red?"), UITLEG + "300.html#mijn-woning"] : null);
 });
 for (const lv of LEVELS) {

@@ -18,13 +18,16 @@ In a temporary GRASS project (EPSG:28992):
 
 Then per home, in Python: the nearest point on the network (within
 config.HOME_SNAP_M), and from there the shorter way to either end of that
-segment, plus the straight line from the home to the network. Linking every
+segment, plus the straight line from the home to the network. A home inside
+a green area is in the green already: 0 m, whatever the way to an entrance.
+Linking every
 home in GRASS as well (v.net connect) gives the same answer, but took 20
 minutes for Delft alone.
 
 Output config.GRASS_GPKG, layer homes: home_id, pand_id, gemeente, gr_m (walking
-distance, empty beyond config.MAX_DISTANCE_M), gr_snap_m, gr_ent (ent_id of
-the nearest entrance).
+distance, empty beyond config.MAX_DISTANCE_M; 0 inside a green area),
+gr_snap_m, gr_ent (ent_id of the nearest entrance), in_groen (1 = the home lies
+inside a green area).
 
 Usage (from the repository root, with the OSGeo4W Python):
     python indicator_300_park/etl/03_grass.py [--reuse | --parks-only | --homes-only]
@@ -45,6 +48,7 @@ import config  # noqa: E402
 import numpy as np  # noqa: E402
 from scipy.spatial import cKDTree  # noqa: E402  nearest-point lookup only; the routing is GRASS's
 from sampling import along  # noqa: E402
+from in_green import homes_in_green  # noqa: E402
 from osgeo import gdal, ogr, osr  # noqa: E402
 gdal.UseExceptions()
 ogr.UseExceptions()
@@ -177,11 +181,14 @@ def main():
     homes = prepared.GetLayerByName("homes")
     rows = [(f.GetField("home_id"), f.GetField("pand_id"), f.GetField("gemeente"),
              f.GetGeometryRef().GetX(), f.GetGeometryRef().GetY()) for f in homes]
+    in_green = homes_in_green(prepared)
+    green = np.array([f.GetFID() in in_green for f in homes], dtype=bool)   # same order as rows
     snap, idx = tree.query(np.array([(r[3], r[4]) for r in rows]), distance_upper_bound=config.HOME_SNAP_M)
     found = np.isfinite(snap)
     walk = np.full(len(rows), np.nan)
     walk[found] = d[idx[found]] + snap[found]
     walk[walk > config.MAX_DISTANCE_M] = np.nan
+    walk[green] = 0.0   # in the green already
 
     if config.GRASS_GPKG.exists():
         config.GRASS_GPKG.unlink()
@@ -190,7 +197,8 @@ def main():
     out = ogr.GetDriverByName("GPKG").CreateDataSource(str(config.GRASS_GPKG))
     hl = out.CreateLayer("homes", rd, ogr.wkbPoint)
     for name, t in (("home_id", ogr.OFTString), ("pand_id", ogr.OFTString), ("gemeente", ogr.OFTString),
-                    ("gr_m", ogr.OFTReal), ("gr_snap_m", ogr.OFTReal), ("gr_ent", ogr.OFTInteger)):
+                    ("gr_m", ogr.OFTReal), ("gr_snap_m", ogr.OFTReal), ("gr_ent", ogr.OFTInteger),
+                    ("in_groen", ogr.OFTInteger)):
         hl.CreateField(ogr.FieldDefn(name, t))
     out.StartTransaction()
     for i, (hid, pid, gem, px, py) in enumerate(rows):
@@ -202,8 +210,9 @@ def main():
             f.SetField("gr_snap_m", round(float(snap[i]), 1))
         if np.isfinite(walk[i]):
             f.SetField("gr_m", round(float(walk[i]), 1))
-            if e[idx[i]] >= 0:
+            if not green[i] and e[idx[i]] >= 0:
                 f.SetField("gr_ent", int(e[idx[i]]))
+        f.SetField("in_groen", int(green[i]))
         g = ogr.Geometry(ogr.wkbPoint)
         g.AddPoint_2D(px, py)
         f.SetGeometry(g)
@@ -213,7 +222,8 @@ def main():
     n = len(rows)
     for name, m in config.THRESHOLDS_M.items():
         print(f"  within {name:>5} ({m:>4} m): {int(np.sum(walk <= m)) / n:6.1%}")
-    print(f"Homes: {n:,}; no walkable way within {config.HOME_SNAP_M:g} m: {int(np.sum(~found)):,}")
+    print(f"Homes: {n:,}; inside a green area (0 m): {int(green.sum()):,}; "
+          f"no walkable way within {config.HOME_SNAP_M:g} m: {int(np.sum(~found)):,}")
     print(f"Wrote {config.GRASS_GPKG} in {time.time() - t0:.0f} s")
 
 
