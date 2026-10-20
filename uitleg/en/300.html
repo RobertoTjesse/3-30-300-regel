@@ -28,15 +28,16 @@ streets and paths to the nearest entrance of a park or other public green was ca
 meets the rule (green on the map).</p>
 
 <div class="facts">
-  <div class="fact"><b>36.7%</b><span>of homes within a 300 m walk of green</span></div>
-  <div class="fact"><b>56.0%</b><span>within a 5-min walk (425 m)</span></div>
-  <div class="fact"><b>97.8%</b><span>within a 15-min walk</span></div>
+  <div class="fact"><b>38.5%</b><span>of homes within a 300 m walk of green</span></div>
+  <div class="fact"><b>57.6%</b><span>within a 5-min walk (425 m)</span></div>
+  <div class="fact"><b>98.1%</b><span>within a 15-min walk</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1,797,970 homes. Per municipality from 20.3% (Voorne aan
-Zee) to 86.7% (Oegstgeest) within 5 minutes.</p>
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1,797,970 homes. Per municipality from 21.4% (Voorne aan
+Zee) to 87.8% (Oegstgeest) within 5 minutes.</p>
 <p class="note ok">The whole calculation was made with <b>QGIS and the components that come with QGIS</b>: GDAL for
 the data, the entrances and the walking network, GRASS GIS for the walking distances, and QGIS's Python for the steps
-in between. No other software is needed. Anyone with QGIS can repeat it.</p>
+in between. Only for a second look at homes beyond 300 m does a separate program come in, Valhalla (see
+<a href="#vergelijking">below</a>).</p>
 
 <h2>What is measured?</h2>
 <p>The <a href="konijnendijk.html">paper</a> asks for a large public green space within 300 m of every home, "about
@@ -83,7 +84,10 @@ Each one says which way it pushes the result.</p>
   <li><strong>Link the homes.</strong>
     Every home (a BAG address with a residential use, the same as for the 3) takes the nearest point on the network.
     Its walking distance is the distance from that point to the entrance, plus the short stretch from the home to the
-    street.</li>
+    street. A home that lies inside a green area is in the green already: 0 m.</li>
+  <li><strong>A second look beyond 300 m.</strong>
+    Where GRASS gives more than 300 m, or finds no route, Valhalla's distance counts if it is shorter. A home
+    wrongly shown as too far is the worse error, so it gets the benefit of the doubt.</li>
   <li><strong>Per municipality, district and neighbourhood.</strong>
     The share of homes within 300 m, 5 and 15 minutes, on the same areas as the 3 and the 30.</li>
 </ol>
@@ -137,7 +141,7 @@ That can be because:</p>
 
 <h2 id="vergelijking">Checked with a second program</h2>
 <p>As a check, everything was computed again with <a href="https://github.com/valhalla/valhalla">Valhalla</a>, an
-open-source route planner (not part of QGIS, only used for this check). Valhalla can return every street and path you
+open-source route planner (not part of QGIS). Valhalla can return every street and path you
 reach on foot from a point: the <i>expansion</i>. Below, from the Provinciehuis in The Hague.</p>
 <figure>
   <img src="../img/300-expansion.png" alt="Map around the Provinciehuis in The Hague with every street and path within a 15-minute walk, dark blue nearby and light blue further away" loading="lazy">
@@ -145,14 +149,15 @@ reach on foot from a point: the <i>expansion</i>. Below, from the Provinciehuis 
   the walk.</figcaption>
 </figure>
 <div class="table-wrap"><table>
-<tr><th>Share of homes within</th><th>GRASS (the map)</th><th>Valhalla</th><th>Valhalla, zones</th><th>Earlier calculation</th></tr>
-<tr><td>300 m</td><td>36.7%</td><td>38.0%</td><td>46.4%</td><td>not computed</td></tr>
-<tr><td>5 minutes (425 m)</td><td>56.0%</td><td>57.0%</td><td>64.0%</td><td>79.1%</td></tr>
-<tr><td>15 minutes (1,275 m)</td><td>97.8%</td><td>98.0%</td><td>98.2%</td><td>99.2%</td></tr>
+<tr><th>Share of homes within</th><th>The map</th><th>GRASS</th><th>Valhalla</th><th>Valhalla, zones</th><th>Earlier calculation</th></tr>
+<tr><td>300 m</td><td>38.5%</td><td>36.7%</td><td>38.0%</td><td>46.4%</td><td>not computed</td></tr>
+<tr><td>5 minutes (425 m)</td><td>57.6%</td><td>56.0%</td><td>57.0%</td><td>64.0%</td><td>79.1%</td></tr>
+<tr><td>15 minutes (1,275 m)</td><td>98.1%</td><td>97.8%</td><td>98.0%</td><td>98.2%</td><td>99.2%</td></tr>
 </table></div>
 <p>GRASS and Valhalla agree for 97.8% of homes on whether they live within 300 m of green. For 71% of homes
 the distance differs by 10 m or less, for 93% by 50 m or less. Where they differ, Valhalla's walk is shorter more
-often: it can also reach a home over its own private road.</p>
+often: it can also reach a home over its own private road. So for homes that GRASS puts beyond 300 m, the map
+takes the shorter of the two. That brings 31,587 more homes within 300 m.</p>
 <figure>
   <img src="../img/300-vergelijking-spreiding.png" alt="Scatter plot of the walking distance per home: GRASS on the horizontal axis, Valhalla on the vertical; nearly all homes lie on the diagonal" loading="lazy">
   <figcaption>Walking distance per home in Zuid-Holland, GRASS against Valhalla. On the diagonal both agree.</figcaption>
