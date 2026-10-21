@@ -1,120 +1,86 @@
 """
-build_project.py — Create / update the QGIS validation project
-(qgis_validation/330300regel_validatie.qgz) with every layer the pipeline has
-produced.
+build_project.py — Build the QGIS validation project
+(qgis_validation/330300regel_validatie.qgz): only what is needed to check the
+3 and the 300, in a few numbered groups.
 
-First run creates the project with:
-  - Woningen        one layer per data/processed/<name>_woningen.gpkg
-                    (04_score_buildings.py): residential buildings coloured
-                    by trees visible from just outside the facade, same
-                    classes as below; grey = no facade ring (enclosed)
-  - Viewshed        one layer per data/processed/<name>_viewshed.tif,
-                    classed on "number of trees visible":
-                      0 red | 1-2 orange | 3-5 green | 6-7 darker green |
-                      8+ dark green
-  - Hoogtemodel     the province DEM mosaic (data/interim/province_dem.vrt,
-                    the pixel source of stage 1), hillshaded, switched off
-                    by default — for checking the input surface model
-  - Bomen           all trees (data/interim/province_trees.gpkg, only drawn
-                    when zoomed in — 5.2M points) + every
-                    data/processed/<name>_tree_heights.gpkg
-  - 3D BAG          LoD2.2 buildings: WMS (2D map) + 3D Tiles (3D map view)
-  - Achtergrond     PDOK BRT grijs (WMTS) and PDOK luchtfoto (WMS)
-  - De 3 per gemeente / wijk / buurt
-                    <Province>_gebieden.gpkg (06_area_summaries.py): share of
-                    homes with >= 3 visible trees, web map colours
-  - De 300: open methode
-                    the open 300 (indicator_300_park/etl, province run): the
-                    merged green areas, the green per source and the entrances;
-                    the Valhalla isochrones (300 m, 5 and 15 min); the walking
-                    distance per home from GRASS; and per home GRASS against
-                    Valhalla (300 m)
-  - Experimenten    anything in data/processed/experiments/: rasters get the
-                    viewshed styling, vectors (e.g. BAG footprints) a plain
-                    outline; all switched off by default
+  1. De 3 – AHN5        the current run (data/processed, files written since
+                        AHN5_SINCE): buurten/wijken/gemeenten (% homes with
+                        >= 3 visible trees), buildings (trees visible from
+                        the facade; per municipality until 05 has merged
+                        them) and all viewsheds as one mosaic
+                        (qgis_validation/viewshed_ahn5.vrt)
+  2. De 3 – AHN4        the same from the AHN4 run, kept on R: (AHN4_DIR)
+  3. De 300             the walking distance per home as on the map (GRASS,
+                        Valhalla as second look), the green and its entrances
+  4. Invoer             all trees, the tree heights, the AHN5 and AHN4
+                        surface models (hillshade)
+  5. Achtergrond        PDOK BRT grijs, PDOK luchtfoto
 
-Later runs open the existing project, ADD layers for new output files and
-REMOVE file-based layers whose file no longer exists (e.g. deleted old
-outputs); everything else — manual changes made in QGIS (styling,
-visibility, extra layers) — is kept. Delete the .qgz to rebuild it from
-scratch.
-
-Layer paths are stored relative to the project, so the folder can be moved
-together with the repo. indicator_3_bomen/etl/run_all_municipalities.sh calls this after
-every municipality.
+The project is rebuilt from scratch on every run (the previous one is kept as
+330300regel_validatie.backup.qgz), so changes made in QGIS are not kept.
+Layer paths are stored relative to the project.
 
 Usage (needs QGIS's Python, not plain OSGeo4W Python):
     C:\\...\\OSGeo4W\\bin\\python-qgis-ltr.bat qgis_validation\\build_project.py
 """
 
+import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from qgis.core import (
     QgsApplication,
-    QgsColorRampShader,
     QgsCategorizedSymbolRenderer,
+    QgsColorRampShader,
     QgsCoordinateReferenceSystem,
-    QgsRendererCategory,
-    QgsRuleBasedRenderer,
     QgsFillSymbol,
     QgsHillshadeRenderer,
     QgsLayerTreeGroup,
-    QgsLineSymbol,
     QgsMarkerSymbol,
-    QgsPalettedRasterRenderer,
     QgsProject,
     QgsRasterLayer,
-    QgsRasterRange,
     QgsRasterShader,
+    QgsRendererCategory,
+    QgsRuleBasedRenderer,
     QgsSingleBandPseudoColorRenderer,
     QgsSingleSymbolRenderer,
     QgsVectorLayer,
 )
 from qgis.PyQt.QtGui import QColor
+from osgeo import gdal
+
+gdal.UseExceptions()
 
 REPO = Path(__file__).resolve().parent.parent
 PROJECT_PATH = REPO / "qgis_validation" / "330300regel_validatie.qgz"
+BACKUP_PATH = PROJECT_PATH.with_suffix(".backup.qgz")
 PROCESSED_DIR = REPO / "data" / "processed"
-PROVINCE_TREES = REPO / "data" / "interim" / "province_trees.gpkg"
-PROVINCE_DEM = REPO / "data" / "interim" / "province_dem.vrt"
-EXPERIMENTS_DIR = PROCESSED_DIR / "experiments"
-ONE_TREE_DIR = REPO / "indicator_3_bomen" / "arcgis_tests" / "one_tree"
-STUDY_DIR = REPO / "data" / "studiegebied"
-# The original ArcGIS benchmark (observer 2 x RASTERVALU, see ARCHITECTURE.md §14)
-BENCHMARK = ('OpenFileGDB:"R:/ESRI/DATA/RUIMTELIJKE ONTWIKKELING/PERSOONLIJK/Chris/test/data.gdb"'
-             ':visibility_Delft')
-BENCHMARK_NAME = "visibility_Delft (originele benchmark, observer 2x RASTERVALU)"
-BENCH_NODATA = -2147483647            # its undeclared NoData
+INTERIM_DIR = REPO / "data" / "interim"
+PROVINCE = "ZuidHolland"
 
-GROUP_HOMES = "Woningen (aantal zichtbare bomen)"
-GROUP_VIEWSHED = "Viewshed (aantal zichtbare bomen)"
-GROUP_TREES = "Bomen"
-GROUP_DEM = "Hoogtemodel"
-GROUP_3DBAG = "3D BAG"
-GROUP_BACKGROUND = "Achtergrond"
-GROUP_EXPERIMENTS = "Experimenten"
-GROUP_ONE_TREE = "Eén boom / boomgroep: GDAL vs ArcGIS vs benchmark (arcgis_tests/one_tree)"
-GROUP_ONE_TREE_OLD = "Eén boom: GDAL vs ArcGIS vs exact (arcgis_tests/one_tree)"
-GROUP_STUDY = "Studiegebied: benchmark vs ArcGIS vs GDAL (arcgis_tests/studiegebied.py)"
-GROUP_AREAS_3 = "De 3 per gemeente / wijk / buurt (% woningen met >= 3 bomen)"
-GROUP_300_OPEN = "De 300: open methode (OSGeo4W: GDAL en GRASS; Valhalla ter vergelijking)"
+# The AHN5 run started on 20 October 2026: in data/processed, only files
+# written since then are AHN5 (the rest is still AHN4 until the run reaches it)
+AHN5_SINCE = datetime(2026, 10, 20, 17, 0).timestamp()
+# The AHN4 results, copied to R: before the AHN5 run overwrote them
+AHN4_DIR = Path(r"R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\ahn4_resultaten")
 
-# The open 300 (indicator_300_park/etl), province run
-OPEN_300_DIR = REPO / "data" / "interim" / "300" / "ZuidHolland"
-OPEN_PREPARED = OPEN_300_DIR / "prepared.gpkg"
-OPEN_VALHALLA = OPEN_300_DIR / "valhalla.gpkg"
-OPEN_RESULT = REPO / "data" / "processed" / "ZuidHolland_300.gpkg"
+TREES = INTERIM_DIR / "province_trees.gpkg"
+DEM_AHN5 = INTERIM_DIR / "province_dem.vrt"
+DEM_AHN4 = INTERIM_DIR / "province_dem_ahn4.vrt"
+TREE_HEIGHTS = {"AHN5": PROCESSED_DIR / "Delft_tree_heights.gpkg",
+                "AHN4": PROCESSED_DIR / "ahn4" / "Delft_tree_heights.gpkg"}
+OPEN_300 = INTERIM_DIR / "300" / PROVINCE / "prepared.gpkg"      # green areas, entrances
+FINAL_300 = INTERIM_DIR / "300" / PROVINCE / "300.gpkg"          # what the map shows
 
-# Area colours as on the web map (web/index.html STEPS_3):
-# (lower bound, colour, label)
+# Area colours as on the web map (web/index.html STEPS_3): (lower bound, colour, label)
 STEPS_3 = [(0, "#d7301f", "< 80%"), (80, "#fdae6b", "80-90%"), (90, "#c7e9c0", "90-95%"),
            (95, "#74c476", "95-98%"), (98, "#238b45", ">= 98%")]
 MIN_HOMES = 10          # fewer homes: no percentage (grey), as on the web map
 NO_DATA = "#d9d9d9"
 
 # (upper bound inclusive, colour, label) — discrete classes on integer counts
-VIEWSHED_CLASSES = [
+TREE_CLASSES = [
     (0, "#d7191c", "0 bomen"),
     (2, "#fd8d3c", "1-2 bomen"),
     (5, "#74c476", "3-5 bomen"),
@@ -128,349 +94,13 @@ BRT_WMTS = ("contextualWMSLegend=0&crs=EPSG:28992&dpiMode=7&format=image/png"
             "?request%3DGetCapabilities%26service%3DWMTS")
 LUCHTFOTO_WMS = ("crs=EPSG:28992&format=image/jpeg&layers=Actueel_orthoHR&styles="
                  "&url=https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0")
-BAG3D_WMS = ("crs=EPSG:28992&format=image/png&layers=lod22&styles="
-             "&url=https://data.3dbag.nl/api/BAG3D/wms")
-BAG3D_TILES = "url=https://data.3dbag.nl/v20250903/cesium3dtiles/lod22/tileset.json"
 
 
-def _group(root, name, index=None):
-    """The layer group with this name; created (at index, default last) if missing."""
-    group = root.findGroup(name)
-    if group is None:
-        group = QgsLayerTreeGroup(name)
-        root.insertChildNode(-1 if index is None else index, group)
+def _group(parent, name, expanded=True):
+    group = QgsLayerTreeGroup(name)
+    group.setExpanded(expanded)
+    parent.addChildNode(group)
     return group
-
-
-def _prune_missing(project):
-    """Remove local-file layers whose file is gone; return their names."""
-    gone = [l for l in project.mapLayers().values()
-            if l.providerType() in ("gdal", "ogr") and not l.source().startswith("OpenFileGDB:")
-            and not Path(l.source().split("|")[0]).exists()]
-    names = [l.name() for l in gone]
-    project.removeMapLayers([l.id() for l in gone])
-    return names
-
-
-def _existing_sources(project):
-    """The files already in the project, so a re-run doesn't add them twice."""
-    return {Path(l.source().split("|")[0]).resolve()
-            for l in project.mapLayers().values() if l.providerType() in ("gdal", "ogr")}
-
-
-def _style_viewshed(layer):
-    """Tree-count raster in the VIEWSHED_CLASSES colours (0 red ... 8+ dark green)."""
-    ramp = QgsColorRampShader()
-    ramp.setColorRampType(QgsColorRampShader.Discrete)
-    ramp.setColorRampItemList([QgsColorRampShader.ColorRampItem(v, QColor(c), lbl)
-                               for v, c, lbl in VIEWSHED_CLASSES])
-    shader = QgsRasterShader()
-    shader.setRasterShaderFunction(ramp)
-    renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)
-    renderer.setClassificationMin(0)
-    renderer.setClassificationMax(8)
-    layer.setRenderer(renderer)
-    layer.setOpacity(0.8)
-
-
-def _style_homes(layer):
-    """Buildings coloured by their "klasse" field, grey when it is empty."""
-    labels = ["0", "1-2", "3-5", "6-7", "8+"]
-    cats = [QgsRendererCategory(lbl, QgsFillSymbol.createSimple(
-                {"color": colour, "outline_color": "#404040", "outline_width": "0.1"}),
-                f"{lbl} bomen")
-            for lbl, (_, colour, _) in zip(labels, VIEWSHED_CLASSES)]
-    cats.append(QgsRendererCategory(None, QgsFillSymbol.createSimple(
-        {"color": "#bdbdbd", "outline_color": "#404040", "outline_width": "0.1"}), "geen gevelring"))
-    layer.setRenderer(QgsCategorizedSymbolRenderer("klasse", cats))
-
-
-def _style_paletted(layer, classes):
-    """classes: [(value, colour or None, label)]; None = transparent."""
-    items = [QgsPalettedRasterRenderer.Class(v, QColor(c) if c else QColor(0, 0, 0, 0), lbl)
-             for v, c, lbl in classes]
-    layer.setRenderer(QgsPalettedRasterRenderer(layer.dataProvider(), 1, items))
-
-
-COUNT_GREENS = ["#c7e9c0", "#a1d99b", "#74c476", "#41ab5d", "#238b45", "#006d2c", "#00441b"]
-
-
-def _style_counts(layer, top=40):
-    """Number of trees that see a cell: 0 transparent, 1..7+ light to dark green."""
-    _style_paletted(layer, [(0, None, "0")] + [
-        (v, COUNT_GREENS[min(v, len(COUNT_GREENS)) - 1], str(v) if v < len(COUNT_GREENS) else f"{v}")
-        for v in range(1, top + 1)])
-
-
-# One-tree results shown in QGIS (and their diff_ maps): the exact test, GDAL,
-# the pipeline's own logic on AHN5, classic ArcGIS Visibility, Viewshed2, the
-# benchmark as it was run (arc_bench_both), the corrected settings
-# (arc_bench_fixed) and the benchmark cut-out
-ONE_TREE_KEEP = {"exact_bilinear", "gdal", "pipeline_ahn5", "arc_vis_2d", "arc_v2_2d",
-                 "arc_bench_both", "arc_bench_fixed", "bench_visibility_Delft"}
-
-
-def _one_tree_kept(path):
-    """Whether a file of the one-tree comparison belongs in the project."""
-    stem = path.stem.removeprefix("diff_")
-    return path.suffix != ".tif" or path.stem in ("dem", "others") or stem in ONE_TREE_KEEP
-
-
-def _add_one_tree(project, root, have):
-    """The one-tree / tree-group viewshed comparison (arcgis_tests/one_tree.py),
-    one subgroup per case folder: every result (number of the case's trees
-    that see a cell, 0 transparent), the difference maps vs the exact
-    line-of-sight test, the benchmark and pipeline cut-outs, the cells
-    within 30 m of other trees, the trees with their 30 m circles and the
-    DEM. All off by default except the trees and circles."""
-    cases = sorted(p for p in ONE_TREE_DIR.glob("*") if (p / "dem.tif").exists()) \
-        if ONE_TREE_DIR.exists() else []
-    old = root.findGroup(GROUP_ONE_TREE_OLD)     # the single-tree group of the first version
-    if old is not None and not old.findLayers():
-        old.parent().removeChildNode(old)
-    if not cases:
-        return 0
-    # Only the results that tell the story; the rest (duplicates such as the
-    # "3D" variants, dead ends, the production-DEM cut-out) is left out and
-    # removed if an earlier run added it
-    one_tree = str(ONE_TREE_DIR.resolve()).lower()
-    drop = [l for l in project.mapLayers().values()
-            if l.providerType() in ("gdal", "ogr")
-            and str(Path(l.source().split("|")[0]).resolve()).lower().startswith(one_tree)
-            and not _one_tree_kept(Path(l.source().split("|")[0]))]
-    project.removeMapLayers([l.id() for l in drop])
-    top = _group(root, GROUP_ONE_TREE, 0)
-    added = 0
-    for case_dir in cases:
-        group = _group(top, case_dir.name)
-        gpkg = case_dir / "tree_ring.gpkg"
-        if gpkg.exists() and gpkg.resolve() not in have:
-            for name, label in (("tree", "bomen"), ("ring30", "30 m rond de bomen")):
-                layer = QgsVectorLayer(f"{gpkg}|layername={name}", label, "ogr")
-                if _add(project, group, layer):
-                    if name == "tree":
-                        layer.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(
-                            {"name": "circle", "color": "#e31a1c", "size": "3"})))
-                    else:
-                        layer.setRenderer(QgsSingleSymbolRenderer(QgsLineSymbol.createSimple(
-                            {"line_color": "#e31a1c", "line_width": "0.6"})))
-                    added += 1
-        diffs = _group(group, "Verschil met exact (oranje = telt meer bomen, blauw = minder)")
-        results = _group(group, "Resultaten (aantal bomen dat de cel ziet)")
-        for tif in sorted(case_dir.glob("*.tif")):
-            if tif.resolve() in have or tif.stem == "dem" or not _one_tree_kept(tif):
-                continue
-            if tif.stem.startswith("diff_"):
-                tool = tif.stem.removeprefix("diff_")
-                layer = QgsRasterLayer(str(tif), f"verschil {tool} vs exact", "gdal")
-                if _add(project, diffs, layer, visible=False):
-                    _style_paletted(layer, [(0, None, "zelfde"), (1, "#ff7f00", f"{tool} telt meer"),
-                                            (2, "#1f78b4", f"{tool} telt minder")])
-                    added += 1
-            elif tif.stem == "others":
-                layer = QgsRasterLayer(str(tif), "binnen 30 m van andere bomen (niet vergeleken)", "gdal")
-                if _add(project, group, layer, visible=False):
-                    _style_paletted(layer, [(0, None, "alleen deze bomen"), (1, "#969696", "ook andere bomen")])
-                    layer.setOpacity(0.6)
-                    added += 1
-            elif tif.stem == "dem_raw":
-                layer = QgsRasterLayer(str(tif), "DEM ongevuld (wat de benchmark zag)", "gdal")
-                if _add(project, group, layer, visible=False):
-                    layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
-                    added += 1
-            else:
-                layer = QgsRasterLayer(str(tif), tif.stem, "gdal")
-                if _add(project, results, layer, visible=False):
-                    _style_counts(layer)
-                    layer.setOpacity(0.75)
-                    added += 1
-        dem = case_dir / "dem.tif"
-        if dem.resolve() not in have:
-            layer = QgsRasterLayer(str(dem), "DEM (AHN5 DSM, gevuld)", "gdal")
-            if _add(project, group, layer, visible=False):
-                layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
-                added += 1
-    return added
-
-
-def _add_study_areas(project, root, have):
-    """The study areas (arcgis_tests/studiegebied.py), one subgroup per buurt:
-    the buurt and its 30 m buffer, the trees, the benchmark cut-out and the
-    ArcGIS and GDAL results (trees seeing a cell, same colours as the
-    viewshed layers), the difference maps vs the benchmark and the DSM."""
-    areas = sorted(p for p in STUDY_DIR.glob("BU*") if (p / "studiegebied.gpkg").exists()) \
-        if STUDY_DIR.exists() else []
-    if not areas:
-        return 0
-    top = _group(root, GROUP_STUDY, 0)
-    added = 0
-    labels = {"benchmark": "benchmark (visibility_Delft, uitgesneden)",
-              "arcgis": "ArcGIS Visibility, instellingen benchmark",
-              "gdal": "GDAL, instellingen benchmark"}
-    for area in areas:
-        group = _group(top, area.name)
-        gpkg = area / "studiegebied.gpkg"
-        if gpkg.resolve() not in have:
-            styles = {
-                "buurt": QgsFillSymbol.createSimple({"color": "0,0,0,0", "outline_color": "#e31a1c",
-                                                     "outline_width": "0.8"}),
-                "buffer30": QgsFillSymbol.createSimple({"color": "0,0,0,0", "outline_color": "#e31a1c",
-                                                        "outline_width": "0.4", "outline_style": "dash"}),
-                "bomen": QgsMarkerSymbol.createSimple({"name": "circle", "color": "#1a9850",
-                                                       "outline_color": "#ffffff", "size": "1.8"}),
-            }
-            for name, label in (("buurt", "buurt (vergeleken cellen)"), ("buffer30", "buffer 30 m"),
-                                ("bomen", "bomen (benchmark)")):
-                layer = QgsVectorLayer(f"{gpkg}|layername={name}", label, "ogr")
-                if _add(project, group, layer):
-                    layer.setRenderer(QgsSingleSymbolRenderer(styles[name]))
-                    added += 1
-        diffs = _group(group, "Verschil met benchmark (oranje = telt meer bomen, blauw = minder)")
-        results = _group(group, "Resultaten (aantal bomen dat de cel ziet)")
-        for stem in ("benchmark", "arcgis", "gdal"):
-            tif = area / f"{stem}.tif"
-            if tif.exists() and tif.resolve() not in have:
-                layer = QgsRasterLayer(str(tif), labels[stem], "gdal")
-                if _add(project, results, layer, visible=stem == "benchmark"):
-                    _style_viewshed(layer)
-                    added += 1
-        for tif in sorted(area.glob("verschil_*.tif")):
-            if tif.resolve() in have:
-                continue
-            tool = tif.stem.removeprefix("verschil_")
-            layer = QgsRasterLayer(str(tif), f"verschil {tool} vs benchmark", "gdal")
-            if _add(project, diffs, layer, visible=False):
-                _style_paletted(layer, [(0, None, "zelfde"), (1, "#ff7f00", f"{tool} telt meer"),
-                                        (2, "#1f78b4", f"{tool} telt minder")])
-                added += 1
-        dem = area / "dem_raw.tif"
-        if dem.exists() and dem.resolve() not in have:
-            layer = QgsRasterLayer(str(dem), "DSM (AHN5 ruw, zoals de benchmark)", "gdal")
-            if _add(project, group, layer, visible=False):
-                layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
-                added += 1
-    return added
-
-
-def _style_rules(layer, rules, outline="#404040"):
-    """rules: [(expression, colour, label)] — the first matching rule wins."""
-    root_rule = QgsRuleBasedRenderer.Rule(None)
-    for expr, colour, label in rules:
-        symbol = QgsFillSymbol.createSimple({"color": colour, "outline_color": outline,
-                                             "outline_width": "0.1"})
-        root_rule.appendChild(QgsRuleBasedRenderer.Rule(symbol, filterExp=expr, label=label))
-    layer.setRenderer(QgsRuleBasedRenderer(root_rule))
-
-
-def _step_rules(field, steps, no_data_expr, no_data_label):
-    """Rules for steps [(lower bound, colour, label)] on a percentage field."""
-    rules = [(no_data_expr, NO_DATA, no_data_label)]
-    for i, (lo, colour, label) in enumerate(steps):
-        hi = steps[i + 1][0] if i + 1 < len(steps) else None
-        expr = f'"{field}" >= {lo}' + (f' AND "{field}" < {hi}' if hi is not None else "")
-        rules.append((f"NOT ({no_data_expr}) AND {expr}", colour, label))
-    return rules
-
-
-def _add_areas_3(project, root, have):
-    """The 3 summarised per gemeente, wijk and buurt (06_area_summaries.py):
-    share of homes with >= 3 visible trees, in the web map's colours."""
-    added = 0
-    for gpkg in sorted(PROCESSED_DIR.glob("*_gebieden.gpkg")):
-        if gpkg.resolve() in have:
-            continue
-        group = _group(root, GROUP_AREAS_3, 0)
-        rules = _step_rules("pct_woningen_3_of_meer", STEPS_3,
-                            f'"woningen" < {MIN_HOMES} OR "pct_woningen_3_of_meer" IS NULL',
-                            f"< {MIN_HOMES} woningen")
-        for level in ("gemeenten", "wijken", "buurten"):
-            layer = QgsVectorLayer(f"{gpkg}|layername={level}", level, "ogr")
-            if _add(project, group, layer, visible=False):
-                _style_rules(layer, rules)
-                added += 1
-    return added
-
-
-def _style_point_rules(layer, rules, size="1.8"):
-    """rules: [(expression, colour, label)] for point layers — the first matching rule wins."""
-    root_rule = QgsRuleBasedRenderer.Rule(None)
-    for expr, colour, label in rules:
-        symbol = QgsMarkerSymbol.createSimple({"name": "circle", "color": colour, "outline_style": "no",
-                                               "size": size})
-        root_rule.appendChild(QgsRuleBasedRenderer.Rule(symbol, filterExp=expr, label=label))
-    layer.setRenderer(QgsRuleBasedRenderer(root_rule))
-
-
-def _zoomed_in(layer, scale=25000):
-    layer.setScaleBasedVisibility(True)
-    layer.setMinimumScale(scale)
-    layer.setMaximumScale(0)
-
-
-def _add_300_open(project, root, have):
-    """The 300 computed with open software (indicator_300_park/etl, province run):
-    the green areas and entrances, the Valhalla isochrones, the walking distance
-    per home from GRASS, and the comparison GRASS / Valhalla per home."""
-    added = 0
-    group = _group(root, GROUP_300_OPEN, 0)
-    inputs = _group(group, "Invoer: groen en ingangen")
-    if OPEN_PREPARED.exists() and OPEN_PREPARED.resolve() not in have:
-        parks = QgsVectorLayer(f"{OPEN_PREPARED}|layername=parks", "groengebieden (samengevoegd)", "ogr")
-        if _add(project, inputs, parks):
-            parks.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
-                {"color": "47,125,50,160", "outline_color": "#1b5e20", "outline_width": "0.2"})))
-            added += 1
-        sources = QgsVectorLayer(f"{OPEN_PREPARED}|layername=park_sources", "groen per bron", "ogr")
-        if _add(project, inputs, sources, visible=False):
-            cats = [QgsRendererCategory(b, QgsFillSymbol.createSimple(
-                {"color": "0,0,0,0", "outline_color": c, "outline_width": "0.4"}), b)
-                for b, c in (("voorzieningen", "#1b5e20"), ("top10nl", "#7b3294"),
-                             ("top10nl recreatie", "#c4521f"))]
-            sources.setRenderer(QgsCategorizedSymbolRenderer("bron", cats))
-            added += 1
-        entrances = QgsVectorLayer(f"{OPEN_PREPARED}|layername=entrances", "ingangen", "ogr")
-        if _add(project, inputs, entrances):
-            cats = [QgsRendererCategory(s, QgsMarkerSymbol.createSimple(
-                {"name": "circle", "color": c, "outline_color": "#ffffff", "size": "2"}), label)
-                for s, c, label in (("pad", "#c4521f", "pad kruist de rand"), ("poort", "#7b3294", "OSM-poort"),
-                                    ("rand", "#e6a100", "open rand langs straat"))]
-            entrances.setRenderer(QgsCategorizedSymbolRenderer("soort", cats))
-            _zoomed_in(entrances, 50000)
-            added += 1
-    iso_group = _group(group, "Valhalla isochronen")
-    if OPEN_VALHALLA.exists() and OPEN_VALHALLA.resolve() not in have:
-        for contour, label, colour in (("15min", "15 minuten (1.275 m)", "205,226,251,150"),
-                                       ("5min", "5 minuten (425 m)", "109,167,236,150"),
-                                       ("300m", "300 m", "28,92,171,150")):
-            layer = QgsVectorLayer(f"{OPEN_VALHALLA}|layername=isochrones", f"isochroon {label}", "ogr")
-            if _add(project, iso_group, layer, visible=contour == "300m"):
-                layer.setSubsetString(f"\"contour\" = '{contour}'")
-                layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
-                    {"color": colour, "outline_style": "no"})))
-                added += 1
-    homes_group = _group(group, "Woningen: loopafstand tot een park (GRASS)")
-    compare_group = _group(group, "Vergelijking GRASS / Valhalla per woning")
-    if OPEN_RESULT.exists() and OPEN_RESULT.resolve() not in have:
-        homes = QgsVectorLayer(f"{OPEN_RESULT}|layername=homes", "loopafstand per woning (GRASS)", "ogr")
-        if _add(project, homes_group, homes):
-            _style_point_rules(homes, [('"gr_m" <= 300', "#1a9850", "binnen 300 m"),
-                                       ('"gr_m" <= 425', "#91cf60", "300 m - 5 min"),
-                                       ('"gr_m" <= 1275', "#fdae61", "5 - 15 min"),
-                                       ("ELSE", "#d7301f", "verder dan 15 min")])
-            _zoomed_in(homes)
-            added += 1
-        for name, expr_rules, visible in (
-                ("GRASS tegen Valhalla, 300 m",
-                 [("\"agree_300m\" = 'alleen_grass'", "#2a78d6", "alleen GRASS binnen 300 m"),
-                  ("\"agree_300m\" = 'alleen_valhalla'", "#eb6834", "alleen Valhalla binnen 300 m"),
-                  ("\"agree_300m\" = 'beide'", "#c9c7c0", "beide binnen 300 m"),
-                  ("ELSE", "#efeeea", "beide verder")], True),):
-            layer = QgsVectorLayer(f"{OPEN_RESULT}|layername=homes", name, "ogr")
-            if _add(project, compare_group, layer, visible=False):
-                _style_point_rules(layer, expr_rules)
-                _zoomed_in(layer)
-                added += 1
-    return added
 
 
 def _add(project, group, layer, visible=True):
@@ -486,133 +116,178 @@ def _add(project, group, layer, visible=True):
     return layer
 
 
-def _create_static_layers(project, root):
-    """Background, 3D BAG and the all-trees layer — only on first creation."""
-    bg = _group(root, GROUP_BACKGROUND)
-    _add(project, bg, QgsRasterLayer(BRT_WMTS, "PDOK BRT achtergrondkaart (grijs)", "wms"))
-    _add(project, bg, QgsRasterLayer(LUCHTFOTO_WMS, "PDOK luchtfoto (actueel)", "wms"), visible=False)
+def _zoomed_in(layer, scale=25000):
+    """Only draw when zoomed in past 1:scale (point layers with millions of features)."""
+    layer.setScaleBasedVisibility(True)
+    layer.setMinimumScale(scale)
+    layer.setMaximumScale(0)
 
-    bag = _group(root, GROUP_3DBAG, 0)
-    _add(project, bag, QgsRasterLayer(BAG3D_WMS, "3D BAG LoD2.2 (kaart)", "wms"), visible=False)
-    try:
-        from qgis.core import QgsTiledSceneLayer
-        _add(project, bag, QgsTiledSceneLayer(BAG3D_TILES, "3D BAG LoD2.2 (3D-weergave)", "cesiumtiles"),
-             visible=False)
-    except ImportError:
-        print("  NOTE: this QGIS has no 3D Tiles support — 3D BAG added as WMS only")
 
-    trees = _group(root, GROUP_TREES, 0)
-    if PROVINCE_TREES.exists():
-        layer = QgsVectorLayer(f"{PROVINCE_TREES}|layername=province_trees", "Alle bomen (Zuid-Holland)", "ogr")
-        if _add(project, trees, layer):
+def _style_viewshed(layer):
+    """Tree-count raster in the TREE_CLASSES colours (0 red ... 8+ dark green)."""
+    ramp = QgsColorRampShader()
+    ramp.setColorRampType(QgsColorRampShader.Discrete)
+    ramp.setColorRampItemList([QgsColorRampShader.ColorRampItem(v, QColor(c), lbl)
+                               for v, c, lbl in TREE_CLASSES])
+    shader = QgsRasterShader()
+    shader.setRasterShaderFunction(ramp)
+    renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1, shader)
+    renderer.setClassificationMin(0)
+    renderer.setClassificationMax(8)
+    layer.setRenderer(renderer)
+    layer.setOpacity(0.8)
+
+
+def _style_buildings(layer):
+    """Buildings coloured by their "klasse" field, grey when it is empty."""
+    labels = ["0", "1-2", "3-5", "6-7", "8+"]
+    cats = [QgsRendererCategory(lbl, QgsFillSymbol.createSimple(
+                {"color": colour, "outline_color": "#404040", "outline_width": "0.1"}), f"{lbl} bomen")
+            for lbl, (_, colour, _) in zip(labels, TREE_CLASSES)]
+    cats.append(QgsRendererCategory(None, QgsFillSymbol.createSimple(
+        {"color": "#bdbdbd", "outline_color": "#404040", "outline_width": "0.1"}), "geen gevelring"))
+    layer.setRenderer(QgsCategorizedSymbolRenderer("klasse", cats))
+
+
+def _style_areas(layer):
+    """% homes with >= 3 visible trees in the web map's steps; grey below MIN_HOMES."""
+    field = "pct_woningen_3_of_meer"
+    no_data = f'"woningen" < {MIN_HOMES} OR "{field}" IS NULL'
+    rules = [(no_data, NO_DATA, f"< {MIN_HOMES} woningen")]
+    for i, (lo, colour, label) in enumerate(STEPS_3):
+        hi = STEPS_3[i + 1][0] if i + 1 < len(STEPS_3) else None
+        expr = f'"{field}" >= {lo}' + (f' AND "{field}" < {hi}' if hi is not None else "")
+        rules.append((f"NOT ({no_data}) AND {expr}", colour, label))
+    root_rule = QgsRuleBasedRenderer.Rule(None)
+    for expr, colour, label in rules:
+        symbol = QgsFillSymbol.createSimple({"color": colour, "outline_color": "#404040",
+                                             "outline_width": "0.1"})
+        root_rule.appendChild(QgsRuleBasedRenderer.Rule(symbol, filterExp=expr, label=label))
+    layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+
+
+def _municipality(path, suffix):
+    return path.name.removesuffix(suffix).replace("ZuidHolland", "Zuid-Holland")
+
+
+def _add_the_3(project, parent, folder, tag, keep, on):
+    """One version of the 3 (tag "AHN5" or "AHN4") from folder: areas,
+    buildings and viewsheds, each file only if keep(path)."""
+    top = _group(parent, f"De 3 – {tag}", expanded=on)
+    areas = folder / f"{PROVINCE}_gebieden.gpkg"
+    if areas.exists() and keep(areas):
+        group = _group(top, "% woningen met ≥ 3 zichtbare bomen")
+        for level, label in (("buurten", "Buurten"), ("wijken", "Wijken"), ("gemeenten", "Gemeenten")):
+            layer = QgsVectorLayer(f"{areas}|layername={level}", f"{label} ({tag})", "ogr")
+            if _add(project, group, layer, visible=on and level == "buurten"):
+                _style_areas(layer)
+
+    province = folder / f"{PROVINCE}_woningen.gpkg"
+    if province.exists() and keep(province):
+        buildings = [(province, "Zuid-Holland")]
+    else:   # not merged yet: one layer per municipality
+        buildings = [(p, _municipality(p, "_woningen.gpkg")) for p in sorted(folder.glob("*_woningen.gpkg"))
+                     if p != province and keep(p)]
+    if buildings:
+        group = _group(top, "Panden: zichtbare bomen vanaf de gevel")
+        for gpkg, name in buildings:
+            layer = QgsVectorLayer(str(gpkg), f"Panden {name} ({tag})", "ogr")
+            if _add(project, group, layer, visible=on):
+                _style_buildings(layer)
+
+    # All municipalities' viewsheds as one mosaic (a VRT next to the project)
+    viewsheds = [str(p) for p in sorted(folder.glob("*_viewshed.tif")) if keep(p)]
+    if viewsheds:
+        vrt = PROJECT_PATH.parent / f"viewshed_{tag.lower()}.vrt"
+        gdal.BuildVRT(str(vrt), viewsheds).FlushCache()
+        layer = QgsRasterLayer(str(vrt), f"Zichtbare bomen per cel van 0,5 m ({tag}, {len(viewsheds)} gemeente{"n" if len(viewsheds) > 1 else ""})",
+                               "gdal")
+        if _add(project, top, layer, visible=False):
+            _style_viewshed(layer)
+
+
+def _add_the_300(project, parent):
+    """The walking distance per home as on the map, the green and its entrances."""
+    top = _group(parent, "De 300 – loopafstand tot groen", expanded=False)
+    if FINAL_300.exists():
+        layer = QgsVectorLayer(f"{FINAL_300}|layername=homes", "Woningen: loopafstand tot groen", "ogr")
+        if _add(project, top, layer, visible=False):
+            root_rule = QgsRuleBasedRenderer.Rule(None)
+            for expr, colour, label in (('"afstand_m" <= 300', "#1a9850", "binnen 300 m"),
+                                        ('"afstand_m" <= 425', "#91cf60", "300 m - 5 min"),
+                                        ('"afstand_m" <= 1275', "#fdae61", "5 - 15 min"),
+                                        ("ELSE", "#d7301f", "verder dan 15 min")):
+                symbol = QgsMarkerSymbol.createSimple({"name": "circle", "color": colour,
+                                                       "outline_style": "no", "size": "1.8"})
+                root_rule.appendChild(QgsRuleBasedRenderer.Rule(symbol, filterExp=expr, label=label))
+            layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+            _zoomed_in(layer)
+    if OPEN_300.exists():
+        entrances = QgsVectorLayer(f"{OPEN_300}|layername=entrances", "Ingangen van het groen", "ogr")
+        if _add(project, top, entrances, visible=False):
+            cats = [QgsRendererCategory(s, QgsMarkerSymbol.createSimple(
+                {"name": "circle", "color": c, "outline_color": "#ffffff", "size": "2"}), label)
+                for s, c, label in (("pad", "#c4521f", "pad kruist de rand"), ("poort", "#7b3294", "OSM-poort"),
+                                    ("rand", "#e6a100", "open rand langs straat"))]
+            entrances.setRenderer(QgsCategorizedSymbolRenderer("soort", cats))
+            _zoomed_in(entrances, 50000)
+        parks = QgsVectorLayer(f"{OPEN_300}|layername=parks", "Groengebieden", "ogr")
+        if _add(project, top, parks, visible=False):
+            parks.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
+                {"color": "47,125,50,120", "outline_color": "#1b5e20", "outline_width": "0.2"})))
+
+
+def _add_inputs(project, parent):
+    """All trees, the tree heights and both surface models."""
+    top = _group(parent, "Invoer – bomen en hoogtemodel", expanded=False)
+    if TREES.exists():
+        layer = QgsVectorLayer(f"{TREES}|layername=province_trees", "Alle bomen (vanaf 1:10.000)", "ogr")
+        if _add(project, top, layer):
             layer.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(
                 {"name": "circle", "color": "#1a9850", "outline_color": "#ffffff",
                  "outline_width": "0.1", "size": "1.6"})))
-            layer.setScaleBasedVisibility(True)
-            layer.setMinimumScale(10000)   # only draw when zoomed in past 1:10,000
-            layer.setMaximumScale(0)
+            _zoomed_in(layer, 10000)
+    for tag, gpkg in TREE_HEIGHTS.items():
+        if gpkg.exists():
+            _add(project, top, QgsVectorLayer(str(gpkg), f"Boomhoogtes Delft ({tag})", "ogr"), visible=False)
+    for tag, vrt in (("AHN5, hoogste punt per cel", DEM_AHN5), ("AHN4", DEM_AHN4)):
+        if vrt.exists():
+            layer = QgsRasterLayer(str(vrt), f"Hoogtemodel {tag}", "gdal")
+            if _add(project, top, layer, visible=False):
+                layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
+
+
+def _add_background(project, parent):
+    top = _group(parent, "Achtergrond", expanded=False)
+    _add(project, top, QgsRasterLayer(BRT_WMTS, "BRT achtergrondkaart (grijs)", "wms"))
+    _add(project, top, QgsRasterLayer(LUCHTFOTO_WMS, "Luchtfoto", "wms"), visible=False)
 
 
 def main():
-    """Open (or create) the project, drop layers whose file is gone, add the
-    new ones group by group, and save."""
-    # QGIS without a window (False = no GUI)
-    qgs = QgsApplication([], False)
+    qgs = QgsApplication([], False)       # QGIS without a window
     qgs.initQgis()
     try:
+        if PROJECT_PATH.exists():
+            shutil.copy2(PROJECT_PATH, BACKUP_PATH)
         project = QgsProject.instance()
-        is_new = not PROJECT_PATH.exists()
-        if is_new:
-            project.setCrs(QgsCoordinateReferenceSystem("EPSG:28992"))
-            project.setTitle("330300regel — validatie 3-30-300")
-        elif not project.read(str(PROJECT_PATH)):
-            sys.exit(f"ERROR: could not read {PROJECT_PATH}")
+        project.setCrs(QgsCoordinateReferenceSystem("EPSG:28992"))
+        project.setTitle("330300regel — validatie 3-30-300")
         project.writeEntryBool("Paths", "/Absolute", False)   # store relative paths
-
         root = project.layerTreeRoot()
-        if is_new:
-            _create_static_layers(project, root)
-        viewshed_group = _group(root, GROUP_VIEWSHED, 0)
-        trees_group = _group(root, GROUP_TREES, 1)
-        removed = [] if is_new else _prune_missing(project)
-        have = _existing_sources(project)
 
-        added = 0
-        for tif in sorted(PROCESSED_DIR.glob("*_viewshed.tif")):
-            if tif.resolve() in have:
-                continue
-            layer = QgsRasterLayer(str(tif), tif.stem.removesuffix("_viewshed"), "gdal")
-            if _add(project, viewshed_group, layer):
-                _style_viewshed(layer)
-                added += 1
+        _add_the_3(project, root, PROCESSED_DIR, "AHN5",
+                   keep=lambda p: p.stat().st_mtime >= AHN5_SINCE, on=True)
+        if AHN4_DIR.exists():
+            _add_the_3(project, root, AHN4_DIR, "AHN4", keep=lambda p: True, on=False)
+        else:
+            print(f"  NOTE: {AHN4_DIR} not readable (R: drive?) — AHN4 group skipped")
+        _add_the_300(project, root)
+        _add_inputs(project, root)
+        _add_background(project, root)
 
-        for gpkg in sorted(PROCESSED_DIR.glob("*_tree_heights.gpkg")):
-            if gpkg.resolve() in have:
-                continue
-            name = gpkg.stem.removesuffix("_tree_heights")
-            layer = QgsVectorLayer(str(gpkg), f"Boomhoogtes {name}", "ogr")
-            if _add(project, trees_group, layer, visible=False):
-                added += 1
-
-        if PROVINCE_DEM.exists() and PROVINCE_DEM.resolve() not in have:
-            layer = QgsRasterLayer(str(PROVINCE_DEM), "DEM Zuid-Holland (province_dem.vrt)", "gdal")
-            if _add(project, _group(root, GROUP_DEM, 2), layer, visible=False):
-                # Hillshade makes DEM faults visible at a glance: integer
-                # terraces, NoData holes, seams between municipality exports
-                layer.setRenderer(QgsHillshadeRenderer(layer.dataProvider(), 1, 315, 45))
-                added += 1
-
-        homes = sorted(PROCESSED_DIR.glob("*_woningen.gpkg"))
-        if homes:
-            homes_group = _group(root, GROUP_HOMES, 0)
-        for gpkg in homes:
-            if gpkg.resolve() in have:
-                continue
-            layer = QgsVectorLayer(str(gpkg), gpkg.stem.removesuffix("_woningen"), "ogr")
-            if _add(project, homes_group, layer):
-                _style_homes(layer)
-                added += 1
-
-        experiments = sorted(EXPERIMENTS_DIR.glob("*")) if EXPERIMENTS_DIR.exists() else []
-        if experiments:
-            exp_group = _group(root, GROUP_EXPERIMENTS, 1)
-        for f in experiments:
-            if f.resolve() in have:
-                continue
-            if f.suffix.lower() == ".tif":
-                layer = QgsRasterLayer(str(f), f.stem, "gdal")
-                if _add(project, exp_group, layer, visible=False):
-                    _style_viewshed(layer)
-                    added += 1
-            elif f.suffix.lower() in (".fgb", ".gpkg", ".shp"):
-                layer = QgsVectorLayer(str(f), f.stem, "ogr")
-                if _add(project, exp_group, layer, visible=False):
-                    layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
-                        {"color": "0,0,0,0", "outline_color": "#3f007d", "outline_width": "0.4"})))
-                    added += 1
-
-        # The original ArcGIS benchmark, read straight from its geodatabase,
-        # next to the corrected one (arcgis_tests/benchmark_corrected.py)
-        if not any(l.name() == BENCHMARK_NAME for l in project.mapLayers().values()):
-            layer = QgsRasterLayer(BENCHMARK, BENCHMARK_NAME, "gdal")
-            if layer.isValid():
-                layer.dataProvider().setUserNoDataValue(1, [QgsRasterRange(BENCH_NODATA, BENCH_NODATA)])
-                if _add(project, _group(root, GROUP_EXPERIMENTS, 1), layer, visible=False):
-                    _style_viewshed(layer)
-                    added += 1
-            else:
-                print(f"  NOTE: {BENCHMARK} not readable (R: drive?) — benchmark layer skipped")
-
-        added += _add_areas_3(project, root, have)
-        added += _add_300_open(project, root, have)
-        added += _add_one_tree(project, root, have)
-        added += _add_study_areas(project, root, have)
-
-        PROJECT_PATH.parent.mkdir(parents=True, exist_ok=True)
         if not project.write(str(PROJECT_PATH)):
             sys.exit(f"ERROR: could not write {PROJECT_PATH}")
-        print(f"{'Created' if is_new else 'Updated'} {PROJECT_PATH} — {added} new layer(s), "
-              f"{len(removed)} removed (file gone), {len(project.mapLayers())} in total")
+        print(f"Wrote {PROJECT_PATH} — {len(project.mapLayers())} layers")
     finally:
         qgs.exitQgis()
 

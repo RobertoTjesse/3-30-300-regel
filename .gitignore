@@ -42,6 +42,7 @@ Thumbs.db
 qgis_validation/*.qgz
 qgis_validation/*.qgz~
 qgis_validation/*.qgd
+qgis_validation/*.vrt
 
 # Experiments (ArcGIS comparisons, one-tree and study-area tests, NEO export):
 # scripts and outputs stay local, never on GitHub

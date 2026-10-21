@@ -92,7 +92,7 @@ See the wiki page [Known issues](https://github.com/RobertoTjesse/3-30-300-regel
 
 ## In QGIS
 
-`qgis_validation/build_project.py` adds the group "De 300: open methode" to the validation project: the green areas, the green per source and the entrances; the Valhalla isochrones; the walking distance per home from GRASS; and per home GRASS against Valhalla (300 m).
+`qgis_validation/build_project.py` puts the group "De 300 – loopafstand tot groen" in the validation project: the walking distance per home as on the map, the entrances and the green areas.
 
 ## The earlier method
 
