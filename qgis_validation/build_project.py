@@ -95,11 +95,26 @@ BENCHMARK_RUNS = [
      "wijziging: observer_offset 1 m in plaats van RASTERVALU. Die 1 m is de standaardwaarde van "
      "de tool, geen onderbouwde keuze: RASTERVALU is al de hoogte van het oppervlak op het "
      "boompunt (meestal de kruin), dus de boom kijkt vanaf 1 m boven zijn eigen kruin."),
-    ("pipeline_ahn5", "GDAL-alternatief: onze methode op AHN5 (waarnemer op de kruintop)",
+    ("arcgis_rv0", "ArcGIS Pro, waarnemer op RASTERVALU (offset 0)",
+     "Benchmark-instellingen, maar de waarnemer precies op RASTERVALU: het oppervlak op het "
+     "boompunt, ergens in de kruin. Hogere kruincellen rondom kunnen het zicht blokkeren "
+     "(zelfoclusie). studiegebied_waarnemer_arcgis.py."),
+    ("gdal_rv0", "GDAL, waarnemer op RASTERVALU (offset 0)",
+     "Hetzelfde als de ArcGIS-run hierboven, met GDAL ViewshedGenerate (studiegebied_waarnemer.py)."),
+    ("arcgis_kruin", "ArcGIS Pro, waarnemer op de kruintop (offset 0)",
+     "Benchmark-instellingen, maar de waarnemer op de kruintop: de hoogste cel binnen 1,5 m van de "
+     "boom, daken niet meegeteld (zoals onze methode). Het verschil met 'waarnemer op RASTERVALU' "
+     "is wat zelfoclusie in ArcGIS Pro kost. studiegebied_waarnemer_arcgis.py."),
+    ("gdal_kruin", "GDAL, waarnemer op de kruintop (offset 0)",
+     "Hetzelfde als de ArcGIS-run hierboven, met GDAL. Met de bomen van de benchmark geeft de code "
+     "van onze pipeline precies dit resultaat."),
+    ("pipeline_ahn5", "GDAL-alternatief: onze methode op AHN5 (minder bomen)",
      "Onze eigen methode (indicator_3_bomen/etl): GDAL ViewshedGenerate per boom, waarnemer op "
      "de kruintop (hoogste punt binnen 1,5 m van de boom, gebouwen niet meegeteld), doel 1,8 m, "
-     "straal 30 m, AHN5 DSM (hoogste punt per cel) met de gaten gevuld. Uitgesneden uit de "
-     "Delft-run van 20 oktober 2026."),
+     "straal 30 m, AHN5 DSM (hoogste punt per cel) met de gaten gevuld. Zelfde uitkomst als "
+     "'GDAL, waarnemer op de kruintop', maar met onze bomen: de statussen 'disappeared, small "
+     "tree' en 'not seen once, small tree' tellen niet mee, de benchmark telt ze wel. Uitgesneden "
+     "uit de Delft-run van 20 oktober 2026."),
     ("pipeline_ahn4", "GDAL-alternatief: onze methode op AHN4",
      "Dezelfde methode op AHN4 (gewogen gemiddelde per cel), de versie die op de kaart stond "
      "vóór de AHN5-run."),
@@ -286,10 +301,9 @@ def _add_benchmark(project, parent):
     # The compared cells: inside the buurt, not NoData (water) in the benchmark
     bench, nodata = _read(STUDY / "benchmark.tif")
     area = (_read(STUDY / "buurt.tif")[0] == 1) & (bench != (nodata if nodata is not None else -2147483647))
-    for i, (stem, title, text) in enumerate(BENCHMARK_RUNS, 1):
+    shown = [run for run in BENCHMARK_RUNS if (STUDY / f"{run[0]}.tif").exists()]
+    for i, (stem, title, text) in enumerate(shown, 1):
         tif = STUDY / f"{stem}.tif"
-        if not tif.exists():
-            continue
         v = _cells(tif, area)
         group = _group(top, f"{i}. {title}", expanded=i == 1)
         layer = QgsRasterLayer(str(tif), f"Zichtbare bomen per cel: gemiddeld {v.mean():.1f}, "
