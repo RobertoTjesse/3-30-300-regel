@@ -21,12 +21,12 @@ Do not edit by hand — regenerate instead.
 
 | Municipality | Tiles | Trees | Tile DEM (s) | Compute viewsheds (s) | Merge (s) | Total | Trees/sec |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| 's-Gravenhage | 924 | 665896 | 1762.4 | 1163.1 | 322.8 | 54m08.3s | 573 |
-| Alblasserdam | 110 | 50608 | 267.4 | 105.4 | 31.1 | 6m43.9s | 480 |
-| Albrandswaard | 160 | 120719 | 442.8 | 235.3 | 48.0 | 12m06.1s | 513 |
-| Alphen aan den Rijn | 825 | 257369 | 1746.4 | 647.3 | 255.9 | 44m09.6s | 398 |
-| Barendrecht | 143 | 95935 | 363.9 | 184.1 | 43.9 | 9m51.9s | 521 |
-| Bodegraven-Reeuwijk | 750 | 175238 | 1703.1 | 353.7 | 191.2 | 37m28.0s | 495 |
+| 's-Gravenhage | 924 | 665896 | 2532.0 | 1492.0 | 428.4 | 74m12.4s | 446 |
+| Alblasserdam | 110 | 50608 | 382.3 | 132.4 | 41.4 | 9m16.1s | 382 |
+| Albrandswaard | 160 | 120719 | 603.5 | 296.7 | 63.5 | 16m03.7s | 407 |
+| Alphen aan den Rijn | 825 | 257369 | 2576.5 | 787.3 | 335.2 | 61m39.0s | 327 |
+| Barendrecht | 143 | 95935 | 500.9 | 232.8 | 58.3 | 13m12.0s | 412 |
+| Bodegraven-Reeuwijk | 750 | 175238 | 2469.4 | 453.6 | 254.6 | 52m57.6s | 386 |
 | Brielle | 285 | 86589 | 737.7 | 165.1 | 74.4 | 16m17.2s | 524 |
 | Capelle aan den IJssel | 168 | 133988 | 502.5 | 250.4 | 56.7 | 13m29.6s | 535 |
 | Delft | 208 | 149849 | 1105.4 | 1167.3 | 306.6 | 42m59.3s | 128 |
@@ -74,6 +74,6 @@ Do not edit by hand — regenerate instead.
 | Zuidplas | 600 | 228911 | 1685.2 | 448.8 | 180.1 | 38m34.1s | 510 |
 | Zwijndrecht | 187 | 107180 | 471.8 | 222.4 | 60.2 | 12m34.4s | 482 |
 
-**52 municipalities, 28,723 tiles, 10,241,760 tree viewsheds computed, 1541m00.1s total processing time.**
+**52 municipalities, 28,723 tiles, 10,241,760 tree viewsheds computed, 1603m53.1s total processing time.**
 
 Note: Papendrecht and 's-Gravenhage `tile_dem` timings are approximate (measured before per-stage timing instrumentation was added); all other figures are precisely measured.

@@ -90,10 +90,11 @@ BENCHMARK_RUNS = [
      "Onze nabouw van de benchmark met GDAL ViewshedGenerate: dezelfde bomen, hetzelfde "
      "hoogtemodel, waarnemer op 2 x RASTERVALU, doel 1,8 m, straal 30 m. Laat zien dat GDAL "
      "dezelfde uitkomst geeft als ArcGIS Pro wanneer de instellingen gelijk zijn."),
-    ("arcgis_correct", "ArcGIS Pro Visibility met de correcte waarnemer (RASTERVALU + 1 m)",
+    ("arcgis_correct", "ArcGIS Pro Visibility zonder de verdubbeling (RASTERVALU + 1 m)",
      "De benchmark opnieuw gedraaid in ArcGIS Pro (benchmark_corrected.py) met maar één "
-     "wijziging: observer_offset 1 m in plaats van RASTERVALU. De boom kijkt dan vanaf 1 m boven "
-     "het oppervlak op het boompunt."),
+     "wijziging: observer_offset 1 m in plaats van RASTERVALU. Die 1 m is de standaardwaarde van "
+     "de tool, geen onderbouwde keuze: RASTERVALU is al de hoogte van het oppervlak op het "
+     "boompunt (meestal de kruin), dus de boom kijkt vanaf 1 m boven zijn eigen kruin."),
     ("pipeline_ahn5", "GDAL-alternatief: onze methode op AHN5 (waarnemer op de kruintop)",
      "Onze eigen methode (indicator_3_bomen/etl): GDAL ViewshedGenerate per boom, waarnemer op "
      "de kruintop (hoogste punt binnen 1,5 m van de boom, gebouwen niet meegeteld), doel 1,8 m, "
