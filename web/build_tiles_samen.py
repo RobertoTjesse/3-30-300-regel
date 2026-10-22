@@ -6,7 +6,7 @@ weights the visitor sets with sliders (web/data/samen.pmtiles).
 Every home gets a score from 0 to 100 per indicator, in two variants:
   gradual (s3, s30, s300)    3:   min(visible trees, 3) / 3
                              30:  min(canopy within 500 m / 30%, 1)
-                             300: 100 within 425 m walk (5 min), falling
+                             300: 100 within a 300 m walk (the rule), falling
                                   linearly to 0 at 1,275 m (15 min)
   This is min-max normalisation (OECD/JRC Handbook on Constructing Composite
   Indicators, 2008) with bounds from the rule and the data instead of from
@@ -57,7 +57,7 @@ PROCESSED = ARGS.data / "processed"
 SLUG = config.PROVINCE_SLUG
 OUT = Path(__file__).resolve().parent / "data" / "samen.pmtiles"
 ZOOMS = {"gemeenten": (6, 9), "wijken": (9, 11), "buurten": (11, 12), "woningen": (13, 16)}
-NEAR, FAR = 425, 1275      # metres: 5 minutes' walk (the target), 15 (the last distance measured)
+NEAR, FAR = 300, 1275      # metres: the rule's 300 m walk (the target), 15 minutes (the last distance measured)
 KEYS = ("3", "30", "300")
 
 RD = osr.SpatialReference()
@@ -76,7 +76,7 @@ def score_300(d):
 def woningen(dst):
     """Buildings with their scores (layer woningen), and per building a point
     with the sums the areas need (layer punten)."""
-    # The 300 per home, summed per building: [homes, sum of gradual scores, homes within 5 min]
+    # The 300 per home, summed per building: [homes, sum of gradual scores, homes within 300 m]
     per_pand = {}
     homes_ds = ogr.Open(str(ARGS.data / "interim" / "300" / SLUG / "300.gpkg"))   # 05_combine.py
     for f in homes_ds.GetLayerByName("homes"):
@@ -115,7 +115,7 @@ def woningen(dst):
              "300": None if r300 is None else r300[1] / r300[0]}
         p = {"3": 100 * (bomen >= 3),
              "30": None if k30 is None else 100 * (k30 >= 30),
-             # the building's share of its homes within 5 min
+             # the building's share of its homes within 300 m
              "300": None if r300 is None else 100.0 * r300[2] / r300[0]}
         g = f.GetGeometryRef().Clone()
         g.FlattenTo2D()
@@ -135,7 +135,7 @@ def woningen(dst):
             pf.SetField(f"n{k}", n)
             pf.SetField(f"s{k}", n * (s[k] or 0) / 100)
             pf.SetField(f"p{k}", n * (p[k] or 0) / 100)
-        # Homes meeting all three: the building meets the 3 and the 30, the home is within 5 min
+        # Homes meeting all three: the building meets the 3 and the 30, the home is within 300 m
         if p["3"] and p["30"] and r300:
             pf.SetField("alle", r300[2])
         else:

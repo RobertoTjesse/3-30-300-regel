@@ -275,7 +275,7 @@ const THEMES = {
 // Per home a score 0-100 per indicator (web/build_tiles_samen.py), two variants:
 //   p = rule met (0 or 100); per area: the share of homes meeting that rule
 //   s = gradual, min-max between the worst measured value (0) and the target (100):
-//       0-3 trees, 0-30% canopy, 1,275-425 m walk; beyond the target capped
+//       0-3 trees, 0-30% canopy, 1,275-300 m walk; beyond the target capped
 // Compound = sum(w*score) / sum(w) over the indicators with a value. That is
 // linear, so the area means in the tiles give the mean of the homes' compounds.
 const SAMEN_KEYS = ["3", "30", "300"];
@@ -291,11 +291,11 @@ THEMES.samen = {
   intro: L("Proef: de 3, de 30 en de 300 in één kaart. Stel met de schuiven in hoe zwaar elk deel telt; een gebied krijgt het gemiddelde van zijn woningen.",
            "Trial: the 3, the 30 and the 300 in one map. Set with the sliders how much each part counts; an area gets the mean of its homes."),
   method: L("Per woning krijgt elk deel een score van 0 tot 100. <b>Regel gehaald</b>: 100 als de woning dat deel haalt, anders 0; per gebied is dat het aandeel woningen dat het haalt. " +
-            "<b>Geleidelijk</b>: lineair van de slechtste gemeten waarde (0 bomen, 0% kroon, 1.275 m lopen: verder meet de 300 niet) tot het doel (3 bomen, 30%, 425 m), daarboven 100 " +
+            "<b>Geleidelijk</b>: lineair van de slechtste gemeten waarde (0 bomen, 0% kroon, 1.275 m lopen: verder meet de 300 niet) tot het doel (3 bomen, 30%, 300 m), daarboven 100 " +
             "(min-max-normalisatie met vaste grenzen, OECD/JRC-handboek voor samengestelde indicatoren, 2008). " +
             "Het totaal is het gewogen gemiddelde van de drie. Het artikel geeft geen gewichten: elk deel is een minimum. Daarom staat in elke pop-up ook het aandeel woningen dat alle drie haalt, zonder gewichten.",
             "Per home, each part gets a score from 0 to 100. <b>Rule met</b>: 100 if the home meets that part, else 0; per area that is the share of homes meeting it. " +
-            "<b>Gradual</b>: linear from the worst measured value (0 trees, 0% canopy, a 1,275 m walk: the 300 measures no further) to the target (3 trees, 30%, 425 m), 100 beyond " +
+            "<b>Gradual</b>: linear from the worst measured value (0 trees, 0% canopy, a 1,275 m walk: the 300 measures no further) to the target (3 trees, 30%, 300 m), 100 beyond " +
             "(min-max normalisation with fixed bounds, OECD/JRC Handbook on Constructing Composite Indicators, 2008). " +
             "The total is the weighted mean of the three. The paper gives no weights: each part is a minimum. So every popup also shows the share of homes meeting all three, without weights."),
 };
