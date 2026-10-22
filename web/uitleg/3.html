@@ -61,8 +61,9 @@ raam. Wij hebben dat voor woningen zo concreet gemaakt:</p>
 <h2>Stappen</h2>
 <ol class="steps">
   <li><strong>Hoogtemodel en bomen per gemeente verzamelen.</strong>
-    Het hoogtemodel is AHN4, 0,5 m, de <i>ruwe</i> versie: een oppervlaktemodel waarin gebouwen, heggen en
-    boomkronen zitten, niet alleen de grond. De bomen zijn punten uit de NEO-boomdata. Per provincie worden alle
+    Het hoogtemodel is het AHN5-oppervlaktemodel (DSM), 0,5 m, met per cel het hoogste punt: gebouwen, heggen en
+    boomkronen zitten erin, niet alleen de grond. Tot oktober 2026 was dit AHN4; met AHN5 haalt 85,2% van de
+    woningen in Zuid-Holland de 3, met AHN4 was dat 85,9%. De bomen zijn punten uit de NEO-boomdata. Per provincie worden alle
     gemeenten samengevoegd tot één hoogtemozaïek en één bomenbestand.</li>
   <li><strong>Het hoogtemodel in tegels knippen.</strong>
     Tegels van 500 × 500 m met een rand van 35 m extra. Bomen en hoogtes in die rand worden meegenomen, maar alleen
@@ -91,7 +92,7 @@ raam. Wij hebben dat voor woningen zo concreet gemaakt:</p>
         vergelijkbaar blijven. Op die afstand is een boom nog duidelijk als boom te herkennen.</td>
     <td>Een grotere straal telt verre bomen mee die je nauwelijks nog als "uitzicht op een boom" ervaart en maakt de
         berekening veel zwaarder.</td></tr>
-<tr><td>Ruw oppervlaktemodel (AHN4 DSM)</td>
+<tr><td>Oppervlaktemodel (AHN5 DSM)</td>
     <td>Gebouwen, heggen en kronen moeten het zicht kunnen blokkeren. In een maaiveldmodel is alles open.</td>
     <td>AHN-maaiveld (DTM): te optimistisch. De AHN-puntenwolk met klassen zou beter zijn, maar is veel zwaarder om
         te verwerken.</td></tr>
@@ -152,9 +153,9 @@ Dan zit het verschil meestal in een van deze punten:</p>
   <li><b>Je kijkt vanaf een hogere verdieping.</b> We rekenen op ooghoogte (1,8 m) vlak voor de gevel, dus op straat- of
       tuinniveau. Vanaf een balkon of bovenverdieping kijk je over heggen, schuttingen en auto's heen en zie je vaak
       meer bomen dan de kaart aangeeft.</li>
-  <li><b>De boom is nieuw of staat niet in het bomenbestand.</b> Het bomenbestand en het hoogtemodel zijn van 2020–2022.
+  <li><b>De boom is nieuw of staat niet in het bomenbestand.</b> Het bomenbestand is van 2020–2022, het hoogtemodel van 2023–2025.
       Bomen die later zijn geplant ontbreken, en heel jonge of kleine bomen staan er soms niet in.</li>
-  <li><b>De situatie is veranderd.</b> Is er sinds 2020–2022 een gebouw gesloopt, een schutting weggehaald of een
+  <li><b>De situatie is veranderd.</b> Is er sinds de opname een gebouw gesloopt, een schutting weggehaald of een
       nieuwe wijk gebouwd, dan rekent het model nog met de oude situatie. Dat geldt ook andersom.</li>
   <li><b>Iets blokkeert het zicht in het model.</b> Het hoogtemodel ziet heggen, schuttingen, bushokjes en de kronen van
       andere bomen als obstakel. Een dichte heg van twee meter voor je raam telt dus als muur, ook als je er in het echt
@@ -176,7 +177,7 @@ woning drie bomen te zien zijn, niet vanuit welk raam.</div>
       keer niet gezien, kleine boom" (3%) staan niet meer mee. Minder bomen betekent dat minder woningen de norm halen, en
       dat is veiliger dan bomen tellen die er misschien niet meer staan. Nog open: met NEO nagaan wat de statussen precies
       betekenen (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/1">open punt #1</a>).</li>
-  <li><b>Actualiteit.</b> Hoogtemodel en bomen komen uit 2020–2022, de woningen uit 2026. Nieuwbouw staat op de
+  <li><b>Actualiteit.</b> De bomen komen uit 2020–2022, het hoogtemodel uit 2023–2025, de woningen uit 2026. Nieuwbouw staat op de
       kaart met de omgeving van toen (3 à 5% van de woningen).</li>
   <li><b>Geen puntclassificatie.</b> Het hoogtemodel onderscheidt boom, gebouw en hoogspanningsleiding niet. De
       hoogtecontrole vangt het grootste deel af; de geclassificeerde AHN-puntenwolk zou het oplossen.</li>
@@ -200,7 +201,7 @@ woning drie bomen te zien zijn, niet vanuit welk raam.</div>
 </table></div>
 <div class="table-wrap"><table class="plain">
 <tr><th>Gegevens</th><th>Bron</th><th>Stand</th></tr>
-<tr><td>Hoogtemodel</td><td>AHN4, oppervlaktemodel 0,5 m, ruw</td><td>ingewonnen 2020–2022</td></tr>
+<tr><td>Hoogtemodel</td><td>AHN5, oppervlaktemodel (DSM) 0,5 m</td><td>ingewonnen 2023–2025</td></tr>
 <tr><td>Bomen</td><td>NEO boomdata (aangekocht, niet openbaar)</td><td>2020–2022</td></tr>
 <tr><td>Panden en adressen</td><td>BAG via PDOK</td><td>27 september 2026</td></tr>
 <tr><td>Gemeentegrenzen</td><td>Bestuurlijke gebieden (Kadaster) via PDOK</td><td>28 september 2026</td></tr>

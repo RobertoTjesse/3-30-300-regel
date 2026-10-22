@@ -61,8 +61,9 @@ window. For homes, we made that concrete as follows:</p>
 <h2>Steps</h2>
 <ol class="steps">
   <li><strong>Collect the elevation model and trees per municipality.</strong>
-    The elevation model is AHN4, 0.5 m, the <i>raw</i> version: a surface model that contains buildings, hedges and
-    tree crowns, not just the ground. The trees are points from the NEO tree data. Per province all municipalities are
+    The elevation model is the AHN5 surface model (DSM), 0.5 m, with the highest point per cell: it contains buildings,
+    hedges and tree crowns, not just the ground. Until October 2026 this was AHN4; with AHN5, 85.2% of the homes in
+    Zuid-Holland meet the 3, with AHN4 it was 85.9%. The trees are points from the NEO tree data. Per province all municipalities are
     combined into one elevation mosaic and one tree file.</li>
   <li><strong>Cut the elevation model into tiles.</strong>
     Tiles of 500 × 500 m with an extra margin of 35 m. Trees and heights in that margin are included, but only the
@@ -91,7 +92,7 @@ window. For homes, we made that concrete as follows:</p>
         comparable. At that distance a tree is still clearly recognisable as a tree.</td>
     <td>A larger radius counts distant trees you hardly experience as "a view of a tree" and makes the calculation
         much heavier.</td></tr>
-<tr><td>Raw surface model (AHN4 DSM)</td>
+<tr><td>Surface model (AHN5 DSM)</td>
     <td>Buildings, hedges and crowns must be able to block the view. In a ground model everything is open.</td>
     <td>AHN ground model (DTM): too optimistic. The classified AHN point cloud would be better, but is much heavier
         to process.</td></tr>
@@ -153,7 +154,7 @@ Then the difference is usually one of these:</p>
   <li><b>You look from a higher floor.</b> We calculate at eye height (1.8 m) just outside the facade, so at street or
       garden level. From a balcony or upper floor you look over hedges, fences and cars and often see more trees than
       the map shows.</li>
-  <li><b>The tree is new or not in the tree file.</b> The tree file and the elevation model are from 2020–2022. Trees
+  <li><b>The tree is new or not in the tree file.</b> The tree file is from 2020–2022, the elevation model from 2023–2025. Trees
       planted later are missing, and very young or small trees are sometimes not included.</li>
   <li><b>The situation has changed.</b> If a building was demolished, a fence removed or a new neighbourhood built since
       2020–2022, the model still uses the old situation. That works the other way round too.</li>
@@ -177,7 +178,7 @@ somewhere around the home, not from which window.</div>
       tree" (3%) in the source no longer count. Fewer trees means fewer homes pass, which is safer than counting trees
       that may be gone. Still open: checking with NEO what the statuses mean exactly
       (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/1">open issue #1</a>).</li>
-  <li><b>Dates.</b> Elevation model and trees are from 2020–2022, the homes from 2026. New-build homes appear on the map
+  <li><b>Dates.</b> The trees are from 2020–2022, the elevation model from 2023–2025, the homes from 2026. New-build homes appear on the map
       with the surroundings of back then (3 to 5% of homes).</li>
   <li><b>No point classification.</b> The elevation model does not tell tree, building and power line apart. The height
       check catches most of it; the classified AHN point cloud would solve it.</li>
@@ -201,7 +202,7 @@ somewhere around the home, not from which window.</div>
 </table></div>
 <div class="table-wrap"><table class="plain">
 <tr><th>Data</th><th>Source</th><th>As of</th></tr>
-<tr><td>Elevation model</td><td>AHN4, surface model 0.5 m, raw</td><td>captured 2020–2022</td></tr>
+<tr><td>Elevation model</td><td>AHN5, surface model (DSM) 0.5 m</td><td>captured 2023–2025</td></tr>
 <tr><td>Trees</td><td>NEO tree data (purchased, not public)</td><td>2020–2022</td></tr>
 <tr><td>Buildings and addresses</td><td>BAG via PDOK</td><td>27 September 2026</td></tr>
 <tr><td>Municipal boundaries</td><td>Administrative boundaries (Kadaster) via PDOK</td><td>28 September 2026</td></tr>

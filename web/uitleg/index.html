@@ -68,7 +68,7 @@ de wikipagina <a href="https://github.com/RobertoTjesse/3-30-300-regel/wiki/Anot
   <li><strong>Installeer QGIS/OSGeo4W</strong> (voor GDAL) en haal de code op:
     <pre><code>git clone https://github.com/RobertoTjesse/3-30-300-regel.git 330300regel</code></pre></li>
   <li><strong>Zet per gemeente een hoogtemodel en een bomenbestand klaar</strong>, met dezelfde naam:
-    <code>Utrecht.tif</code> (AHN4 DSM 0,5 m, ruw) en <code>Utrecht.gpkg</code> (boompunten).
+    <code>Utrecht.tif</code> (AHN5 DSM 0,5 m) en <code>Utrecht.gpkg</code> (boompunten).
     Zonder NEO-data kun je een gemeentelijk bomenbestand of een andere boomkartering gebruiken.</li>
   <li><strong>Vul <code>indicator_3_bomen/etl/config_local.py</code> in</strong> (kopie van <code>config_local.example.py</code>):
     <pre><code>PROVINCE = "Utrecht"              # zoals in PDOK
@@ -92,7 +92,7 @@ MUNICIPALITIES = []               # leeg = alle gemeenten</code></pre></li>
 <h2 id="alle-drie">Wat voor alle drie geldt</h2>
 <ul>
   <li><b>Alleen woningen.</b> Het artikel vraagt ook om bomen in zicht van scholen en werkplekken.</li>
-  <li><b>De bronnen zijn van verschillende jaren:</b> bomen en hoogtemodel 2020–2022 (de 3), kronen 2024 (de 30), groen
+  <li><b>De bronnen zijn van verschillende jaren:</b> bomen 2020–2022 en hoogtemodel 2023–2025 (de 3), kronen 2024 (de 30), groen
       2025 en paden 2026 (de 300).</li>
   <li><b>De 3 en de 30 gebruiken andere bomen:</b> NEO-boompunten tegenover de BKB-kroonkaart, dus een boom kan bij de
       ene wel en bij de andere niet meetellen.</li>
