@@ -161,17 +161,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; cu
 .tablewrap { flex: 1; overflow: auto; }
 table.rank { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.rank th { position: sticky; top: 0; background: var(--card); text-align: left; font-weight: 700; color: var(--muted); font-size: 12px;
-  padding: 8px 6px; border-bottom: 1px solid var(--line); z-index: 1; }
+  padding: 8px 4px; border-bottom: 1px solid var(--line); z-index: 1; white-space: nowrap; }
 table.rank th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
 table.rank th button:focus-visible { outline: 2px solid var(--ring); }
-table.rank td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.rank td { padding: 7px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.rank td:first-child, table.rank th:first-child { padding-left: var(--s4); }
 table.rank td.n, table.rank th.n { text-align: right; font-variant-numeric: tabular-nums; }
 table.rank tr { cursor: pointer; }
 table.rank tbody tr:hover { background: var(--soft); }
 table.rank tr[aria-selected="true"] { background: var(--accent-soft); }
-table.rank .nm { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+table.rank .nm { max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 table.rank .nm small { display: block; color: var(--muted); }
-.pill { display: inline-block; min-width: 38px; text-align: center; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
+.pill { display: inline-block; min-width: 34px; text-align: center; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
 .more { margin: 10px var(--s4) var(--s4); }
 
 /* ---------- dialog ---------- */

@@ -466,7 +466,8 @@ function renderLegend() {
     html = `<h3>Kans bij de slechtste 20%</h3>
       <div class="ramp" style="background:linear-gradient(90deg,${grad})" role="img" aria-label="Kleurschaal van 0% tot 100%"></div>
       <div class="ticks"><span>0%</span><span>50%</span><span>100%</span></div>
-      <p class="note">${rb ? `${rb.samples} rekenrondes, alleen ${LEVELS.find((l) => l.key === rb.level).naam.toLowerCase()} met 25+ woningen.` : ""}</p>`;
+      <p class="note">${rb ? `${rb.samples} rekenrondes, alleen ${LEVELS.find((l) => l.key === rb.level).naam.toLowerCase()} met 25+ woningen.`
+        + (map && currentLevel() !== rb.level ? ` <b>Zoom naar de ${LEVELS.find((l) => l.key === rb.level).naam.toLowerCase()} om ze te zien.</b>` : "") : ""}</p>`;
   }
   el.innerHTML = html;
   el.querySelectorAll("[data-scale]").forEach((b) => b.addEventListener("click", () => {
@@ -675,6 +676,12 @@ function runRobust() {
     rbBtn.disabled = false;
     rbBtn.title = "";
     setView("robuust");
+    // Show the level that was computed: fly to the area most often at the bottom
+    if (currentLevel() !== level) {
+      let best = -1;
+      m.kans.forEach((k, i) => { if (k >= 0 && (best < 0 || k > m.kans[best] || (k === m.kans[best] && m.med[i] < m.med[best]))) best = i; });
+      if (best >= 0) select({ level, i: best }, true);
+    }
     renderRanking();
     renderDetail();
   };
