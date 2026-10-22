@@ -67,7 +67,7 @@ the wiki page <a href="https://github.com/RobertoTjesse/3-30-300-regel/wiki/Anot
   <li><strong>Install QGIS/OSGeo4W</strong> (for GDAL) and get the code:
     <pre><code>git clone https://github.com/RobertoTjesse/3-30-300-regel.git 330300regel</code></pre></li>
   <li><strong>Prepare an elevation model and a tree file per municipality</strong>, with the same name:
-    <code>Utrecht.tif</code> (AHN4 DSM 0.5 m, raw) and <code>Utrecht.gpkg</code> (tree points).
+    <code>Utrecht.tif</code> (AHN5 DSM 0.5 m) and <code>Utrecht.gpkg</code> (tree points).
     Without NEO data you can use a municipal tree register or another tree mapping.</li>
   <li><strong>Fill in <code>indicator_3_bomen/etl/config_local.py</code></strong> (a copy of <code>config_local.example.py</code>):
     <pre><code>PROVINCE = "Utrecht"              # as in PDOK
@@ -91,7 +91,7 @@ MUNICIPALITIES = []               # empty = all municipalities</code></pre></li>
 <h2 id="alle-drie">What holds for all three</h2>
 <ul>
   <li><b>Only homes.</b> The paper also asks for trees in view of schools and workplaces.</li>
-  <li><b>The sources are from different years:</b> trees and elevation model 2020–2022 (the 3), crowns 2024 (the 30),
+  <li><b>The sources are from different years:</b> trees 2020–2022 and elevation model 2023–2025 (the 3), crowns 2024 (the 30),
       green 2025 and paths 2026 (the 300).</li>
   <li><b>The 3 and the 30 use different trees:</b> NEO tree points against the BKB crown map, so a tree can count for one
       and not for the other.</li>
