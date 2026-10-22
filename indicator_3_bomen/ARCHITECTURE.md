@@ -12,7 +12,7 @@ Computing each tree's 30 m viewshed and writing it to its own raster does not sc
 
 One pair of files per municipality, with the same base name (`Delft.tif` / `Delft.gpkg`):
 
-- DEM: `.tif`, Float32, one band, 0.5 m pixels, RD New / EPSG:28992. The source is `Geo_raster.TOPOGRAFIE.AHN4_05M_RUW`, AHN4 at 0.5 m in its raw ("RUW", unfiltered) form: a surface model (DSM) that includes buildings and tree canopy, not just the ground. That is what makes it possible to sample a tree's canopy height (§6) and what makes a roofline or hedge block the line of sight, which would not happen on a bare-earth DTM.
+- DEM: `.tif`, Float32, one band, 0.5 m pixels, RD New / EPSG:28992. The source is `Geo_raster.TOPOGRAFIE.AHN5_05M_DSM`, the AHN5 surface model (DSM) at 0.5 m, with the highest point per cell: it includes buildings and tree canopy, not just the ground. That is what makes it possible to sample a tree's canopy height (§6) and what makes a roofline or hedge block the line of sight, which would not happen on a bare-earth DTM.
 - Trees: `.gpkg`, points, EPSG:28992, without a height attribute. They were originally shipped as `.shp` and converted once to GeoPackage (§7): a bare shapefile has no spatial index, so a bounding-box query per tile scans close to the whole file. On the larger municipalities that dominated the runtime until it was fixed (about 280x slower per query without an index).
 
 Both are read in place from wherever `config.VIEWANALYSE_DIR` points (in practice a network share); nothing is copied locally. Some DEMs are tens of gigabytes (Rotterdam about 13 GB, Goeree-Overflakkee about 17 GB).
@@ -140,7 +140,7 @@ Fixed on 2026-09-07. 12 of the 52 municipality source DEMs (`Barendrecht`, `Dord
 
 An all-zero DEM is worse than an empty one. To the viewshed algorithm it is perfectly flat terrain on which nothing ever blocks a line of sight. The pipeline ran to completion, reported no errors and produced output that looked plausible and varied across space, since "trees within 30 m" alone still follows tree density. Nothing in the output raster could tell this case apart from a real result automatically.
 
-The confirmed cause: whatever process produced these 12 input files exported empty areas as `0.0` instead of a flagged NoData value. Given the near-total zero coverage, the whole raster was probably empty for these 12. The authoritative source (`Geo_raster.TOPOGRAFIE.AHN4_05M_RUW`, an enterprise SDE raster) covers these areas correctly.
+The confirmed cause: whatever process produced these 12 input files exported empty areas as `0.0` instead of a flagged NoData value. Given the near-total zero coverage, the whole raster was probably empty for these 12. The authoritative source (the AHN surface model in the enterprise SDE raster store) covers these areas correctly.
 
 The fix: `sde_reexport/export_from_sde.py`, an arcpy script run in ArcGIS Pro because this pipeline's GDAL tools have no SDE access, clipped the 12 extents again directly from the SDE source. It explicitly detected the NoData value instead of assuming one; the source had none set either, so the pipeline's own fallback value (`-9999`) was used. A `gdal_translate` pass then applied the pipeline's standard TIFF layout (§9: DEFLATE with predictor 3, 512x512 internal tiles, BigTIFF where needed) before the corrected files replaced the empty ones on R:\. After the fix, all 12 hold real elevation data with a correct NoData flag, 54-94% valid per municipality. The low end (for example Dordrecht and Goeree-Overflakkee) are river and island municipalities whose large water areas are correctly marked as NoData within their bounding boxes. `config.CORRUPTED_DEM_MUNICIPALITIES` is now empty, and these 12 are processed like all the others.
 
@@ -161,7 +161,7 @@ The fix: `sde_reexport/export_from_sde.py`, an arcpy script run in ArcGIS Pro be
 | `NUM_WORKERS` | 4 | Parallel tile processing |
 | Output raster dtype | UInt32 | Visible-tree count per pixel (fixed in stages 2 and 3) |
 | DEM resolution / CRS | 0.5 m / EPSG:28992 | RD New |
-| DEM source | AHN4, `_05M_RUW` | Raw, unfiltered surface model (DSM, not bare earth) |
+| DEM source | AHN5, `_05M_DSM` | Surface model (DSM, not bare earth), highest point per cell |
 
 `etl/config.py` holds the current values; `BENCHMARKS.md` has the measured time per municipality.
 

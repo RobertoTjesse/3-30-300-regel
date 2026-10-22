@@ -5,7 +5,7 @@ end to end, from inside ArcGIS Pro.
 Originally built for the 12 corrupted-DEM municipalities, then for a
 re-export batch (sde_reexport/municipality_extents.csv); now for the AHN5
 DSM of every municipality (municipality_extents_all.csv: the extents of the
-52 AHN4 DEMs on the share, so AHN5 covers exactly the same ground). For each
+52 municipality DEMs on the share, so every run covers exactly the same ground). For each
 municipality:
 
   1. arcpy Clip of its bounding box out of the SDE raster, with the source's
@@ -24,7 +24,7 @@ Municipalities that already have a FINISHED_DIR/<name>.tif are skipped, so
 the script can simply be re-run after an interruption. A failure on one
 municipality is logged and the batch continues.
 
-FINISHED_DIR is a folder of its own on R:\ (AHN5), next to the AHN4 DEMs in
+FINISHED_DIR is a folder of its own on R:\ (AHN5), next to the older DEMs in
 fme_input\viewanalyse, which it never touches. The pipeline then reads it
 via VIEWANALYSE_DIR in config_local.py.
 
@@ -49,8 +49,7 @@ import arcpy
 # ---------------------------------------------------------------------------
 SDE_CONNECTION = r"R:\ESRI\BEHEER\Database_verbindingen\Geodatabase\Productie\Geo_raster\Geodatabase@Geo_raster@topografie.sde"
 # The surface model, 0.5 m. AHN5: the highest point per cell (water excepted;
-# AHN2/3/4 used an IDW-weighted mean). AHN4 was
-# "Geo_raster.TOPOGRAFIE.AHN4_05M_RUW". If the name is wrong,
+# earlier AHN versions used an IDW-weighted mean). If the name is wrong,
 # the script stops and lists the AHN rasters it sees.
 SDE_RASTER_DATASET = "Geo_raster.TOPOGRAFIE.AHN5_05M_DSM"
 

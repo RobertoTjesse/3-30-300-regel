@@ -64,7 +64,7 @@ It took three attempts to get this right. The first fill used `maxSearchDist=300
 
 ## The input check that mattered most
 
-12 of the 52 municipality source DEMs turned out to hold only 0-3.4% real elevation data; the rest was exactly `0.0`, without a NoData flag. To the viewshed algorithm a flat zero surface is open terrain, so the pipeline finished, reported no errors and produced plausible-looking output for all 12. Only looking at the pixels themselves showed the problem. Whatever made these input files had exported empty areas as `0.0` instead of NoData. The fix was to re-export those extents from the authoritative source, `Geo_raster.TOPOGRAFIE.AHN4_05M_RUW` (an SDE raster); see `ARCHITECTURE.md` §11 and `sde_reexport/`. No amount of correct pipeline code would have caught this: it took checking the input data itself, beyond checking that the pipeline ran without errors.
+12 of the 52 municipality source DEMs turned out to hold only 0-3.4% real elevation data; the rest was exactly `0.0`, without a NoData flag. To the viewshed algorithm a flat zero surface is open terrain, so the pipeline finished, reported no errors and produced plausible-looking output for all 12. Only looking at the pixels themselves showed the problem. Whatever made these input files had exported empty areas as `0.0` instead of NoData. The fix was to re-export those extents from the authoritative source, the AHN surface model in the SDE raster store; see `ARCHITECTURE.md` §11 and `sde_reexport/`. No amount of correct pipeline code would have caught this: it took checking the input data itself, beyond checking that the pipeline ran without errors.
 
 ## The 30 and the 300 as open source
 

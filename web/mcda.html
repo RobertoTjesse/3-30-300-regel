@@ -236,9 +236,9 @@ const THEMES = {
   "3": {
     intro: L("Ziet elke woning minstens 3 bomen? Aantal zichtbare bomen per woning, en het aandeel woningen met ≥ 3 zichtbare bomen per gebied.",
              "Does every home see at least 3 trees? Number of visible trees per home, and the share of homes with ≥ 3 visible trees per area."),
-    method: L("Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin (AHN4, 0,5 m). " +
+    method: L("Voor elke boom is berekend welk deel van de omgeving binnen 30 m zichtbaar is vanaf de kruin (AHN5, 0,5 m). " +
               "Een woning krijgt het hoogste aantal zichtbare bomen dat ergens direct voor de gevel (binnen 1,5 m, op 1,8 m ooghoogte) gezien wordt.",
-              "For every tree, the part of its surroundings within 30 m that is visible from the crown top was calculated (AHN4, 0.5 m). " +
+              "For every tree, the part of its surroundings within 30 m that is visible from the crown top was calculated (AHN5, 0.5 m). " +
               "A home gets the highest number of visible trees seen anywhere just outside its facade (within 1.5 m, at an eye height of 1.8 m)."),
   },
   "30": {
@@ -302,8 +302,8 @@ THEMES.samen = {
 
 const SOURCES = {
   "3": [
-    [L("Hoogtemodel", "Elevation model"), L('<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0,5 m',
-                                             '<a href="https://www.ahn.nl/ahn-4" target="_blank" rel="noopener">AHN4</a>, 0.5 m'), "2020–2022"],
+    [L("Hoogtemodel", "Elevation model"), L('<a href="https://www.ahn.nl/" target="_blank" rel="noopener">AHN5</a>, 0,5 m',
+                                             '<a href="https://www.ahn.nl/" target="_blank" rel="noopener">AHN5</a>, 0.5 m'), "2023–2025"],
     [L("Bomen", "Trees"), L("NEO boomdata (aangekocht)", "NEO tree data (purchased)"), "2020–2022"],
     [L("Woningen", "Homes"), "BAG via PDOK", L("27 september 2026", "27 September 2026")],
     [L("Gebieden", "Areas"), L("Bestuurlijke gebieden; CBS wijken en buurten 2025", "Administrative boundaries; CBS districts and neighbourhoods 2025"), "2025–2026"],
@@ -494,7 +494,7 @@ const map = new maplibregl.Map({
         attribution: L("Hittestress", "Heat stress") + ': <a href="https://www.klimaateffectatlas.nl">Klimaateffectatlas</a>',
       },
       t3: { type: "vector", url: "pmtiles://" + new URL(TILES_3, location.href).href,
-            attribution: L("AHN4, BAG, CBS, bomen: NEO", "AHN4, BAG, CBS, trees: NEO") },
+            attribution: L("AHN5, BAG, CBS, bomen: NEO", "AHN5, BAG, CBS, trees: NEO") },
       t30: { type: "vector", url: "pmtiles://" + new URL(TILES_30_300, location.href).href,
              attribution: "CBS, BAG, OpenStreetMap, TOP10NL" },
       tg: { type: "vector", url: "pmtiles://" + new URL(TILES_GROEN, location.href).href },
