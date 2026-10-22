@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Afwegingskaart 3-30-300</title>
+<meta name="description" content="Weeg de 3, de 30 en de 300 zelf af: een multicriteria-analyse per woning, buurt, wijk en gemeente in Zuid-Holland.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%230f172a%22/%3E%3Crect x=%223%22 y=%229%22 width=%222.5%22 height=%224%22 fill=%22%2386efac%22/%3E%3Crect x=%226.75%22 y=%226%22 width=%222.5%22 height=%227%22 fill=%22%235eead4%22/%3E%3Crect x=%2210.5%22 y=%223%22 width=%222.5%22 height=%2210%22 fill=%22%237dd3fc%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pmtiles@4.5.0/dist/pmtiles.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="28" height="28" viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="3" fill="#0f172a"/><rect x="3" y="9" width="2.5" height="4" fill="#86efac"/><rect x="6.75" y="6" width="2.5" height="7" fill="#5eead4"/><rect x="10.5" y="3" width="2.5" height="10" fill="#7dd3fc"/></svg>
+    <div>
+      <h1>Afwegingskaart 3-30-300 <span class="chip">Proef</span></h1>
+      <p>Weeg bomen in zicht, kroonbedekking en groen dichtbij zelf af · Zuid-Holland</p>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="btn-link" type="button" title="Kopieer een link naar deze afweging" aria-label="Kopieer link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    <span>Link</span></button>
+  <button class="btn" id="btn-uitleg" type="button" aria-label="Uitleg">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+    <span>Uitleg</span></button>
+</header>
+
+<main class="layout">
+  <aside class="panel" id="panel" aria-label="Afweging instellen">
+    <section class="section always">
+      <h2>Zuid-Holland met deze afweging</h2>
+      <div class="stats">
+        <div class="stat"><b id="st-score" class="num">–</b><span>gem. score</span></div>
+        <div class="stat"><b id="st-alle" class="num">–</b><span>haalt alle drie</span></div>
+        <div class="stat"><b id="st-won" class="num">–</b><span>woningen</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Snel kiezen</h2>
+      <div class="presets" id="presets" role="group" aria-label="Voorbeeldafwegingen"></div>
+    </section>
+
+    <section class="section">
+      <h2>Criteria <button class="btn" id="btn-reset" type="button" style="min-height:28px;font-size:12px">Herstel</button></h2>
+      <div id="criteria"></div>
+    </section>
+
+    <section class="section">
+      <h2>Hoe tellen de drie samen?</h2>
+      <div class="methods" role="radiogroup" aria-label="Methode">
+        <label class="method"><input type="radio" name="methode" value="som">
+          <div><b>Gewogen gemiddelde</b><span>Een hoge score op het ene criterium maakt een lage op het andere goed.</span></div></label>
+        <label class="method"><input type="radio" name="methode" value="product">
+          <div><b>Gewogen product</b><span>Een nul op één criterium geeft nul. Verder telt elke verbetering mee.</span></div></label>
+        <label class="method"><input type="radio" name="methode" value="min">
+          <div><b>Zwakste schakel</b><span>De laagste score telt. Het gewicht bepaalt hoe ver een criterium mag drukken.</span></div></label>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Hoe zeker is de volgorde?</h2>
+      <p class="hint" style="margin-top:0">Reken de ranglijst opnieuw uit met 100 willekeurige gewichten. Gebieden die bijna altijd onderaan staan,
+        staan daar door de gegevens en niet door de gekozen gewichten.</p>
+      <div class="robust-row" style="margin-top:10px">
+        <label class="sr-only" for="rb-mode">Spreiding</label>
+        <select id="rb-mode">
+          <option value="0.5">Gewichten ± 50%</option>
+          <option value="0.25">Gewichten ± 25%</option>
+          <option value="vrij">Alle gewichten mogelijk</option>
+        </select>
+        <button class="btn primary" id="rb-run" type="button">Bereken</button>
+      </div>
+      <div class="progress" hidden id="rb-progress"><i></i></div>
+      <p class="hint" id="rb-note"></p>
+    </section>
+    <div id="extra-sections"></div>
+  </aside>
+
+  <div class="mapwrap">
+    <div id="map" role="region" aria-label="Kaart"></div>
+    <div class="float viewswitch" role="group" aria-label="Wat de kaart toont">
+      <button type="button" data-view="score" aria-pressed="true">Score</button>
+      <button type="button" data-view="alle" aria-pressed="false">Haalt alle drie</button>
+      <button type="button" data-view="robuust" aria-pressed="false" disabled title="Bereken eerst de zekerheid">Zeker onderaan</button>
+      <button type="button" data-view="verschil" aria-pressed="false" hidden>Verschil</button>
+    </div>
+    <div class="float level-tag" id="level-tag" aria-live="polite">Gemeenten</div>
+    <div class="float legend" id="legend"></div>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="loading" id="loading"><div>Gegevens laden …</div></div>
+  </div>
+
+  <aside class="results" aria-label="Resultaten">
+    <div class="detail" id="detail"><p class="empty">Klik op een gebied op de kaart of in de ranglijst.</p></div>
+    <div class="rank-tools">
+      <div class="row">
+        <div class="seg" role="group" aria-label="Niveau van de ranglijst" id="rank-level">
+          <button type="button" data-level="gemeenten" aria-pressed="false">Gemeenten</button>
+          <button type="button" data-level="wijken" aria-pressed="false">Wijken</button>
+          <button type="button" data-level="buurten" aria-pressed="true">Buurten</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="sr-only" for="rank-q">Zoek gebied</label>
+        <input type="search" id="rank-q" placeholder="Zoek op naam of gemeente" autocomplete="off">
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="rank-min" checked> Alleen gebieden met 25+ woningen</label>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table class="rank" aria-describedby="rank-caption">
+        <caption class="sr-only" id="rank-caption">Ranglijst van gebieden, laagste score eerst</caption>
+        <thead><tr>
+          <th class="n">#</th>
+          <th><button type="button" data-sort="naam">Gebied</button></th>
+          <th class="n"><button type="button" data-sort="woningen">Won.</button></th>
+          <th class="n"><button type="button" data-sort="score">Score</button></th>
+          <th class="n"><button type="button" data-sort="alle">Alle 3</button></th>
+          <th class="n" id="th-kans" hidden><button type="button" data-sort="kans">Onder</button></th>
+        </tr></thead>
+        <tbody id="rank-body"></tbody>
+      </table>
+      <button class="btn more" id="rank-more" type="button" hidden>Toon meer</button>
+    </div>
+  </aside>
+</main>
+
+<dialog id="dlg-uitleg" aria-labelledby="dlg-title">
+  <div class="dlg-head"><h2 id="dlg-title" style="font-size:18px">Hoe werkt deze kaart?</h2>
+    <button class="btn icon-btn" type="button" id="dlg-close" aria-label="Sluiten">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="dlg-body">
+    <p>De 3-30-300-regel vraagt drie dingen van elke woning: <b>3</b> bomen in zicht, <b>30%</b> kroonbedekking in de buurt en
+      groen binnen <b>300 m</b>. De regel zegt niet welke van de drie het zwaarst weegt. Op deze kaart bepaal je dat zelf. Zo zie je
+      welke buurten bij elke afweging achterblijven, en welke alleen door een bepaalde keuze onderaan komen.</p>
+
+    <h3>1. Per woning een score per criterium</h3>
+    <table>
+      <tr><th>Criterium</th><th>Gemeten</th><th>Ja/nee</th><th>Geleidelijk</th></tr>
+      <tr><td>Bomen in zicht (3)</td><td>bomen die vanuit de gevel te zien zijn, binnen 30 m</td><td>1 als het doel gehaald is, anders 0</td><td>aantal ÷ doel, hoogstens 1</td></tr>
+      <tr><td>Kroonbedekking (30)</td><td>% boomkroon binnen 500 m van het gebouw</td><td>idem</td><td>% ÷ doel, hoogstens 1</td></tr>
+      <tr><td>Groen dichtbij (300)</td><td>looproute naar de dichtstbijzijnde ingang van openbaar groen</td><td>1 binnen het doel</td><td>1 tot het doel, dan rechtlijnig naar 0 bij de grens die je kiest</td></tr>
+    </table>
+    <p>Dit heet normaliseren met vaste grenzen. 0 is de slechtste gemeten waarde, 1 is het doel, en wat beter is dan het doel telt niet extra
+      (OECD/JRC, <i>Handbook on Constructing Composite Indicators</i>, 2008).</p>
+
+    <h3>2. De drie scores samen</h3>
+    <ul>
+      <li><b>Gewogen gemiddelde.</b> Score = som van gewicht × score, gedeeld door de som van de gewichten. Veel bomen in zicht kunnen weinig groen dichtbij goedmaken.</li>
+      <li><b>Gewogen product.</b> Het meetkundig gemiddelde met de gewichten als machten. Haalt een woning op één criterium 0, dan is de totaalscore 0.</li>
+      <li><b>Zwakste schakel.</b> Het gewogen minimum (Yager, 1978). Het zwaarste criterium telt volledig. Een criterium met de helft van dat gewicht kan de score hoogstens tot 0,5 drukken.</li>
+    </ul>
+    <p>Een buurt, wijk of gemeente krijgt het gemiddelde van haar woningen. Kies "Ja/nee" bij alle drie en de zwakste schakel met gelijke gewichten, dan is
+      de score precies het aandeel woningen dat de hele regel haalt.</p>
+
+    <h3>3. Hoe zeker is de volgorde?</h3>
+    <p>Gewichten zijn een keuze, geen meting. "Bereken" trekt 100 keer willekeurige gewichten rond jouw keuze (of helemaal vrij) en rekent telkens de ranglijst uit.
+      "Zeker onderaan" toont per gebied hoe vaak het bij de slechtste 20% hoort. Een gebied dat er in 95 van de 100 keer bij hoort, verdient aandacht, wat je ook kiest.
+      In de ranglijst staat bij elk gebied de bandbreedte van zijn plaats.</p>
+
+    <h3>Waar je op moet letten</h3>
+    <ul>
+      <li><b>De score is geen oordeel.</b> Het is een samenvatting van drie metingen met jouw gewichten. Kijk ook naar "haalt alle drie": dat is de regel zoals hij bedoeld is.</li>
+      <li><b>De 30 wordt bijna nergens gehaald.</b> Met de boomkroonkaart van 2024 heeft 1,8% van de woningen 30% kroon binnen 500 m. Met "Ja/nee" drukt de 30 daardoor bijna alles naar beneden.</li>
+      <li><b>Kleine buurten springen.</b> Een buurt met 5 woningen staat snel boven- of onderaan. De ranglijst laat buurten onder 25 woningen standaard weg.</li>
+      <li><b>Bronnen.</b> De 3: AHN5-hoogtemodel (2023–2025) en NEO-boomdata (2020–2022). De 30: Boomkroonkaart (BKB) 2024. De 300: groen uit de provinciale voorzieningenkaart en TOP10NL, routes over straten en paden. Woningen: BAG, september 2026.</li>
+    </ul>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="mcda.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

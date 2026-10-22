@@ -64,3 +64,7 @@ indicator_300_park/etl/config_local_300.py
 
 # Local arcpy exports (internal SDE paths), never published
 indicator_300_park/sde_export/
+
+# MCDA proposals: generated data (mcda/build_data.py)
+mcda/site/data/
+mcda/local/data/
