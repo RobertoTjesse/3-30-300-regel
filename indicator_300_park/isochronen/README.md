@@ -24,7 +24,7 @@
 
 The result is a polygon layer in RD New with one feature per point per value: `point_id`, `point_name`, `mode`, `measure`, `value`, `unit`, `km2`.
 
-The optional Expansion output (under Advanced, untick "Skip output") works like Valhalla's expansion. It has every street segment the route search reached, as a line with `cost_from` and `cost_to` (the time or distance at both ends; `cost_to` is empty where the search stops halfway) and `order` (1 = reached first).
+The Expansion checkbox (under Advanced) adds a temporary layer "Expansion ..." to the map when the tool finishes. It works like Valhalla's expansion. It has every street segment the route search reached, as a line with `cost_from` and `cost_to` (the time or distance at both ends; `cost_to` is empty where the search stops halfway) and `order` (1 = reached first).
 
 ## Run times
 

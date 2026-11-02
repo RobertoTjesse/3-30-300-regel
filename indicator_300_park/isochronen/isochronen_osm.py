@@ -39,7 +39,8 @@ WHAT YOU GET
   points) per value: point_id, point_name, mode, measure, value, unit, km2.
   Style it by "value" (Symbology > Categorized) and put the smallest on top.
 
-  Expansion (optional, under Advanced; untick "Skip output" to get it): like
+  Expansion (optional, under Advanced; tick the box and it appears in the map
+  as a temporary layer "Expansion ..." when the tool finishes): like
   Valhalla's expansion, every street segment the route search reaches, as a
   line between two OSM nodes: point_id, point_name, mode, measure, unit,
   cost_from (time or distance at the end reached first), cost_to (at the
@@ -90,8 +91,8 @@ from qgis.core import (
     QgsFields, QgsGeometry, QgsPointXY, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingException,
     QgsProcessingParameterBoolean, QgsProcessingParameterDefinition, QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, QgsProcessingParameterField,
-    QgsProcessingParameterFile, QgsProcessingParameterNumber, QgsProcessingParameterString,
-    QgsWkbTypes,
+    QgsProcessingContext, QgsProcessingOutputVectorLayer, QgsProcessingParameterFile,
+    QgsProcessingParameterNumber, QgsProcessingParameterString, QgsVectorLayer, QgsWkbTypes,
 )
 
 # ===========================================================================
@@ -281,11 +282,13 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             self.addParameter(p)
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.OUTPUT, self.tr("Isochrones"), QgsProcessing.TypeVectorPolygon))
-        p = QgsProcessingParameterFeatureSink(
-            self.EXPANSION, self.tr("Expansion: every street reached, with its cost (like Valhalla)"),
-            QgsProcessing.TypeVectorLine, optional=True, createByDefault=False)
+        p = QgsProcessingParameterBoolean(
+            self.EXPANSION, self.tr("Expansion: add every street reached, with its cost, as a temporary "
+                                    "layer (like Valhalla)"), defaultValue=False)
         p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(p)
+        self.addOutput(QgsProcessingOutputVectorLayer(self.EXPANSION + "_LAYER", self.tr("Expansion"),
+                                                      QgsProcessing.TypeVectorLine))
 
     # -----------------------------------------------------------------------
     def processAlgorithm(self, parameters, context, feedback):
@@ -386,12 +389,17 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         sink, dest = self.parameterAsSink(parameters, self.OUTPUT, context, fields, QgsWkbTypes.MultiPolygon, rd)
         if sink is None:
             raise QgsProcessingException("Cannot create the output layer")
-        exp_fields = QgsFields()
-        for fname, ftype in (("point_id", INT), ("point_name", TEXT), ("mode", TEXT), ("measure", TEXT),
-                             ("unit", TEXT), ("cost_from", REAL), ("cost_to", REAL), ("order", INT)):
-            exp_fields.append(QgsField(fname, ftype))
-        exp_sink, exp_dest = self.parameterAsSink(parameters, self.EXPANSION, context, exp_fields,
-                                                  QgsWkbTypes.LineString, rd)
+        exp_layer = exp_sink = None
+        if self.parameterAsBool(parameters, self.EXPANSION, context):
+            exp_fields = QgsFields()
+            for fname, ftype in (("point_id", INT), ("point_name", TEXT), ("mode", TEXT), ("measure", TEXT),
+                                 ("unit", TEXT), ("cost_from", REAL), ("cost_to", REAL), ("order", INT)):
+                exp_fields.append(QgsField(fname, ftype))
+            exp_name = f"Expansion {mode.lower()} {values[-1]:g} {unit}"
+            exp_layer = QgsVectorLayer("LineString?crs=EPSG:28992", exp_name, "memory")
+            exp_layer.dataProvider().addAttributes(exp_fields.toList())
+            exp_layer.updateFields()
+            exp_sink = exp_layer.dataProvider()
 
         groups = [(None, "all points", [s for _, s in snapped])] if merge else \
             [(p[0], p[1], [s]) for p, s in snapped]
@@ -410,8 +418,14 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             feedback.setProgress(100 * (k + 1) / len(groups))
         feedback.pushInfo(f"Done in {time.time() - t0:.0f} s")
         result = {self.OUTPUT: dest}
-        if exp_sink is not None:
-            result[self.EXPANSION] = exp_dest
+        if exp_layer is not None:   # a temporary layer, put in the map when the tool finishes
+            exp_layer.updateExtents()
+            feedback.pushInfo(f"Expansion: {exp_layer.featureCount():,} street segments in the temporary "
+                              f"layer '{exp_layer.name()}'")
+            context.temporaryLayerStore().addMapLayer(exp_layer)
+            context.addLayerToLoadOnCompletion(exp_layer.id(), QgsProcessingContext.LayerDetails(
+                exp_layer.name(), context.project(), self.EXPANSION + "_LAYER"))
+            result[self.EXPANSION + "_LAYER"] = exp_layer.id()
         return result
 
     # -----------------------------------------------------------------------
