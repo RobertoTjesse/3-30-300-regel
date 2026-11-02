@@ -20,15 +20,32 @@ WHAT YOU FILL IN
   Merge points       off: one isochrone per point per value.
                      on: one isochrone per value for all points together
                      (everything within reach of the nearest point).
-  OSM file           optional: an .osm.pbf. Empty = the Geofabrik extract of
-                     Zuid-Holland, downloaded once (about 210 MB) to
-                     %LOCALAPPDATA%\isochronen_osm.
-  Advanced           speeds, cell size, buffer, snap distance (see below).
+  OSM download area  one or more Dutch provinces, or the whole Netherlands,
+                     from Geofabrik, downloaded once to
+                     %LOCALAPPDATA%\isochronen_osm. Default: Zuid-Holland.
+                     * marks the provinces that border Zuid-Holland
+                     (Noord-Holland, Utrecht, Gelderland, Noord-Brabant,
+                     Zeeland): for points near that border, tick the
+                     neighbour as well, or the network and the isochrone
+                     stop at the border. Several provinces together work;
+                     the whole Netherlands is the simplest for long car trips.
+  OSM file           optional: your own .osm.pbf. When given, the download
+                     area is ignored.
+  Advanced           speeds, cell size, buffer, snap distance (see below), and
+                     the optional Expansion output.
 
 WHAT YOU GET
   A polygon layer in RD New (EPSG:28992), one feature per point (or for all
   points) per value: point_id, point_name, mode, measure, value, unit, km2.
   Style it by "value" (Symbology > Categorized) and put the smallest on top.
+
+  Expansion (optional, under Advanced; untick "Skip output" to get it): like
+  Valhalla's expansion, every street segment the route search reaches, as a
+  line between two OSM nodes: point_id, point_name, mode, measure, unit,
+  cost_from (time or distance at the end reached first), cost_to (at the
+  other end; empty when the search stops halfway along the segment), order
+  (1 = reached first). Style it by cost_from (Graduated) to see how the
+  search spreads out over the network.
 
 HOW IT WORKS
   1. Reads the OSM ways once into a GeoPackage next to the .pbf (about a
@@ -67,10 +84,10 @@ import re
 import time
 import urllib.request
 
-from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QMetaType, QVariant
 from qgis.core import (
-    QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, QgsFeatureSink, QgsField,
-    QgsFields, QgsGeometry, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingException,
+    Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, QgsFeatureSink, QgsField,
+    QgsFields, QgsGeometry, QgsPointXY, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingException,
     QgsProcessingParameterBoolean, QgsProcessingParameterDefinition, QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, QgsProcessingParameterField,
     QgsProcessingParameterFile, QgsProcessingParameterNumber, QgsProcessingParameterString,
@@ -80,7 +97,24 @@ from qgis.core import (
 # ===========================================================================
 # SETTINGS
 # ===========================================================================
-OSM_URL = "https://download.geofabrik.de/europe/netherlands/zuid-holland-latest.osm.pbf"
+GEOFABRIK = "https://download.geofabrik.de/europe/"
+# The download areas in the form: (label, Geofabrik path). Sizes of November 2026.
+# * = borders Zuid-Holland.
+OSM_AREAS = [
+    ("Zuid-Holland (212 MB)", "netherlands/zuid-holland"),
+    ("Noord-Holland * (190 MB)", "netherlands/noord-holland"),
+    ("Utrecht * (99 MB)", "netherlands/utrecht"),
+    ("Gelderland * (195 MB)", "netherlands/gelderland"),
+    ("Noord-Brabant * (207 MB)", "netherlands/noord-brabant"),
+    ("Zeeland * (44 MB)", "netherlands/zeeland"),
+    ("Drenthe (63 MB)", "netherlands/drenthe"),
+    ("Flevoland (36 MB)", "netherlands/flevoland"),
+    ("Friesland (89 MB)", "netherlands/friesland"),
+    ("Groningen (56 MB)", "netherlands/groningen"),
+    ("Limburg (100 MB)", "netherlands/limburg"),
+    ("Overijssel (114 MB)", "netherlands/overijssel"),
+    ("Whole Netherlands (1.4 GB; the first read takes 10 minutes or more)", "netherlands"),
+]
 CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "isochronen_osm")
 
 MODES = ["Walking", "Cycling", "Car"]
@@ -114,6 +148,12 @@ ALLOWED = ("yes", "designated", "permissive", "official", "destination")
 CLOSED = ("no", "private")
 NO_CAR_START = ("motorway", "motorway_link", "trunk", "trunk_link")
 # ===========================================================================
+
+# Field types: QMetaType from QGIS 3.38, QVariant before (deprecated since).
+if Qgis.versionInt() >= 33800:
+    INT, TEXT, REAL = QMetaType.Type.LongLong, QMetaType.Type.QString, QMetaType.Type.Double
+else:
+    INT, TEXT, REAL = QVariant.LongLong, QVariant.String, QVariant.Double
 
 TAG = re.compile(r'"([^"]+)"=>"((?:[^"\\]|\\.)*)"')
 
@@ -175,9 +215,9 @@ def rule(tags, mode, bike_kmh, walk_kmh):
 
 
 class IsochronesFromPoints(QgsProcessingAlgorithm):
-    POINTS, NAME_FIELD, MODE, MEASURE, VALUES, MERGE, OSM = (
-        "POINTS", "NAME_FIELD", "MODE", "MEASURE", "VALUES", "MERGE", "OSM")
-    SPEED, CELL, BUFFER, SNAP, OUTPUT = "SPEED", "CELL", "BUFFER", "SNAP", "OUTPUT"
+    POINTS, NAME_FIELD, MODE, MEASURE, VALUES, MERGE, AREAS, OSM = (
+        "POINTS", "NAME_FIELD", "MODE", "MEASURE", "VALUES", "MERGE", "AREAS", "OSM")
+    SPEED, CELL, BUFFER, SNAP, OUTPUT, EXPANSION = "SPEED", "CELL", "BUFFER", "SNAP", "OUTPUT", "EXPANSION"
 
     def tr(self, text):
         return QCoreApplication.translate("IsochronesFromPoints", text)
@@ -203,8 +243,11 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             "as time (minutes) or distance (metres).\n\n"
             "Values: comma separated, e.g. 5, 10, 15.\n"
             "Merge points: one isochrone per value for all points together.\n"
-            "OSM file: empty = the Geofabrik extract of Zuid-Holland, downloaded once to "
-            f"{CACHE_DIR}.\n\n"
+            "OSM download area: one or more provinces, or the whole Netherlands, downloaded once "
+            f"from Geofabrik to {CACHE_DIR}.\n"
+            "* = borders Zuid-Holland. For points near the border of Zuid-Holland, tick that "
+            "neighbour too: otherwise the network, and so the isochrone, stops at the border.\n"
+            "OSM file: your own .osm.pbf instead of a download.\n\n"
             "The output is in RD New (EPSG:28992), one feature per point per value. "
             "The full explanation is at the top of the script file.")
 
@@ -220,8 +263,12 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             self.VALUES, self.tr("Values, comma separated (minutes or metres)"), defaultValue="5, 10, 15"))
         self.addParameter(QgsProcessingParameterBoolean(
             self.MERGE, self.tr("Merge points (one isochrone per value for all points)"), defaultValue=False))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.AREAS, self.tr("OSM download area (* = borders Zuid-Holland: tick it too for points "
+                                "near that border)"),
+            [label for label, _ in OSM_AREAS], allowMultiple=True, defaultValue=[0]))
         self.addParameter(QgsProcessingParameterFile(
-            self.OSM, self.tr("OSM file (.osm.pbf); empty = download Zuid-Holland from Geofabrik"),
+            self.OSM, self.tr("OSM file (.osm.pbf), instead of the download area"),
             extension="pbf", optional=True))
         for name, label, default in (
                 (self.SPEED, "Speed for walking or cycling, km/h (0 = 5.1 walking, 15 cycling)", 0),
@@ -234,6 +281,11 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             self.addParameter(p)
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.OUTPUT, self.tr("Isochrones"), QgsProcessing.TypeVectorPolygon))
+        p = QgsProcessingParameterFeatureSink(
+            self.EXPANSION, self.tr("Expansion: every street reached, with its cost (like Valhalla)"),
+            QgsProcessing.TypeVectorLine, optional=True, createByDefault=False)
+        p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(p)
 
     # -----------------------------------------------------------------------
     def processAlgorithm(self, parameters, context, feedback):
@@ -249,6 +301,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         by_time = self.parameterAsEnum(parameters, self.MEASURE, context) == 0
         merge = self.parameterAsBool(parameters, self.MERGE, context)
         osm_file = self.parameterAsFile(parameters, self.OSM, context)
+        areas = [OSM_AREAS[i] for i in self.parameterAsEnums(parameters, self.AREAS, context)]
         speed = self.parameterAsDouble(parameters, self.SPEED, context)
         cell = self.parameterAsDouble(parameters, self.CELL, context) or CELL_M[mode]
         buffer_m = self.parameterAsDouble(parameters, self.BUFFER, context) or BUFFER_M[mode]
@@ -292,14 +345,22 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         box = (min(xs) - margin, max(xs) + margin, min(ys) - margin, max(ys) + margin)
 
         # 2. OSM
-        pbf = osm_file or self.download(feedback)
-        cache = self.osm_cache(pbf, feedback)
+        if osm_file:
+            pbfs = [osm_file]
+        else:
+            if not areas:
+                raise QgsProcessingException("Tick at least one OSM download area, or choose an OSM file")
+            if any(path == "netherlands" for _, path in areas) and len(areas) > 1:
+                feedback.pushInfo("OSM: the whole Netherlands is ticked; the provinces are already in it")
+                areas = [a for a in areas if a[1] == "netherlands"]
+            pbfs = [self.download(label, path, feedback) for label, path in areas]
+        caches = [self.osm_cache(pbf, feedback) for pbf in pbfs]
         if feedback.isCanceled():
             return {}
 
         # 3. Network
         feedback.pushInfo(f"Reading the {mode.lower()} network within {margin / 1000:.1f} km of the points ...")
-        x, y, u, v, w, start_ok = self.network(cache, box, mode, by_time, cell, walk_kmh, bike_kmh, feedback)
+        x, y, u, v, w, start_ok, seg_a, seg_b = self.network(caches, box, mode, by_time, cell, walk_kmh, bike_kmh, feedback)
         n = len(x)
         from scipy.sparse import csr_matrix
         from scipy.sparse.csgraph import dijkstra
@@ -319,13 +380,18 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
 
         # 5. Output
         fields = QgsFields()
-        for fname, ftype in (("point_id", QVariant.LongLong), ("point_name", QVariant.String),
-                             ("mode", QVariant.String), ("measure", QVariant.String),
-                             ("value", QVariant.Double), ("unit", QVariant.String), ("km2", QVariant.Double)):
+        for fname, ftype in (("point_id", INT), ("point_name", TEXT), ("mode", TEXT), ("measure", TEXT),
+                             ("value", REAL), ("unit", TEXT), ("km2", REAL)):
             fields.append(QgsField(fname, ftype))
         sink, dest = self.parameterAsSink(parameters, self.OUTPUT, context, fields, QgsWkbTypes.MultiPolygon, rd)
         if sink is None:
             raise QgsProcessingException("Cannot create the output layer")
+        exp_fields = QgsFields()
+        for fname, ftype in (("point_id", INT), ("point_name", TEXT), ("mode", TEXT), ("measure", TEXT),
+                             ("unit", TEXT), ("cost_from", REAL), ("cost_to", REAL), ("order", INT)):
+            exp_fields.append(QgsField(fname, ftype))
+        exp_sink, exp_dest = self.parameterAsSink(parameters, self.EXPANSION, context, exp_fields,
+                                                  QgsWkbTypes.LineString, rd)
 
         groups = [(None, "all points", [s for _, s in snapped])] if merge else \
             [(p[0], p[1], [s]) for p, s in snapped]
@@ -338,28 +404,36 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
                 f.setAttributes([pid, pname, mode, "time" if by_time else "distance", value, unit, round(km2, 4)])
                 f.setGeometry(geom)
                 sink.addFeature(f, QgsFeatureSink.FastInsert)
+            if exp_sink is not None:
+                self.expansion(exp_sink, exp_fields, x, y, seg_a, seg_b, dist,
+                               [pid, pname, mode, "time" if by_time else "distance", unit])
             feedback.setProgress(100 * (k + 1) / len(groups))
         feedback.pushInfo(f"Done in {time.time() - t0:.0f} s")
-        return {self.OUTPUT: dest}
+        result = {self.OUTPUT: dest}
+        if exp_sink is not None:
+            result[self.EXPANSION] = exp_dest
+        return result
 
     # -----------------------------------------------------------------------
-    def download(self, feedback):
+    def download(self, label, area, feedback):
+        """The Geofabrik extract of one area, downloaded once to CACHE_DIR."""
         os.makedirs(CACHE_DIR, exist_ok=True)
-        path = os.path.join(CACHE_DIR, os.path.basename(OSM_URL))
+        url = f"{GEOFABRIK}{area}-latest.osm.pbf"
+        path = os.path.join(CACHE_DIR, os.path.basename(url))
         if os.path.exists(path):
             age = (time.time() - os.path.getmtime(path)) / 86400
             feedback.pushInfo(f"OSM: using {path} (downloaded {age:.0f} days ago; delete it to fetch a new one)")
             return path
-        feedback.pushInfo(f"OSM: downloading {OSM_URL} (about 210 MB, once) to {path} ...")
+        feedback.pushInfo(f"OSM: downloading {label}, once: {url} to {path} ...")
 
         def progress(blocks, size, total):
             if total > 0:
                 feedback.setProgress(min(100, blocks * size * 100 / total))
 
         try:
-            urllib.request.urlretrieve(OSM_URL, path + ".part", progress)
+            urllib.request.urlretrieve(url, path + ".part", progress)
         except Exception as e:  # noqa: BLE001
-            raise QgsProcessingException(f"Download failed ({e}). Download {OSM_URL} in a browser and "
+            raise QgsProcessingException(f"Download failed ({e}). Download {url} in a browser and "
                                          f"choose it as OSM file.")
         os.replace(path + ".part", path)
         return path
@@ -371,16 +445,17 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         if os.path.exists(cache) and os.path.getmtime(cache) > os.path.getmtime(pbf):
             return cache
         feedback.pushInfo(f"OSM: reading the ways of {os.path.basename(pbf)} into {cache} "
-                          f"(once, about a minute for Zuid-Holland) ...")
+                          f"(once, about a minute per 200 MB) ...")
         if os.path.exists(cache):
             os.remove(cache)
         gdal.VectorTranslate(cache, pbf, format="GPKG", layers=["lines"], layerName="ways",
                              where="highway IS NOT NULL")
         return cache
 
-    def network(self, cache, box, mode, by_time, cell, walk_kmh, bike_kmh, feedback):
+    def network(self, caches, box, mode, by_time, cell, walk_kmh, bike_kmh, feedback):
         """Network points (x, y), directed pieces (u, v, cost) and which points may be a start.
-        Ways meet only at shared OSM nodes; every piece is at most `cell` long."""
+        Ways meet only at shared OSM nodes; every piece is at most `cell` long. A way that is
+        in two extracts (along a shared border) is read twice; its pieces count once."""
         import numpy as np
         from osgeo import ogr, osr
         rd, wgs = osr.SpatialReference(), osr.SpatialReference()
@@ -390,19 +465,20 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             s.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         corners = osr.CoordinateTransformation(rd, wgs).TransformPoints(
             [(box[0], box[2]), (box[1], box[2]), (box[0], box[3]), (box[1], box[3])])
-        ds = ogr.Open(cache)
-        lyr = ds.GetLayerByName("ways")
-        lyr.SetSpatialFilterRect(min(c[0] for c in corners), min(c[1] for c in corners),
-                                 max(c[0] for c in corners), max(c[1] for c in corners))
         chunks, attrs = [], []
-        for f in lyr:
-            r = rule(tags_of(f), mode, bike_kmh, walk_kmh)
-            if r is None:
-                continue
-            pts = np.asarray(f.GetGeometryRef().GetPoints(), dtype=float)[:, :2]
-            if len(pts) >= 2:
-                chunks.append(pts)
-                attrs.append(r)
+        for cache in caches:
+            ds = ogr.Open(cache)
+            lyr = ds.GetLayerByName("ways")
+            lyr.SetSpatialFilterRect(min(c[0] for c in corners), min(c[1] for c in corners),
+                                     max(c[0] for c in corners), max(c[1] for c in corners))
+            for f in lyr:
+                r = rule(tags_of(f), mode, bike_kmh, walk_kmh)
+                if r is None:
+                    continue
+                pts = np.asarray(f.GetGeometryRef().GetPoints(), dtype=float)[:, :2]
+                if len(pts) >= 2:
+                    chunks.append(pts)
+                    attrs.append(r)
         if not chunks:
             raise QgsProcessingException("No ways for this transport near the points. Is the OSM file the right area?")
         lengths = np.array([len(c) for c in chunks])
@@ -461,7 +537,23 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         start_ok[pu[start[pway]]] = True
         start_ok[pv[start[pway]]] = True
         feedback.pushInfo(f"  {len(x):,} network points, {len(pick):,} directed pieces")
-        return x, y, u[pick], v[pick], c[pick], start_ok
+        pairs = np.unique(np.minimum(a, b) * len(xy) + np.maximum(a, b))   # each OSM segment once
+        return x, y, u[pick], v[pick], c[pick], start_ok, pairs // len(xy), pairs % len(xy)
+
+    def expansion(self, sink, fields, x, y, seg_a, seg_b, dist, attrs):
+        """Every OSM segment the search reached: the cost at both ends and the order reached."""
+        import numpy as np
+        da, db = dist[seg_a], dist[seg_b]
+        hit = np.flatnonzero(np.isfinite(da) | np.isfinite(db))
+        first, last = np.fmin(da[hit], db[hit]), np.fmax(da[hit], db[hit])
+        order = np.empty(len(hit), dtype=np.int64)
+        order[np.argsort(first, kind="stable")] = np.arange(1, len(hit) + 1)
+        for i, s_, c0, c1, o in zip(hit, seg_a[hit], first, last, order):
+            e = seg_b[i]
+            f = QgsFeature(fields)
+            f.setAttributes(attrs + [round(float(c0), 3), round(float(c1), 3) if np.isfinite(c1) else None, int(o)])
+            f.setGeometry(QgsGeometry.fromPolylineXY([QgsPointXY(x[s_], y[s_]), QgsPointXY(x[e], y[e])]))
+            sink.addFeature(f, QgsFeatureSink.FastInsert)
 
     def polygons(self, x, y, dist, values, cell, buffer_m):
         """[(value, QgsGeometry, km2)]: the land within buffer_m of a network point reached within each value."""

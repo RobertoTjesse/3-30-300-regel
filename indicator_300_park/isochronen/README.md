@@ -18,10 +18,13 @@
 | Measure | time in minutes, or distance in metres |
 | Values | comma separated, e.g. `5, 10, 15` |
 | Merge points | one isochrone per value for all points together, instead of one per point |
-| OSM file | optional `.osm.pbf`; empty = Zuid-Holland, downloaded to `%LOCALAPPDATA%\isochronen_osm` |
-| Advanced | walking or cycling speed, cell size, buffer around reached roads, snap distance |
+| OSM download area | one or more provinces, or the whole Netherlands, downloaded once from Geofabrik to `%LOCALAPPDATA%\isochronen_osm`. A `*` marks the provinces that border Zuid-Holland (Noord-Holland, Utrecht, Gelderland, Noord-Brabant, Zeeland): tick that neighbour as well for points near the border, or the isochrone stops there |
+| OSM file | your own `.osm.pbf`, instead of a download |
+| Advanced | walking or cycling speed, cell size, buffer around reached roads, snap distance, and the Expansion output |
 
 The result is a polygon layer in RD New with one feature per point per value: `point_id`, `point_name`, `mode`, `measure`, `value`, `unit`, `km2`.
+
+The optional Expansion output (under Advanced, untick "Skip output") works like Valhalla's expansion. It has every street segment the route search reached, as a line with `cost_from` and `cost_to` (the time or distance at both ends; `cost_to` is empty where the search stops halfway) and `order` (1 = reached first).
 
 ## Run times
 
@@ -29,4 +32,4 @@ Three stations (Delft, Den Haag CS, Gouda) on a 6-core workstation, after the on
 
 ## Limits
 
-Car times are optimistic: traffic lights, junctions, congestion and turn restrictions are not modelled. There's no public transport. The Zuid-Holland extract ends at the province border, so use a larger `.osm.pbf` for points near it or for long car trips. The method and every choice are described at the top of the script.
+Car times are optimistic: traffic lights, junctions, congestion and turn restrictions are not modelled. There's no public transport. An extract ends at its province border, so tick the neighbouring province or the whole Netherlands for points near a border or for long car trips. The method and every choice are described at the top of the script.
