@@ -15,9 +15,13 @@ build_project.py — Build the QGIS validation project
                         and our own GDAL method, each against the benchmark
   4. De 300             the walking distance per home as on the map (GRASS,
                         Valhalla as second look), the green and its entrances
-  5. Invoer             all trees, the tree heights, the AHN5 and AHN4
+  5. Oude methode       the first results, made with FME (FME_OLD_DIR on R:):
+                        the 3 (3_lijst.gdb), the 30 per buurt and wijk
+                        (NEO crown polygons, CBS 2023) and the 300 (Valhalla
+                        isochrones from park entrances, BAG panden)
+  6. Invoer             all trees, the tree heights, the AHN5 and AHN4
                         surface models (hillshade)
-  6. Achtergrond        PDOK BRT grijs, PDOK luchtfoto
+  7. Achtergrond        PDOK BRT grijs, PDOK luchtfoto
 
 The project is rebuilt from scratch on every run (the previous one is kept as
 330300regel_validatie.backup.qgz), so changes made in QGIS are not kept.
@@ -119,6 +123,12 @@ BENCHMARK_RUNS = [
      "Dezelfde methode op AHN4 (gewogen gemiddelde per cel), de versie die op de kaart stond "
      "vóór de AHN5-run."),
 ]
+
+# The first results, made with the FME workbenches (read in place, never copied)
+FME_OLD_DIR = Path(r"R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\fme output")
+# Canopy colours as on the web map (web/index.html STEPS_30)
+STEPS_30 = [(0, "#d7301f", "< 10%"), (10, "#fdae6b", "10-20%"), (20, "#c7e9c0", "20-30%"),
+            (30, "#238b45", ">= 30%")]
 
 OPEN_300 = INTERIM_DIR / "300" / PROVINCE / "prepared.gpkg"      # green areas, entrances
 FINAL_300 = INTERIM_DIR / "300" / PROVINCE / "300.gpkg"          # what the map shows
@@ -361,6 +371,67 @@ def _add_the_300(project, parent):
                 {"color": "47,125,50,120", "outline_color": "#1b5e20", "outline_width": "0.2"})))
 
 
+def _rules(layer, rules):
+    """Rule-based fill: [(expression, colour, label)]."""
+    root_rule = QgsRuleBasedRenderer.Rule(None)
+    for expr, colour, label in rules:
+        symbol = QgsFillSymbol.createSimple({"color": colour, "outline_color": "#404040",
+                                             "outline_width": "0.1"})
+        root_rule.appendChild(QgsRuleBasedRenderer.Rule(symbol, filterExp=expr, label=label))
+    layer.setRenderer(QgsRuleBasedRenderer(root_rule))
+
+
+def _add_old_method(project, parent):
+    """The first results, made with FME before this repository's pipelines:
+    the 3, the 30 and the 300, each in a group of its own, all off."""
+    top = _group(parent, "Oude methode – FME-resultaten", expanded=False)
+    gdb = lambda name, layer: f"{FME_OLD_DIR / name}|layername={layer}"
+
+    group = _group(top, "De 3 – FME (3_2024.fmw)", expanded=False)
+    layer = QgsVectorLayer(gdb("3_lijst.gdb", "Relaties"), "Relaties (3_lijst.gdb)", "ogr")
+    if _add(project, group, layer, visible=False):
+        layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
+            {"color": "49,163,84,90", "outline_color": "#006d2c", "outline_width": "0.2"})))
+        _explain(layer, "De uitvoer van de eerste FME-berekening van de 3 (3_2024.fmw), laag Relaties: "
+                        "10.665 vlakken zonder attributen. Ter vergelijking met de huidige 3.")
+
+    group = _group(top, "De 30 – FME (NEO-kroonvlakken, CBS 2023)", expanded=False)
+    field = "Percentage_groen"
+    rules = [(f'"{field}" IS NULL OR "water" = \'JA\'', NO_DATA, "water of geen waarde")]
+    for i, (lo, colour, label) in enumerate(STEPS_30):
+        hi = STEPS_30[i + 1][0] if i + 1 < len(STEPS_30) else None
+        expr = f'"{field}" >= {lo}' + (f' AND "{field}" < {hi}' if hi is not None else "")
+        rules.append((f'"water" <> \'JA\' AND {expr}', colour, label))
+    for name, label in (("FeatureClass_buurt", "Buurten"), ("FeatureClass1", "Wijken")):
+        layer = QgsVectorLayer(gdb("30_regel_v2.gdb", name), f"{label}: kroonbedekking (FME)", "ogr")
+        if _add(project, group, layer, visible=False):
+            _rules(layer, rules)
+            _explain(layer, "De eerste berekening van de 30 (30_2024.fmw): elk NEO-kroonvlak dat een buurt "
+                            "raakt telt volledig mee en overlap wordt opgeteld, daardoor hoger dan BKB 2024 "
+                            "(mediaan +23% per gemeente). Buurtcodes van 2023, opgezocht in de CBS-kaart van 2022.")
+
+    group = _group(top, "De 300 – FME (Valhalla, 300_2025 regel.fmw)", expanded=False)
+    for name, label in (("_300regel", "5 min"), ("_300regel_15", "15 min")):
+        layer = QgsVectorLayer(gdb("300.gdb", name), f"Woonpanden binnen {label} lopen (FME)", "ogr")
+        layer.setSubsetString('"gebr_woonfunctie" > 0')
+        if _add(project, group, layer, visible=False):
+            _rules(layer, [('"_related_suppliers" >= 1', "#1a9850", f"binnen {label}"),
+                           ("ELSE", "#d7301f", f"verder dan {label}")])
+            _zoomed_in(layer)
+    for name, label, colour, dash in (("isochrones_dissolved", "Loopzone 5 min (samengevoegd)", "#006d2c", "solid"),
+                                      ("isochrones_dissolved_15", "Loopzone 15 min (samengevoegd)", "#e6550d", "dash"),
+                                      ("isochrones", "Loopzones 5 min per ingang", "#41ab5d", "solid")):
+        layer = QgsVectorLayer(gdb("300.gdb", name), f"{label} (FME)", "ogr")
+        if _add(project, group, layer, visible=False):
+            layer.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
+                {"color": "0,0,0,0", "outline_color": colour, "outline_width": "0.4", "outline_style": dash})))
+    layer = QgsVectorLayer(gdb("300.gdb", "ingang_parken"), "Ingangen van parken (FME)", "ogr")
+    if _add(project, group, layer, visible=False):
+        layer.setRenderer(QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple(
+            {"name": "circle", "color": "#006d2c", "outline_color": "#ffffff", "size": "1.8"})))
+        _zoomed_in(layer, 50000)
+
+
 def _add_inputs(project, parent):
     """All trees, the tree heights and both surface models."""
     top = _group(parent, "Invoer – bomen en hoogtemodel", expanded=False)
@@ -407,6 +478,10 @@ def main():
             print(f"  NOTE: {AHN4_DIR} not readable (R: drive?) — AHN4 group skipped")
         _add_benchmark(project, root)
         _add_the_300(project, root)
+        if FME_OLD_DIR.exists():
+            _add_old_method(project, root)
+        else:
+            print(f"  NOTE: {FME_OLD_DIR} not readable (R: drive?) — old FME results skipped")
         _add_inputs(project, root)
         _add_background(project, root)
 
