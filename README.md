@@ -43,6 +43,8 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 ├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 within 500 m of every home)
 ├── indicator_300_park/           the 300: etl/ (GDAL + GRASS from QGIS; Valhalla as a check)
 ├── web/                          the web map for all three (published site)
+├── byproducts/                   tools made along the way, not part of the 3-30-300
+│   └── isochronen/               QGIS Processing script: isochrones from any points by walking, cycling or car
 ├── docs/bronnen/                 source documents (Konijnendijk 2023, the Cobra Groeninzicht handbook)
 ├── qgis_validation/              builds the QGIS validation project for all three
 ├── data/                         all data (gitignored), see the wiki page "Data sources"
