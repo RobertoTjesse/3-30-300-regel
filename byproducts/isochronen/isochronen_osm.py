@@ -55,10 +55,12 @@ HOW IT WORKS
        walking  footways, paths, cycle paths, streets and roads; no motorways
                 or trunk roads; no ways tagged foot=no or access=private/no
                 (unless foot= allows it). Both directions.
-       cycling  cycle paths, paths, tracks, streets and roads; footways only
-                with bicycle=yes/designated; no motorways or trunk roads, no
-                bicycle=no. One-way streets count one way unless
-                oneway:bicycle=no.
+       cycling  cycle paths, paths, tracks, streets and roads; footways,
+                bridleways and trunk roads only with bicycle=yes/designated;
+                never motorways; no bicycle=no, and no vehicle=no,
+                access=private/no or motorroad=yes unless bicycle= allows
+                it. One-way streets count one way unless oneway:bicycle=no
+                or cycleway(:left/:right)=opposite*.
        car      roads from motorway to service road; no access=private/no
                 unless motor_vehicle= allows it; one-way streets and
                 roundabouts one way. Speed = the maxspeed tag, or the default
@@ -144,7 +146,8 @@ BIKE_HIGHWAYS = (
     "cycleway", "path", "track", "living_street", "residential", "service", "unclassified", "road",
     "tertiary", "tertiary_link", "secondary", "secondary_link", "primary", "primary_link",
 )
-BIKE_ONLY_IF_ALLOWED = ("footway", "pedestrian", "steps")
+BIKE_ONLY_IF_ALLOWED = ("footway", "pedestrian", "steps", "bridleway", "trunk", "trunk_link")
+BIKE_NEVER = ("motorway", "motorway_link")
 ALLOWED = ("yes", "designated", "permissive", "official", "destination")
 CLOSED = ("no", "private")
 NO_CAR_START = ("motorway", "motorway_link", "trunk", "trunk_link")
@@ -174,7 +177,8 @@ def oneway_of(tags, mode):
     if mode == "Walking":
         return True, True
     ow = tags.get("oneway", "")
-    if mode == "Cycling" and tags.get("oneway:bicycle") == "no":
+    if mode == "Cycling" and (tags.get("oneway:bicycle") == "no" or any(
+            tags.get(k, "").startswith("opposite") for k in ("cycleway", "cycleway:left", "cycleway:right"))):
         return True, True
     if ow in ("yes", "1", "true"):
         return True, False
@@ -204,7 +208,9 @@ def rule(tags, mode, bike_kmh, walk_kmh):
         return True, True, walk_kmh, True
     if mode == "Cycling":
         bike = tags.get("bicycle")
-        if bike == "no" or (access in CLOSED and bike not in ALLOWED):
+        if hw in BIKE_NEVER or bike == "no" or bike in CLOSED:
+            return None
+        if bike not in ALLOWED and (tags.get("vehicle") in CLOSED or access in CLOSED or tags.get("motorroad") == "yes"):
             return None
         if hw not in BIKE_HIGHWAYS and not (hw in BIKE_ONLY_IF_ALLOWED and bike in ALLOWED):
             return None
