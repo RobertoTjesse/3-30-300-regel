@@ -44,7 +44,7 @@ Duck decoys are left out: they are mostly fenced and closed to visitors.
 
 **Filter and merge.** Polygons under 300 m2 and strips narrower than about 6 m (perimeter / area above 0.35) drop out. The rest is merged where polygons overlap or touch, so a path from one green polygon into the next is not an entrance: 3,660 green areas. Each keeps its sources, kinds and names.
 
-**Entrances.** Where a walkable way crosses the edge of a green area, an OSM gate or entrance on the edge, and, for green areas with neither, points every 25 m along the edge where a walkable way runs within 10 m: 14,924 entrances (11,091 paths crossing the edge, 1,323 OSM gates, 2,510 open edges along a street).
+**Entrances.** Where a walkable way crosses the edge of a green area, an OSM gate or entrance on the edge, and, for green areas with neither, points every 25 m along the edge where a walkable way runs within 25 m (parks, recreation areas, estates, gardens) or 10 m (nature, allotments, cemeteries, so islands get no entrance from a path across the water): 16,040 entrances (11,091 paths crossing the edge, 1,323 OSM gates, 3,626 open edges along a street).
 
 **Walking network.** The Geofabrik OpenStreetMap extract of Zuid-Holland (12 October 2026): footways, paths, cycle paths, streets and roads, without motorways and trunk roads, and without ways tagged `access=private` or `foot=no` unless `foot=` allows walking. Cycle paths count because Dutch traffic law (RVV 1990, art. 4) lets pedestrians use one where there is no footpath. The ways are cut at every shared OSM node, so a path on a bridge does not meet the street below it.
 
@@ -56,7 +56,7 @@ The thresholds are 300 m, 5 minutes (425 m at 5.1 km/h) and 15 minutes (1,275 m)
 
 ## Results, Zuid-Holland
 
-1,797,970 home addresses: **38.5% within 300 m, 57.6% within 5 minutes, 98.1% within 15 minutes.** Per municipality, between 21.4% (Voorne aan Zee) and 87.8% (Oegstgeest) within 5 minutes, and between 11.5% (Hardinxveld-Giessendam) and 62.5% (Oegstgeest) within 300 m. GRASS alone gives 36.7%, 56.0% and 97.8%.
+1,797,970 home addresses: **38.9% within 300 m, 58.1% within 5 minutes, 98.1% within 15 minutes.** Per municipality, between 21.5% (Voorne aan Zee) and 87.8% (Oegstgeest) within 5 minutes, and between 11.5% (Hardinxveld-Giessendam) and 62.5% (Oegstgeest) within 300 m. GRASS alone gives 37.1%, 56.5% and 97.9%.
 
 **GRASS against Valhalla.** Valhalla alone puts 38.0% within 300 m and 57.0% within 5 minutes. GRASS and Valhalla agree for 97.8% of homes on 300 m. For 1,757,808 homes both give a distance: the difference is at most 10 m for 71% of them and at most 50 m for 93%, with a median of 2 m. Where they differ, Valhalla is shorter more often (5.2% of homes by more than 50 m, against 1.9% longer): it can reach a home over its own private road, while the network for GRASS leaves `access=private` out.
 

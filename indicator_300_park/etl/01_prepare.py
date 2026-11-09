@@ -405,13 +405,14 @@ def write_entrances(out):
             g = f.GetGeometryRef()
             found.append((g.GetX(), g.GetY(), "poort"))
         if not found:   # open edge: walk every part of it (outer rings and holes)
+            reach = config.edge_street_m(park.GetField("soorten"))
             parts = ([edge.GetGeometryRef(i) for i in range(edge.GetGeometryCount())]
                      if edge.GetGeometryCount() else [edge])
             for part in parts:
                 d = 0.0
                 while d < part.Length():
                     p = part.Value(d)
-                    if nearby(net, p, config.EDGE_STREET_M):
+                    if nearby(net, p, reach):
                         found.append((p.GetX(), p.GetY(), "rand"))
                     d += config.EDGE_SPACING_M
         kept = []

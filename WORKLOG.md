@@ -576,3 +576,17 @@ trees should be excluded, is still open.
   mask worked out on the data in #33 was right, and the legend given with
   landbedekking_2024 (#32) was off by one from class 6 on. The map tiles
   did not change.
+
+## 2026-11-09: wider open edge for parks
+
+**35. Open edge 25 m for parks, recreation areas, estates and gardens (issue #3)**
+- `config.edge_street_m()`: 25 m (`EDGE_STREET_WIDE_M`) for green whose
+  `soorten` include park, recreatiegebied, landgoed, heemtuin or botanische
+  tuin; 10 m for the rest, so nature islets do not get an entrance from a
+  path across the water. GRASS links entrances within 25 + 5 m.
+- Entrances 14,924 -> 16,040 (open edges 2,510 -> 3,626). Inside the
+  province 929 green areas have no entrance (was 1,063), 2,068 ha; of the
+  parks, recreation areas, estates and gardens 74 remain (was 208), 60 of
+  them under 0.5 ha.
+- Homes within 300 m 38.5% -> 38.9%, 5 minutes 57.6% -> 58.1%, 15 minutes
+  98.1%. GRASS alone 37.1 / 56.5 / 97.9%. 04_compare.py not rerun.

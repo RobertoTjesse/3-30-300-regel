@@ -70,7 +70,7 @@ def panel(ax, prep, water, park_id):
     other = [r for f in in_box(parks, box) if f.GetField("park_id") != park_id for r in rings(f.GetGeometryRef())]
     ax.add_collection(PolyCollection(other, facecolors="#9ccf8f", edgecolors="#2f7d32", linewidths=0.6, zorder=2))
     ax.add_collection(PolyCollection(rings(g), facecolors="#f2a7a0", edgecolors="#c0392b", linewidths=1.4, zorder=3))
-    zone = g.Boundary().Buffer(config.EDGE_STREET_M)
+    zone = g.Boundary().Buffer(config.edge_street_m(target.GetField("soorten")))
     ax.add_collection(PolyCollection(rings(zone), facecolors="none", edgecolors="#c0392b", linewidths=0.6,
                                      linestyles=":", zorder=3))
     net = [ln for f in in_box(prep.GetLayerByName("network"), box) for ln in lines(f.GetGeometryRef())]
@@ -105,12 +105,13 @@ def main():
                Patch(facecolor="#9ccf8f", edgecolor="#2f7d32", label="other green"),
                Patch(facecolor="#cfe1f2", label="open water (cut out of the green)"),
                Line2D([0], [0], color="#6b6a66", lw=1, label="walkable path or street (OpenStreetMap)"),
-               Line2D([0], [0], color="#c0392b", lw=0.8, ls=":", label=f"{config.EDGE_STREET_M:.0f} m along the edge"),
+               Line2D([0], [0], color="#c0392b", lw=0.8, ls=":", label=f"{config.EDGE_STREET_M:.0f} or {config.EDGE_STREET_WIDE_M:.0f} m along the edge"),
                Line2D([0], [0], marker="o", ls="", ms=6, color="#e67e22", label="entrance (of other green)")]
     fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, fontsize=9)
     fig.suptitle("Why some green areas get no entrance", x=0.04, ha="left", fontsize=14, fontweight="bold", color=INK)
     fig.text(0.04, 0.945, "An entrance needs a path that crosses the edge, an OSM gate on the edge, or a street within "
-             f"{config.EDGE_STREET_M:.0f} m of the edge.\nWithout one, homes cannot reach the green in the calculation.",
+             f"{config.EDGE_STREET_WIDE_M:.0f} m (parks, estates, recreation areas) or {config.EDGE_STREET_M:.0f} m "
+             "(other green) of the edge.\nWithout one, homes cannot reach the green in the calculation.",
              fontsize=9.5, color=MUTED, va="top")
     fig.subplots_adjust(left=0.03, right=0.97, top=0.88, bottom=0.09, hspace=0.18, wspace=0.06)
     OUT.parent.mkdir(parents=True, exist_ok=True)

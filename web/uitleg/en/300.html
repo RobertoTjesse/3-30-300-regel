@@ -28,11 +28,11 @@ streets and paths to the nearest entrance of a park or other public green was ca
 meets the rule (green on the map).</p>
 
 <div class="facts">
-  <div class="fact"><b>38.5%</b><span>of homes within a 300 m walk of green</span></div>
-  <div class="fact"><b>57.6%</b><span>within a 5-min walk (425 m)</span></div>
+  <div class="fact"><b>38.9%</b><span>of homes within a 300 m walk of green</span></div>
+  <div class="fact"><b>58.1%</b><span>within a 5-min walk (425 m)</span></div>
   <div class="fact"><b>98.1%</b><span>within a 15-min walk</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1,797,970 homes. Per municipality from 21.4% (Voorne aan
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1,797,970 homes. Per municipality from 21.5% (Voorne aan
 Zee) to 87.8% (Oegstgeest) within 5 minutes.</p>
 <p class="note ok">The whole calculation was made with <b>QGIS and the components that come with QGIS</b>: GDAL for
 the data, the entrances and the walking network, GRASS GIS for the walking distances, and QGIS's Python for the steps
@@ -75,7 +75,8 @@ Each one says which way it pushes the result.</p>
     area: 3,660 in all. This green is on the map; click it for its type, source and area.</li>
   <li><strong>Find the entrances.</strong>
     Where an OpenStreetMap path or street crosses the edge of the green, and where OpenStreetMap has a gate or entrance
-    on the edge. Green without a path in gets an entrance along its edge where a street runs within 10 m. 14,924
+    on the edge. Green without a path in gets an entrance along its edge where a street runs within 25 m (parks, recreation
+    areas, estates and gardens) or 10 m (nature, allotments and cemeteries). 16,040
     entrances in all.</li>
   <li><strong>Compute the walking distances.</strong>
     GRASS GIS (<code>v.net.distance</code>, part of QGIS) computes, from all entrances at once, the shortest walking
@@ -150,9 +151,9 @@ reach on foot from a point: the <i>expansion</i>. Below, from the Provinciehuis 
 </figure>
 <div class="table-wrap"><table>
 <tr><th>Share of homes within</th><th>The map</th><th>GRASS</th><th>Valhalla</th><th>Valhalla, zones</th><th>Earlier calculation</th></tr>
-<tr><td>300 m</td><td>38.5%</td><td>36.7%</td><td>38.0%</td><td>46.4%</td><td>not computed</td></tr>
-<tr><td>5 minutes (425 m)</td><td>57.6%</td><td>56.0%</td><td>57.0%</td><td>64.0%</td><td>79.1%</td></tr>
-<tr><td>15 minutes (1,275 m)</td><td>98.1%</td><td>97.8%</td><td>98.0%</td><td>98.2%</td><td>99.2%</td></tr>
+<tr><td>300 m</td><td>38.9%</td><td>37.1%</td><td>38.4%</td><td>46.8%</td><td>not computed</td></tr>
+<tr><td>5 minutes (425 m)</td><td>58.1%</td><td>56.5%</td><td>57.5%</td><td>64.5%</td><td>79.1%</td></tr>
+<tr><td>15 minutes (1,275 m)</td><td>98.1%</td><td>97.9%</td><td>98.1%</td><td>98.2%</td><td>99.2%</td></tr>
 </table></div>
 <p>GRASS and Valhalla agree for 97.8% of homes on whether they live within 300 m of green. For 71% of homes
 the distance differs by 10 m or less, for 93% by 50 m or less. Where they differ, Valhalla's walk is shorter more
@@ -193,9 +194,9 @@ grounds, and worked with zones.</p>
 <ul>
   <li><b>300 m² is far below the WHO norm of 1 ha.</b> The paper and the WHO mean a large public green space. A run
       with 1 ha is a filter on the same green.</li>
-  <li><b>Green without an entrance.</b> 1,063 green areas in the province get no entrance, together 1.7% of the green:
-      mostly nature islets left after cutting out the water, but also about 230 parks, allotments and cemeteries where
-      the nearest street is just too far
+  <li><b>Green without an entrance.</b> 929 green areas in the province get no entrance, together 1.7% of the green:
+      mostly nature islets left after cutting out the water, and allotments and cemeteries. Of the parks, recreation
+      areas and estates, 74 still have none, most of them slivers under half a hectare
       (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/3">issue #3</a>).</li>
   <li><b>Public access</b> is not checked per site.</li>
 </ul>

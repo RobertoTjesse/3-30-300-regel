@@ -9,7 +9,7 @@ street below it).
 In a temporary GRASS project (EPSG:28992):
   v.in.ogr          network and entrances from config.PREPARED_GPKG
   v.net connect     links every entrance to the nearest way (within
-                    config.EDGE_STREET_M + 5 m) with a straight connector
+                    config.EDGE_STREET_WIDE_M + 5 m) with a straight connector
   v.net nodes       puts a point on every junction and dead end
   v.net.distance    for every junction, the shortest walk over the network to
                     any entrance (Dijkstra from all entrances at once,
@@ -102,7 +102,7 @@ def run_grass(work):
     print("GRASS: v.in.ogr, v.net connect, v.net nodes, v.net.distance …", flush=True)
     env = dict(os.environ, GRASS_MESSAGE_FORMAT="plain")
     cmd = ["cmd", "/c", str(config.GRASS_BAT), "--tmp-project", "EPSG:28992", "--exec", "python", str(job),
-           str(config.PREPARED_GPKG), work.as_posix(), str(config.EDGE_STREET_M + 5), exclude_where() or "-"]
+           str(config.PREPARED_GPKG), work.as_posix(), str(config.EDGE_STREET_WIDE_M + 5), exclude_where() or "-"]
     subprocess.run(cmd, check=True, env=env, stdin=subprocess.DEVNULL)
     if not (work / "arcs.gpkg").exists():
         sys.exit("ERROR: GRASS did not finish; see the messages above")

@@ -106,10 +106,23 @@ ACCESS_CLOSED = ("no", "private")
 #    the edge.
 # 3. Parks with neither (open green along a street): points every
 #    EDGE_SPACING_M along the edge, wherever a walkable way runs within
-#    EDGE_STREET_M.
+#    EDGE_STREET_M, or EDGE_STREET_WIDE_M for parks, recreation areas,
+#    estates and gardens (issue #3: their nearest path is often 10-50 m
+#    away). Nature, allotments and cemeteries keep 10 m, so islands do not
+#    get an entrance from a path across the water.
 GATE_SNAP_M = 5.0
 EDGE_SPACING_M = 25.0
 EDGE_STREET_M = 10.0
+EDGE_STREET_WIDE_M = 25.0
+EDGE_STREET_WIDE_KINDS = ("park", "recreatiegebied", "landgoed", "heemtuin", "botanische tuin")
+
+
+def edge_street_m(soorten):
+    """The open-edge distance for a green area, from its soorten field ('park, landgoed')."""
+    kinds = {k.strip() for k in (soorten or "").split(",")}
+    return EDGE_STREET_WIDE_M if kinds & set(EDGE_STREET_WIDE_KINDS) else EDGE_STREET_M
+
+
 ENTRANCE_MERGE_M = 10.0        # entrances of one park closer than this are merged
 
 # ---------------------------------------------------------------------------
