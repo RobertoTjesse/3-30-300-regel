@@ -28,11 +28,11 @@ berekend tot de dichtstbijzijnde ingang van een park of ander openbaar groen. Ee
 (groen op de kaart).</p>
 
 <div class="facts">
-  <div class="fact"><b>38,5%</b><span>van de woningen binnen 300 m lopen van groen</span></div>
-  <div class="fact"><b>57,6%</b><span>binnen 5 min lopen (425 m)</span></div>
+  <div class="fact"><b>38,9%</b><span>van de woningen binnen 300 m lopen van groen</span></div>
+  <div class="fact"><b>58,1%</b><span>binnen 5 min lopen (425 m)</span></div>
   <div class="fact"><b>98,1%</b><span>binnen 15 min lopen</span></div>
 </div>
-<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1.797.970 woningen. Per gemeente van 21,4% (Voorne aan Zee) tot
+<p style="font-size:14px;color:var(--muted)">Zuid-Holland, 1.797.970 woningen. Per gemeente van 21,5% (Voorne aan Zee) tot
 87,8% (Oegstgeest) binnen 5 minuten.</p>
 <p class="note ok">De hele berekening is gemaakt met <b>QGIS en de onderdelen die QGIS meelevert</b>: GDAL voor de
 gegevens, de ingangen en het wandelnetwerk, GRASS GIS voor de loopafstanden, en de Python van QGIS voor de stappen
@@ -76,8 +76,9 @@ Achter elke keuze staat de kant waarop ze de uitkomst duwt.</p>
     groengebied: 3.660 in totaal. Dit groen staat op de kaart; klik erop voor de soort, de bron en het oppervlak.</li>
   <li><strong>Ingangen bepalen.</strong>
     Waar een pad of straat uit OpenStreetMap de rand van het groen kruist, en waar OpenStreetMap een hek of ingang op
-    de rand heeft. Groen zonder pad erin krijgt een ingang langs de rand waar een straat binnen 10 m loopt. Samen
-    14.924 ingangen.</li>
+    de rand heeft. Groen zonder pad erin krijgt een ingang langs de rand waar een straat binnen 25 m loopt (parken, recreatiegebieden,
+    landgoederen en tuinen) of binnen 10 m (natuur, volkstuinen en begraafplaatsen). Samen
+    16.040 ingangen.</li>
   <li><strong>Loopafstanden berekenen.</strong>
     GRASS GIS (<code>v.net.distance</code>, met QGIS meegeleverd) berekent in één keer vanaf alle ingangen de
     kortste loopafstand tot elk kruispunt van het wandelnetwerk. Het netwerk komt uit OpenStreetMap: voetpaden,
@@ -153,12 +154,12 @@ paden teruggeven die je lopend bereikt: de <i>expansion</i>. Hieronder vanaf het
 </figure>
 <div class="table-wrap"><table>
 <tr><th>Aandeel woningen binnen</th><th>De kaart</th><th>GRASS</th><th>Valhalla</th><th>Valhalla, zones</th><th>Eerdere berekening</th></tr>
-<tr><td>300 m</td><td>38,5%</td><td>36,7%</td><td>38,0%</td><td>46,4%</td><td>niet berekend</td></tr>
-<tr><td>5 minuten (425 m)</td><td>57,6%</td><td>56,0%</td><td>57,0%</td><td>64,0%</td><td>79,1%</td></tr>
-<tr><td>15 minuten (1.275 m)</td><td>98,1%</td><td>97,8%</td><td>98,0%</td><td>98,2%</td><td>99,2%</td></tr>
+<tr><td>300 m</td><td>38,9%</td><td>37,1%</td><td>38,4%</td><td>46,8%</td><td>niet berekend</td></tr>
+<tr><td>5 minuten (425 m)</td><td>58,1%</td><td>56,5%</td><td>57,5%</td><td>64,5%</td><td>79,1%</td></tr>
+<tr><td>15 minuten (1.275 m)</td><td>98,1%</td><td>97,9%</td><td>98,1%</td><td>98,2%</td><td>99,2%</td></tr>
 </table></div>
-<p>GRASS en Valhalla zijn het voor 97,8% van de woningen eens of die binnen 300 m van groen wonen. Bij
-71% van de woningen scheelt de afstand hoogstens 10 m, bij 93% hoogstens 50 m. Waar ze verschillen,
+<p>GRASS en Valhalla zijn het voor 97,7% van de woningen eens of die binnen 300 m van groen wonen. Bij
+70% van de woningen scheelt de afstand hoogstens 10 m, bij 93% hoogstens 50 m. Waar ze verschillen,
 rekent Valhalla vaker korter: het kan een woning ook over haar eigen privéweg bereiken. Daarom neemt de kaart bij
 woningen die bij GRASS boven 300 m uitkomen de kortste van de twee. Zo komen 31.587 woningen alsnog binnen 300 m.</p>
 <figure>
@@ -196,9 +197,10 @@ sportvelden mee, en werkte met zones.</p>
 <ul>
   <li><b>300 m² is veel kleiner dan de WHO-norm van 1 ha.</b> Het artikel en de WHO bedoelen een grote openbare
       groenvoorziening. Een berekening met 1 ha is een filter op hetzelfde groen.</li>
-  <li><b>Groen zonder ingang.</b> 1.063 groengebieden in de provincie krijgen geen ingang, samen 1,7% van het groen:
-      vooral natuureilandjes die na het wegknippen van het water overblijven, maar ook ongeveer 230 parken, volkstuinen
-      en begraafplaatsen waar de dichtstbijzijnde straat net te ver ligt
+  <li><b>Groen zonder ingang.</b> 929 groengebieden in de provincie krijgen geen ingang, samen 1,7% van het groen:
+      vooral natuureilandjes die na het wegknippen van het water overblijven, en volkstuinen en begraafplaatsen. Van de
+      parken, recreatiegebieden en landgoederen zijn er nog 74 zonder ingang, meest snippers kleiner dan een halve
+      hectare
       (<a href="https://github.com/RobertoTjesse/3-30-300-regel/issues/3">issue #3</a>).</li>
   <li><b>Openbaarheid</b> is niet per terrein gecontroleerd.</li>
 </ul>
