@@ -140,7 +140,6 @@ CELL_M = {"Walking": 10, "Cycling": 20, "Car": 50, "Truck": 50, "Motorcycle": 50
 BUFFER_M = {"Walking": 30, "Cycling": 40, "Car": 100, "Truck": 100, "Motorcycle": 100, "Bus": 100}   # land this close to a reached way is inside
 
 ALLOWED = ("yes", "designated", "permissive", "official", "destination")
-CLOSED = ("no", "private")
 NO_CAR_START = ("motorway", "motorway_link", "trunk", "trunk_link")
 
 # Cycling follows Valhalla 3.9.1: the bicycle part of its graph.lua (way access,

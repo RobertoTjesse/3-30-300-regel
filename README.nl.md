@@ -8,7 +8,7 @@ De 3-30-300-regel (Konijnendijk, 2023) vraagt op drie manieren om groen dicht bi
 
 | | Uitkomst Zuid-Holland |
 |---|---|
-| 3 | 85,9% van de woningen ziet minstens 3 bomen; 5,0% ziet er geen |
+| 3 | 85,2% van de woningen ziet minstens 3 bomen; 4,9% ziet er geen |
 | 30 | 1,8% van de woningen heeft minstens 30% kroonbedekking binnen 500 m; gemiddeld is het 12,7%. Wassenaar springt eruit met 27% van de woningen |
 | 300 | 38,9% van de woningen ligt binnen 300 m lopen van een park of ander openbaar groen, 58,1% binnen 5 minuten en 98,1% binnen 15 minuten |
 

@@ -577,9 +577,20 @@ trees should be excluded, is still open.
   landbedekking_2024 (#32) was off by one from class 6 on. The map tiles
   did not change.
 
+## 2026-10-22: the 3 on AHN5
+
+**35. The province run on AHN5**
+- The 3 runs on the AHN5 surface model (DSM 0.5 m, captured 2023-2025)
+  instead of AHN4. Province run of 21-22 October 2026; run times in
+  `indicator_3_bomen/BENCHMARKS.md`.
+- Zuid-Holland: 85.2% of homes see at least 3 trees (was 85.9% on
+  AHN4), 4.9% see none (was 5.0%). Map and explanation pages updated;
+  the headline figures on the explanation pages and in the READMEs only
+  on 2026-11-10.
+
 ## 2026-11-09: wider open edge for parks
 
-**35. Open edge 25 m for parks, recreation areas, estates and gardens (issue #3)**
+**36. Open edge 25 m for parks, recreation areas, estates and gardens (issue #3)**
 - `config.edge_street_m()`: 25 m (`EDGE_STREET_WIDE_M`) for green whose
   `soorten` include park, recreatiegebied, landgoed, heemtuin or botanische
   tuin; 10 m for the rest, so nature islets do not get an entrance from a

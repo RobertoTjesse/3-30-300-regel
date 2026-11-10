@@ -11,13 +11,6 @@ from collections import defaultdict
 
 import config
 
-# Column heading per stage name as logged by config.log_benchmark()
-STAGE_LABELS = {
-    "tile_dem": "Tile DEM (s)",
-    "compute_viewsheds": "Compute viewsheds (s)",
-    "merge_tiles": "Merge tiles (s)",
-}
-
 
 def load_rows():
     """All rows of logs/benchmark.csv as dicts."""
@@ -28,12 +21,23 @@ def load_rows():
 
 
 def aggregate(rows):
-    """municipality -> {stage: total_seconds, 'tiles': n, 'trees': n, 'errors': n}"""
+    """municipality -> {stage: seconds, 'tiles': n, 'trees': n, 'errors': n}, from the latest run only:
+    the log keeps every run (AHN4, then AHN5), so per municipality and stage the most recent row counts."""
+    latest = {}
+    for row in sorted(rows, key=lambda r: r["timestamp"]):
+        # A rerun that only merged again leaves rows that did no work: viewsheds for 0 trees, and a
+        # tiling step of a second or so (the tiles were still there). Those do not replace a real run.
+        if row["stage"] == "compute_viewsheds" and row["trees"] == "0":
+            continue
+        if row["stage"] == "tile_dem" and float(row["seconds"]) < 5:
+            continue
+        latest[(row["municipality"], row["stage"])] = row
     agg = defaultdict(lambda: defaultdict(float))
     meta = defaultdict(dict)
-    for row in rows:
-        name, stage = row["municipality"], row["stage"]
-        agg[name][stage] += float(row["seconds"])
+    for (name, stage), row in sorted(latest.items(), key=lambda kv: kv[1]["timestamp"]):
+        agg[name][stage] = float(row["seconds"])
+        meta[name].setdefault("first", row["timestamp"][:10])
+        meta[name]["last"] = row["timestamp"][:10]
         if row["tiles"]:
             meta[name]["tiles"] = int(row["tiles"])
         if row["trees"]:
@@ -114,10 +118,10 @@ def main():
         f"{fmt_seconds(total_all)} total processing time.**"
     )
     lines.append("")
+    dates = sorted({m["first"] for m in meta.values()} | {m["last"] for m in meta.values()})
     lines.append(
-        "Note: Papendrecht and 's-Gravenhage `tile_dem` timings are approximate "
-        "(measured before per-stage timing instrumentation was added); all other "
-        "figures are precisely measured."
+        f"The latest run per municipality ({dates[0]} to {dates[-1]}); earlier runs stay in "
+        "`logs/benchmark.csv`."
     )
     lines.append("")
 

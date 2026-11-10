@@ -58,12 +58,15 @@ command in the `06_area_summaries.py` docstring).
 
 ## Source data
 
-One DEM (`.tif`, AHN DSM *ruw*, 0.5 m, Float32, RD New / EPSG:28992) and one
+One DEM (`.tif`, AHN5 DSM, 0.5 m, Float32, RD New / EPSG:28992) and one
 tree-position layer (`.gpkg`, NEO tree data) per municipality, sharing a
 basename (`Papendrecht.tif` / `Papendrecht.gpkg`), in the folder
 `VIEWANALYSE_DIR` points to. For Zuid-Holland that is
-`R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\fme_input\viewanalyse`
-(119 GB, read in place, never copied).
+`R:\ESRI\BEHEER\Projecten\Tijdelijk_Roberto\3-30-300\ahn5\viewanalyse`
+(59 GB, read in place, never copied). The DEMs there are clips of the SDE
+raster `Geo_raster.TOPOGRAFIE.AHN5_05M_DSM` (`sde_reexport/export_from_sde.py`).
+The AHN4 inputs used until October 2026 (AHN4 DSM *ruw*) are in
+`...\3-30-300\fme_input\viewanalyse` (119 GB).
 
 The tree layers originally shipped as `.shp` without a spatial index, which
 made every tile's bounding-box query scan the whole file (measured ~280x

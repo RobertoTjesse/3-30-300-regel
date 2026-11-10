@@ -21,7 +21,6 @@ import sys
 import logging
 import argparse
 import time
-from pathlib import Path
 
 import config
 

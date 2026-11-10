@@ -18,7 +18,7 @@ Zuid-Holland, latest runs:
 
 | | Result |
 |---|---|
-| 3 | 85.9% of homes see at least 3 trees; 5.0% see none |
+| 3 | 85.2% of homes see at least 3 trees; 4.9% see none |
 | 30 | 1.8% of the homes have at least 30% canopy within 500 m; the mean is 12.7%. Wassenaar stands out with 27% of its homes |
 | 300 | 38.9% of homes lie within a 300 m walk of a park or other public green, 58.1% within 5 minutes and 98.1% within 15 minutes. Per gemeente from 21.5% (Voorne aan Zee) to 87.8% (Oegstgeest) within 5 minutes |
 
@@ -35,16 +35,18 @@ The paper leaves a lot open: from where you look, how far, what counts as a tree
 ├── README.md                     this file: the project as a whole
 ├── README.nl.md                  a short introduction in Dutch
 ├── WORKLOG.md                    what was done and found, step by step
+├── PROMPT-HISTORY.md             the prompts given to Claude Code, 29 September to 13 October 2026
 ├── indicator_3_bomen/            the 3: full pipeline, see its README
 │   ├── etl/                      stages 01-06, config.py, config_local.py (gitignored)
 │   ├── arcgis_tests/             experiments: ArcGIS comparisons, exact test (local only, not on GitHub)
 │   ├── sde_reexport/             one-off re-export of corrupted DEMs
 │   └── README.md, ARCHITECTURE.md, BENCHMARKS.md, IMPROVEMENTS.md
 ├── indicator_30_kroonbedekking/  the 30: etl/ (BKB 2024 within 500 m of every home)
-├── indicator_300_park/           the 300: etl/ (GDAL + GRASS from QGIS; Valhalla as a check)
+├── indicator_300_park/           the 300: etl/ (GDAL + GRASS from QGIS; Valhalla as a check), valhalla/ (its tag rules)
 ├── web/                          the web map for all three (published site)
+├── mcda/                         the afwegingskaart: an MCDA proposal on top of the three, see its README
 ├── byproducts/                   tools made along the way, not part of the 3-30-300
-│   └── isochronen/               QGIS Processing script: isochrones from any points by walking, cycling or car
+│   └── isochronen/               QGIS Processing script: isochrones from any points (walking, cycling, car, truck, motorcycle), road access as Valhalla
 ├── docs/bronnen/                 source documents (Konijnendijk 2023, the Cobra Groeninzicht handbook)
 ├── qgis_validation/              builds the QGIS validation project for all three
 ├── data/                         all data (gitignored), see the wiki page "Data sources"

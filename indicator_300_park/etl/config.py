@@ -34,7 +34,6 @@ for _name in ("BASE_DIR", "DATA_DIR", "RAW_DIR", "INTERIM_DIR", "PROCESSED_DIR",
               "BAG_ADDRESS_BUILDING_ID", "BAG_STATUSES_IN_USE"):
     globals()[_name] = getattr(_c3, _name)
 GEBIEDEN_GPKG = PROCESSED_DIR / f"{PROVINCE_SLUG}_gebieden.gpkg"   # CBS 2025 gemeenten/wijken/buurten
-HOMES_GPKG = PROCESSED_DIR / f"{PROVINCE_SLUG}_woningen.gpkg"      # the homes of the 3 (pand_id, n_woningen)
 
 # ---------------------------------------------------------------------------
 # Input: the parks
