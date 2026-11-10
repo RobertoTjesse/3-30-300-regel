@@ -12,7 +12,9 @@ executables on Windows, so the .exe is called directly, with the package's
 DLL folder on PATH.
 
 Usage (from the repository root, with the OSGeo4W Python):
-    python indicator_300_park/etl/00_valhalla_tiles.py
+    python indicator_300_park/etl/00_valhalla_tiles.py [extract.osm.pbf out_dir]
+The two optional arguments build another extract into another folder (for
+example the whole Netherlands, for byproducts/isochronen/vergelijk_valhalla.py).
 """
 import os
 import shutil
@@ -39,22 +41,24 @@ json.dump(c, open(out, "w"), indent=1)
 
 def main():
     t0 = time.time()
+    pbf, out_dir = (Path(sys.argv[1]), Path(sys.argv[2])) if len(sys.argv) > 2 else (config.OSM_PBF,
+                                                                                       config.VALHALLA_DIR)
     site = config.VALHALLA_PYTHON.parent.parent / "Lib" / "site-packages"
     exe = site / "valhalla" / "bin" / "valhalla_build_tiles.exe"
     if not exe.exists():
         sys.exit(f"ERROR: {exe} not found; install pyvalhalla in {config.VALHALLA_PYTHON.parent.parent} first")
-    tiles = config.VALHALLA_DIR / "tiles"
+    tiles = out_dir / "tiles"
     if tiles.exists():
         shutil.rmtree(tiles)
     tiles.mkdir(parents=True)
-    cfg = config.VALHALLA_DIR / "valhalla.json"
+    cfg = out_dir / "valhalla.json"
     subprocess.run([str(config.VALHALLA_PYTHON), "-c", WRITE_CONFIG, str(tiles), str(config.VALHALLA_LUA),
                     str(config.VALHALLA_WORKERS), str(cfg)], check=True)
     env = dict(os.environ, PATH=str(site / "pyvalhalla.libs") + os.pathsep + os.environ["PATH"])
-    log = config.VALHALLA_DIR / "build.log"
-    print(f"Building tiles from {config.OSM_PBF.name} with {config.VALHALLA_LUA.name} (log: {log}) …", flush=True)
+    log = out_dir / "build.log"
+    print(f"Building tiles from {pbf.name} with {config.VALHALLA_LUA.name} (log: {log}) …", flush=True)
     with open(log, "w") as fh:
-        subprocess.run([str(exe), "-c", str(cfg), str(config.OSM_PBF)], check=True, env=env, stdout=fh,
+        subprocess.run([str(exe), "-c", str(cfg), str(pbf)], check=True, env=env, stdout=fh,
                        stderr=subprocess.STDOUT)
     size = sum(f.stat().st_size for f in tiles.rglob("*") if f.is_file()) / 1e6
     print(f"Tiles: {size:.0f} MB in {tiles} ({time.time() - t0:.0f} s)")

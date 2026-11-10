@@ -55,12 +55,14 @@ HOW IT WORKS
        walking  footways, paths, cycle paths, streets and roads; no motorways
                 or trunk roads; no ways tagged foot=no or access=private/no
                 (unless foot= allows it). Both directions.
-       cycling  cycle paths, paths, tracks, streets and roads; footways,
-                bridleways and trunk roads only with bicycle=yes/designated;
-                never motorways; no bicycle=no, and no vehicle=no,
-                access=private/no or motorroad=yes unless bicycle= allows
-                it. One-way streets count one way unless oneway:bicycle=no
-                or cycleway(:left/:right)=opposite*.
+       cycling  as Valhalla 3.9.1 (bike_rule below, from its graph.lua):
+                which ways, in which direction (one-way streets,
+                roundabouts, oneway:bicycle, cycleway=opposite*, ...).
+                Steps at 1 km/h and avoided (cost x 8), bicycle=dismount at
+                5.1 km/h, driveways and destination-only ways reached but
+                not used as a short cut (cost + 600 s on entering, the
+                isochrone shows the travel time). One departure: private
+                ways stay closed unless bicycle= opens them.
        car      roads from motorway to service road; no access=private/no
                 unless motor_vehicle= allows it; one-way streets and
                 roundabouts one way. Speed = the maxspeed tag, or the default
@@ -120,7 +122,7 @@ OSM_AREAS = [
 ]
 CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "isochronen_osm")
 
-MODES = ["Walking", "Cycling", "Car"]
+MODES = ["Walking", "Cycling", "Car", "Truck", "Motorcycle", "Bus"]
 MEASURES = ["Time (minutes)", "Distance (metres)"]
 
 WALK_SPEED_KMH = 5.1                 # Valhalla's default walking speed
@@ -133,24 +135,76 @@ CAR_SPEED_KMH = {
     "residential": 30, "living_street": 15, "service": 15,
 }
 # Defaults per transport for the advanced settings (0 in the form = these).
-CELL_M = {"Walking": 10, "Cycling": 20, "Car": 50}       # raster cell and network piece length
-BUFFER_M = {"Walking": 30, "Cycling": 40, "Car": 100}    # land this close to a reached way is inside
+CELL_M = {"Walking": 10, "Cycling": 20, "Car": 50, "Truck": 50, "Motorcycle": 50, "Bus": 50}   # piece length
+BUFFER_M = {"Walking": 30, "Cycling": 40, "Car": 100, "Truck": 100, "Motorcycle": 100, "Bus": 100}   # land this close to a reached way is inside
 
-WALK_HIGHWAYS = (
-    "footway", "path", "pedestrian", "living_street", "steps", "track",
-    "residential", "service", "unclassified", "road", "cycleway",
-    "tertiary", "tertiary_link", "secondary", "secondary_link",
-    "primary", "primary_link",
-)
-BIKE_HIGHWAYS = (
-    "cycleway", "path", "track", "living_street", "residential", "service", "unclassified", "road",
-    "tertiary", "tertiary_link", "secondary", "secondary_link", "primary", "primary_link",
-)
-BIKE_ONLY_IF_ALLOWED = ("footway", "pedestrian", "steps", "bridleway", "trunk", "trunk_link")
-BIKE_NEVER = ("motorway", "motorway_link")
 ALLOWED = ("yes", "designated", "permissive", "official", "destination")
 CLOSED = ("no", "private")
 NO_CAR_START = ("motorway", "motorway_link", "trunk", "trunk_link")
+
+# Cycling follows Valhalla 3.9.1: the bicycle part of its graph.lua (way access,
+# per direction) and of its bicycle costing (steps, dismount, destination-only).
+# https://github.com/valhalla/valhalla/blob/3.9.1/lua/graph.lua
+# A highway value not in V_HIGHWAY is closed to bicycles, whatever its tags.
+V_HIGHWAY = {
+    "motorway": False, "motorway_link": False, "trunk": True, "trunk_link": True,
+    "primary": True, "primary_link": True, "secondary": True, "secondary_link": True,
+    "tertiary": True, "tertiary_link": True, "residential": True, "residential_link": True,
+    "unclassified": True, "road": True, "service": True, "track": True, "living_street": True,
+    "steps": True, "cycleway": True, "path": True, "footway": False, "pedestrian": False,
+    "bridleway": False, "bus_guideway": False, "busway": False, "corridor": False, "elevator": False,
+    "platform": False, "via_ferrata": False, "undefined": False, "unknown": False,
+}
+_Y = ("yes", "designated", "permissive", "official", "public", "restricted", "allowed", "permit", "residents")
+V_ACCESS = {**dict.fromkeys(_Y + ("private", "use_sidepath", "delivery", "dismount", "destination",
+                                  "customers"), True),
+            **dict.fromkeys(("no", "agricultural", "discouraged", "forestry", "emergency", "psv"), False)}
+V_VEHICLE = {**dict.fromkeys(_Y + ("private", "delivery", "destination", "customers"), True),
+             **dict.fromkeys(("no", "agricultural", "discouraged", "forestry"), False)}
+V_BICYCLE = {**dict.fromkeys(("yes", "designated", "use_sidepath", "permissive", "destination", "dismount", "lane",
+                              "track", "shared", "shared_lane", "sidepath", "share_busway", "allowed", "private",
+                              "official", "permit", "residents"), True),
+             **dict.fromkeys(("no", "none"), False)}
+V_CYCLEWAY = dict.fromkeys(("yes", "designated", "use_sidepath", "permissive", "destination", "dismount", "lane",
+                            "track", "shared", "shared_lane", "sidepath", "share_busway", "allowed", "private",
+                            "cyclestreet", "crossing"), True)
+V_BIKE_REVERSE = ("opposite", "opposite_lane", "opposite_track")
+V_ONEWAY = {"no": False, "false": False, "-1": True, "yes": True, "true": True, "1": True,
+            "reversible": False, "alternating": False}
+V_PRIVATE = ("private", "destination", "customers", "delivery", "permit", "residents")
+V_LANE_BOTH_WAYS = ("shared_lane", "share_busway", "shared", "opposite_track", "track", "opposite_lane", "lane",
+                    "buffered_lane")
+V_DEST_ONLY_SERVICE = ("driveway", "parking_aisle", "drive-through")
+# Not in the graph: include_construction and include_platforms are false in valhalla.json.
+V_NOT_IN_GRAPH = ("construction", "proposed", "platform")
+V_MOTORROAD_CLASS = ("motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link")
+# Walking, as Valhalla 3.9.1 with the one change of indicator_300_park/valhalla/graph_fietspad.lua:
+# pedestrians may use a cycle path (RVV 1990 art. 4: where there is no footpath or pavement).
+V_HIGHWAY_FOOT = {**{k: True for k, v in V_HIGHWAY.items()},
+                  **dict.fromkeys(("motorway", "motorway_link", "bridleway", "bus_guideway", "busway",
+                                   "undefined", "unknown"), False)}
+V_FOOT = {**dict.fromkeys(_Y + ("private", "use_sidepath", "delivery", "destination", "customers", "crossing",
+                                "sidewalk", "passable", "footway"), True),
+          **dict.fromkeys(("no", "agricultural", "discouraged", "forestry"), False)}
+V_FOOT_ONEWAY_HIGHWAYS = ("footway", "pedestrian", "steps", "path")
+# Motor vehicles (Car, Truck, Motorcycle, Bus), from the same graph.lua.
+V_HIGHWAY_MOTOR = {k: k in CAR_SPEED_KMH or k in ("residential_link", "track", "living_street")
+                   for k in V_HIGHWAY}
+V_HIGHWAY_BUS = {**V_HIGHWAY_MOTOR, "bus_guideway": True, "busway": True}
+V_TRUCK = {**dict.fromkeys(("designated", "yes", "destination", "delivery", "local", "private", "permissive",
+                            "official", "permit", "residents"), True),
+           **dict.fromkeys(("no", "agricultural", "discouraged", "unsuitable", "forestry"), False)}
+V_BUS = {**dict.fromkeys(("yes", "designated", "urban", "permissive", "restricted", "destination", "official",
+                          "permit"), True), "no": False, "delivery": False}
+V_PSV = {**dict.fromkeys(("bus", "taxi", "yes", "designated", "permissive", "1", "2"), True), "no": False}
+MOTOR_TAG = {"Car": "motorcar", "Truck": "hgv", "Motorcycle": "motorcycle", "Bus": "bus"}
+# Legal top speeds in the Netherlands (RVV 1990 art. 21): lorries over 3.5 t 80 km/h; buses 80 km/h
+# (100 km/h for buses approved for it, not assumed here).
+MAX_KMH = {"Truck": 80, "Bus": 80}
+STEPS_KMH = 1.0                # Valhalla: steps at 1 km/h, carrying the bike ...
+STEPS_COST_FACTOR = 8.0        # ... and their cost times 8 (kBicycleStepsFactor), so they are avoided
+DISMOUNT_KMH = 5.1             # Valhalla: an edge marked dismount at walking speed (here: bicycle=dismount)
+DEST_ONLY_PENALTY_S = 600      # Valhalla's destination_only_penalty: on the cost, not on the travel time
 # ===========================================================================
 
 # Field types: QMetaType from QGIS 3.38, QVariant before (deprecated since).
@@ -172,22 +226,220 @@ def tags_of(feature):
     return tags
 
 
-def oneway_of(tags, mode):
-    """(forward, backward) allowed for this way."""
-    if mode == "Walking":
-        return True, True
-    ow = tags.get("oneway", "")
-    if mode == "Cycling" and (tags.get("oneway:bicycle") == "no" or any(
-            tags.get(k, "").startswith("opposite") for k in ("cycleway", "cycleway:left", "cycleway:right"))):
-        return True, True
-    if ow in ("yes", "1", "true"):
-        return True, False
-    if ow == "-1":
-        return False, True
-    if mode == "Car" and ow != "no" and (tags.get("highway") in ("motorway", "motorway_link")
-                                         or tags.get("junction") in ("roundabout", "circular")):
-        return True, False
-    return True, True
+def any_in(table, value):
+    """Valhalla's any_in: the value, or for 'a;b' the first part that is True (else the last one known)."""
+    if value is None:
+        return None
+    if value in table:
+        return table[value]
+    found = None
+    for part in value.split(";"):
+        found = table.get(part, found)
+        if found is True:
+            break
+    return found
+
+
+def first(*values):
+    """Lua's 'a or b' on Valhalla's "true"/"false" strings: the first value that is set (False counts)."""
+    return next((v for v in values if v is not None), None)
+
+
+def bike_rule(tags):
+    """Valhalla 3.9.1 bicycle access of a way: None, or (forward, backward, steps, dismount, destination only).
+    Follows filter_tags_generic() in graph.lua; its HOV-only-lane rule is left out (not used in the Netherlands)."""
+    hw = tags.get("highway")
+    if hw in V_NOT_IN_GRAPH:
+        return None
+    if tags.get("area") == "yes":
+        return None
+    base = V_HIGHWAY.get(hw)
+    if base is None:
+        return None
+    access = any_in(V_ACCESS, tags.get("access"))
+    vehicle = any_in(V_VEHICLE, tags.get("vehicle"))
+    fwd = base
+    if (tags.get("impassable") == "yes" or access is False or tags.get("smoothness") == "impassable"
+            or (tags.get("access") == "private"
+                and (tags.get("emergency") == "yes" or tags.get("service") == "emergency_access"))):
+        fwd = False
+    bike_tag = first(any_in(V_BICYCLE, tags.get("bicycle")), any_in(V_CYCLEWAY, tags.get("cycleway")),
+                     any_in(V_BICYCLE, tags.get("bicycle_road")), V_BICYCLE.get(tags.get("cyclestreet")), vehicle)
+    fwd = first(bike_tag, fwd)
+    if tags.get("service") == "driveway" and "access" not in tags:
+        fwd = True
+    ow_raw, ow_bike = tags.get("oneway"), tags.get("oneway:bicycle")
+    bwd = None
+    if (ow_raw == "yes" and ow_bike == "no") or tags.get("bicycle:backward") in ("yes", "no"):
+        bwd = True
+    if not bwd:
+        bwd = any(tags.get(k) in V_BIKE_REVERSE for k in ("cycleway", "cycleway:left", "cycleway:right"))
+    oneway_bike = V_ONEWAY.get(ow_bike) if bwd else None
+    oneway = V_ONEWAY.get(ow_raw)
+    if tags.get("junction") in ("roundabout", "circular"):
+        oneway = True
+    if oneway is True:
+        if bwd and oneway_bike is True:
+            fwd = False
+        elif bwd and oneway_bike is False:
+            fwd = True
+    elif not bwd and ow_bike != "-1" and ow_bike in (None, "no"):
+        bwd = fwd
+    sides = [tags.get(k) for k in ("cycleway:right", "cycleway:left")]
+    if tags.get("cycleway:both") in V_LANE_BOTH_WAYS or all(s in V_LANE_BOTH_WAYS for s in sides):
+        fwd = bwd = True
+    if "bicycle:forward" in tags or "vehicle:forward" in tags:
+        fwd = any_in(V_BICYCLE, tags.get("bicycle:forward") or tags.get("vehicle:forward"))
+    if "bicycle:backward" in tags or "vehicle:backward" in tags:
+        bwd = any_in(V_BICYCLE, tags.get("bicycle:backward") or tags.get("vehicle:backward"))
+    if ow_raw == "-1":
+        fwd, bwd = bwd, fwd
+    if ow_bike == "-1":
+        fwd, bwd = bwd, fwd
+    # Valhalla's C++ (graphenhancer.cc, countryaccess.cc): motorroad=yes on roads of class primary and up
+    # loses bicycle access unless a bicycle tag (bike_tag above) sets it.
+    if tags.get("motorroad") == "yes" and hw in V_MOTORROAD_CLASS and bike_tag is None:
+        return None
+    if not (fwd or bwd):
+        return None
+    dest_only = (tags.get("service") in V_DEST_ONLY_SERVICE
+                 or any(any_in(dict.fromkeys(V_PRIVATE, True), tags.get(k))
+                        for k in ("access", "motor_vehicle", "motorcar", "vehicle")))
+    dismount = tags.get("bicycle") == "dismount"
+    return bool(fwd), bool(bwd), hw == "steps", dismount, bool(dest_only)
+
+
+def foot_rule(tags):
+    """Valhalla 3.9.1 pedestrian access of a way: None, or (forward, backward). Same source as bike_rule."""
+    hw = tags.get("highway")
+    if hw in V_NOT_IN_GRAPH:
+        return None
+    if tags.get("area") == "yes" and hw != "pedestrian":
+        return None
+    fwd = V_HIGHWAY_FOOT.get(hw)
+    if fwd is None:
+        return None
+    access = any_in(V_ACCESS, tags.get("access"))
+    if (tags.get("impassable") == "yes" or access is False
+            or (tags.get("access") == "private"
+                and (tags.get("emergency") == "yes" or tags.get("service") == "emergency_access"))):
+        fwd = False
+    foot_tag = first(any_in(V_FOOT, tags.get("foot")), V_FOOT.get(tags.get("pedestrian")))
+    fwd = first(foot_tag, fwd)
+    if tags.get("service") == "driveway" and "access" not in tags:
+        fwd = True
+    ow_raw, ow_foot = tags.get("oneway"), tags.get("oneway:foot")
+    bwd = (ow_raw == "yes" and ow_foot == "no") or tags.get("foot:backward") == "yes"
+    oneway_foot = V_ONEWAY.get(ow_foot) if bwd else None
+    oneway = V_ONEWAY.get(ow_raw)
+    if tags.get("junction") in ("roundabout", "circular"):
+        oneway = True
+    if oneway is True:
+        if hw in V_FOOT_ONEWAY_HIGHWAYS or "oneway:foot" in tags:   # oneway binds pedestrians only here
+            if bwd and oneway_foot is True:
+                fwd = False
+            elif bwd and oneway_foot is False:
+                fwd = True
+        else:
+            bwd = fwd
+    elif not bwd and ow_foot in (None, "no"):
+        bwd = fwd
+    if "foot:forward" in tags:
+        fwd = any_in(V_FOOT, tags["foot:forward"])
+    if "foot:backward" in tags:
+        bwd = any_in(V_FOOT, tags["foot:backward"])
+    if ow_raw == "-1":
+        fwd, bwd = bwd, fwd
+    if ow_foot == "-1":
+        fwd, bwd = bwd, fwd
+    if tags.get("motorroad") == "yes" and hw in V_MOTORROAD_CLASS and foot_tag is None:
+        return None
+    if not (fwd or bwd):
+        return None
+    return bool(fwd), bool(bwd)
+
+
+def motor_rule(tags, mode):
+    """Valhalla 3.9.1 access of a way for Car, Truck, Motorcycle or Bus: None, or (forward, backward, destination
+    only). Same source as bike_rule; the HOV-only-lane rule is left out."""
+    hw = tags.get("highway")
+    if hw in V_NOT_IN_GRAPH or tags.get("area") == "yes":
+        return None
+    fwd = (V_HIGHWAY_BUS if mode == "Bus" else V_HIGHWAY_MOTOR).get(hw)
+    if fwd is None:
+        return None
+    access = any_in(V_ACCESS, tags.get("access"))
+    vehicle = any_in(V_VEHICLE, tags.get("vehicle"))
+    mv = first(any_in(V_VEHICLE, tags.get("motor_vehicle")), vehicle)
+    if (tags.get("impassable") == "yes" or access is False or tags.get("smoothness") == "impassable"
+            or (tags.get("access") == "private"
+                and (tags.get("emergency") == "yes" or tags.get("service") == "emergency_access"))):
+        fwd = False
+    if mode == "Car":
+        tag = first(any_in(V_VEHICLE, tags.get("motorcar")), mv)
+    elif mode == "Truck":
+        tag = first(any_in(V_TRUCK, tags.get("hgv")), mv)
+    elif mode == "Motorcycle":
+        tag = first(any_in(V_VEHICLE, tags.get("motorcycle")), mv)
+    else:
+        tag = first(any_in(V_BUS, tags.get("bus")), any_in(V_PSV, tags.get("psv")),
+                    V_PSV.get(tags.get("lanes:psv:forward")), mv)
+    fwd = first(tag, fwd)
+    if mode == "Bus" and tags.get("access") == "psv":
+        fwd = True
+    ow_raw = tags.get("oneway")
+    if tags.get("access") in ("permissive", "hov", "taxi") and ow_raw == "reversible":
+        if mode != "Bus" or not fwd:     # only buses keep such a way, when they may use it
+            return None
+    if tags.get("service") == "driveway" and "access" not in tags:
+        fwd = True
+    bwd = False
+    own = {"Bus": tags.get("oneway:bus") or tags.get("oneway:psv"),
+           "Motorcycle": tags.get("oneway:motorcycle")}.get(mode)
+    if mode == "Bus":
+        bwd = ((ow_raw == "yes" and own == "no") or tags.get("bus:backward") in ("yes", "designated")
+               or any(tags.get(k) in ("opposite", "opposite_lane") for k in ("busway", "busway:left", "busway:right"))
+               or V_PSV.get(tags.get("lanes:psv:backward")) is True)
+    elif mode == "Motorcycle":
+        bwd = (ow_raw == "yes" and own == "no") or tags.get("motorcycle:backward") == "yes"
+    own_oneway = V_ONEWAY.get(own) if bwd else None
+    if mode == "Bus" and bwd and own_oneway is False and tags.get("bus:backward") == "yes":
+        own_oneway = True
+    oneway = V_ONEWAY.get(ow_raw)
+    if tags.get("junction") in ("roundabout", "circular"):
+        oneway = True
+    if oneway is True:
+        if mode in ("Car", "Truck"):
+            bwd = False
+        elif bwd and own_oneway is True:
+            fwd = False
+        elif bwd and own_oneway is False:
+            fwd = True
+    elif mode in ("Car", "Truck"):
+        bwd = fwd
+    elif not bwd and (own is None or (mode == "Motorcycle" and own == "no")) and own != "-1":
+        bwd = fwd
+    if mode == "Bus" and (tags.get("busway") == "lane"
+                          or (tags.get("busway:left") == "lane" and tags.get("busway:right") == "lane")):
+        fwd = bwd = True
+    mv_fwd = tags.get("motor_vehicle:forward") or tags.get("vehicle:forward")
+    if mv_fwd is not None:
+        fwd = any_in(V_VEHICLE, mv_fwd)
+    mv_bwd = tags.get("motor_vehicle:backward") or tags.get("vehicle:backward")
+    if mv_bwd is not None:
+        bwd = any_in(V_VEHICLE, mv_bwd)
+    if ow_raw == "-1":
+        fwd, bwd = bwd, fwd
+    if own == "-1":
+        fwd, bwd = bwd, fwd
+    if mode == "Bus" and tags.get("lanes:bus") in ("1", "2"):
+        fwd, bwd = True, tags.get("lanes:bus") == "2"
+    if not (fwd or bwd):
+        return None
+    keys = ("access", "motor_vehicle", "motorcar", "vehicle") + (("hgv",) if mode == "Truck" else ())
+    dest_only = (tags.get("service") in V_DEST_ONLY_SERVICE
+                 or any(any_in(dict.fromkeys(V_PRIVATE, True), tags.get(k)) for k in keys))
+    return bool(fwd), bool(bwd), bool(dest_only)
 
 
 def maxspeed(tags):
@@ -196,29 +448,44 @@ def maxspeed(tags):
 
 
 def rule(tags, mode, bike_kmh, walk_kmh):
-    """None when the way is closed to this transport, else (forward, backward, km/h, may start here)."""
+    """None when the way is closed to this transport, else (forward, backward, km/h, may start here,
+    cost factor, destination only). The cost (what the route search minimises) is the travel time times the
+    cost factor, plus DEST_ONLY_PENALTY_S on entering a destination-only way; the isochrone shows the time."""
     hw = tags.get("highway")
     if tags.get("area") == "yes":
         return None
     access = tags.get("access")
     if mode == "Walking":
-        foot = tags.get("foot")
-        if hw not in WALK_HIGHWAYS or foot == "no" or (access in CLOSED and foot not in ALLOWED):
+        # As for cycling: private ways stay closed unless foot= opens them.
+        if (any_in({"private": True}, access) or tags.get("foot") == "private") and tags.get("foot") not in ALLOWED:
             return None
-        return True, True, walk_kmh, True
+        r = foot_rule(tags)
+        if r is None:
+            return None
+        return r[0], r[1], walk_kmh, True, 1.0, False
     if mode == "Cycling":
-        bike = tags.get("bicycle")
-        if hw in BIKE_NEVER or bike == "no" or bike in CLOSED:
+        # Our one departure from Valhalla: private ways stay closed (Valhalla opens them as destination-only),
+        # unless a bicycle tag opens them.
+        if (any_in({"private": True}, access) or tags.get("bicycle") == "private") and \
+                tags.get("bicycle") not in ALLOWED:
             return None
-        if bike not in ALLOWED and (tags.get("vehicle") in CLOSED or access in CLOSED or tags.get("motorroad") == "yes"):
+        r = bike_rule(tags)
+        if r is None:
             return None
-        if hw not in BIKE_HIGHWAYS and not (hw in BIKE_ONLY_IF_ALLOWED and bike in ALLOWED):
-            return None
-        return (*oneway_of(tags, mode), bike_kmh, True)
-    motor = tags.get("motor_vehicle") or tags.get("motorcar")
-    if hw not in CAR_SPEED_KMH or motor in CLOSED or (access in CLOSED and motor not in ALLOWED):
+        fwd, bwd, steps, dismount, dest_only = r
+        if steps:      # not a start: Valhalla does not snap a bicycle to steps
+            return fwd, bwd, STEPS_KMH, False, STEPS_COST_FACTOR, dest_only
+        return fwd, bwd, DISMOUNT_KMH if dismount else bike_kmh, True, 1.0, dest_only
+    # Car, Truck, Motorcycle, Bus. Private ways stay closed unless this vehicle's own tag opens them.
+    own = tags.get(MOTOR_TAG[mode])
+    if any("private" in (tags.get(k) or "").split(";")
+           for k in ("access", "vehicle", "motor_vehicle", MOTOR_TAG[mode])) and own not in ALLOWED:
         return None
-    return (*oneway_of(tags, mode), maxspeed(tags), hw not in NO_CAR_START)
+    r = motor_rule(tags, mode)
+    if r is None:
+        return None
+    kmh = min(maxspeed(tags), MAX_KMH.get(mode, 999))
+    return r[0], r[1], kmh, hw not in NO_CAR_START, 1.0, r[2]
 
 
 class IsochronesFromPoints(QgsProcessingAlgorithm):
@@ -328,7 +595,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Transport: {mode}; measure: {'time' if by_time else 'distance'}; "
                           f"values: {', '.join(f'{v:g}' for v in values)} {unit}; "
                           f"{'merged' if merge else 'per point'}; cell {cell:g} m, buffer {buffer_m:g} m")
-        if mode != "Car":
+        if mode in ("Walking", "Cycling"):
             feedback.pushInfo(f"Speed: {walk_kmh if mode == 'Walking' else bike_kmh:g} km/h")
 
         # 1. The points, in RD New
@@ -347,7 +614,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         feedback.pushInfo(f"{len(points):,} start points")
 
         # How far the network must reach from the points
-        top_kmh = {"Walking": walk_kmh, "Cycling": bike_kmh, "Car": max(CAR_SPEED_KMH.values()) + 30}[mode]
+        top_kmh = {"Walking": walk_kmh, "Cycling": bike_kmh}.get(mode, max(CAR_SPEED_KMH.values()) + 30)
         reach = values[-1] / 60 * top_kmh * 1000 if by_time else values[-1]
         margin = reach + buffer_m + snap_m + 500
         xs, ys = [p[2] for p in points], [p[3] for p in points]
@@ -369,12 +636,17 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
 
         # 3. Network
         feedback.pushInfo(f"Reading the {mode.lower()} network within {margin / 1000:.1f} km of the points ...")
-        x, y, u, v, w, start_ok, seg_a, seg_b = self.network(caches, box, mode, by_time, cell, walk_kmh, bike_kmh, feedback)
+        x, y, u, v, m, c, start_ok, seg_a, seg_b = self.network(caches, box, mode, by_time, cell, walk_kmh,
+                                                                 bike_kmh, feedback)
         n = len(x)
         from scipy.sparse import csr_matrix
         from scipy.sparse.csgraph import dijkstra
         from scipy.spatial import cKDTree
-        graph = csr_matrix((w, (u, v)), shape=(n, n))
+        graph = csr_matrix((c, (u, v)), shape=(n, n))
+        # Where cost and measure differ (cycling: steps, destination-only ways), search on the cost, as
+        # Valhalla does, and report the measure along the cheapest route.
+        two_weights = not np.allclose(c, m)
+        measure = csr_matrix((m, (u, v)), shape=(n, n)) if two_weights else None
 
         # 4. Snap the points
         starts = np.flatnonzero(start_ok)
@@ -412,7 +684,15 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         for k, (pid, pname, nodes) in enumerate(groups):
             if feedback.isCanceled():
                 break
-            dist = dijkstra(graph, directed=True, indices=nodes, min_only=True, limit=values[-1])
+            if two_weights:
+                # No limit: a route over steps or into a destination-only way costs more than it takes
+                # time; the network is already cut to the reach of the points.
+                cost, pred, _ = dijkstra(graph, directed=True, indices=nodes, min_only=True,
+                                         return_predecessors=True)
+                dist = self.along_route(cost, pred, measure)
+                dist[dist > values[-1]] = np.inf
+            else:
+                dist = dijkstra(graph, directed=True, indices=nodes, min_only=True, limit=values[-1])
             for value, geom, km2 in self.polygons(x, y, dist, values, cell, buffer_m):
                 f = QgsFeature(fields)
                 f.setAttributes([pid, pname, mode, "time" if by_time else "distance", value, unit, round(km2, 4)])
@@ -473,7 +753,9 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         return cache
 
     def network(self, caches, box, mode, by_time, cell, walk_kmh, bike_kmh, feedback):
-        """Network points (x, y), directed pieces (u, v, cost) and which points may be a start.
+        """Network points (x, y), directed pieces (u, v, measure, cost) and which points may be a start.
+        measure = minutes or metres; cost = measure times the way's cost factor, plus the destination-only
+        penalty (in the same unit) on a piece that enters a destination-only way from another way.
         Ways meet only at shared OSM nodes; every piece is at most `cell` long. A way that is
         in two extracts (along a shared border) is read twice; its pieces count once."""
         import numpy as np
@@ -504,7 +786,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         lengths = np.array([len(c) for c in chunks])
         ll = np.concatenate(chunks)
         way = np.repeat(np.arange(len(chunks)), lengths)
-        fwd, bwd, kmh, start = (np.array(a) for a in zip(*attrs))
+        fwd, bwd, kmh, start, factor, dest_only = (np.array(a) for a in zip(*attrs))
         last = np.zeros(len(ll), dtype=bool)
         last[np.cumsum(lengths) - 1] = True
 
@@ -542,13 +824,23 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         y = np.concatenate([xy[:, 1], xy[sa, 1] + t * (xy[sb, 1] - xy[sa, 1])])
         piece_len = seg_len[seg] / k[seg]
         pway = sw[seg]
-        cost = piece_len / (kmh[pway] * 1000 / 60) if by_time else piece_len
-        cost = np.maximum(cost, 1e-6)
+        meas = piece_len / (kmh[pway] * 1000 / 60) if by_time else piece_len
+        meas = np.maximum(meas, 1e-6)
 
         f_, b_ = fwd[pway], bwd[pway]
         u = np.concatenate([pu[f_], pv[b_]])
         v = np.concatenate([pv[f_], pu[b_]])
-        c = np.concatenate([cost[f_], cost[b_]])
+        m = np.concatenate([meas[f_], meas[b_]])
+        w = np.concatenate([pway[f_], pway[b_]])
+        c = m * factor[w]
+        if dest_only.any():
+            # Entering a destination-only way: from a point that an ordinary way also touches.
+            public = np.zeros(len(x), dtype=bool)
+            public[u[~dest_only[w]]] = True
+            public[v[~dest_only[w]]] = True
+            # 600 s, in minutes, or in metres at the way's own speed
+            penalty = DEST_ONLY_PENALTY_S / 60 if by_time else DEST_ONLY_PENALTY_S * kmh[w] / 3.6
+            c = c + np.where(dest_only[w] & public[u], penalty, 0.0)
         # Two ways over the same nodes: keep the cheaper (a sparse matrix would add them up).
         order = np.lexsort((c, u * len(x) + v))
         _, firsts = np.unique((u * len(x) + v)[order], return_index=True)
@@ -558,7 +850,26 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         start_ok[pv[start[pway]]] = True
         feedback.pushInfo(f"  {len(x):,} network points, {len(pick):,} directed pieces")
         pairs = np.unique(np.minimum(a, b) * len(xy) + np.maximum(a, b))   # each OSM segment once
-        return x, y, u[pick], v[pick], c[pick], start_ok, pairs // len(xy), pairs % len(xy)
+        return x, y, u[pick], v[pick], m[pick], c[pick], start_ok, pairs // len(xy), pairs % len(xy)
+
+    @staticmethod
+    def along_route(cost, pred, measure):
+        """The measure (time or length) from the start along the cheapest route to every reached point.
+        Sums the predecessor tree by pointer doubling: log2(route length) numpy steps."""
+        import numpy as np
+        reached = np.isfinite(cost)
+        p = np.where(reached, pred, -1)
+        has = p >= 0
+        total = np.zeros(len(cost))
+        total[has] = np.asarray(measure[p[has], np.flatnonzero(has)]).ravel()
+        while has.any():   # total[v] = measure over 2^k steps up the tree, p[v] = the point 2^k steps up
+            total_next, p_next = total.copy(), p.copy()
+            total_next[has] += total[p[has]]
+            p_next[has] = p[p[has]]
+            total, p = total_next, p_next
+            has = p >= 0
+        total[~reached] = np.inf
+        return total
 
     def expansion(self, sink, fields, x, y, seg_a, seg_b, dist, attrs):
         """Every OSM segment the search reached: the cost at both ends and the order reached."""
