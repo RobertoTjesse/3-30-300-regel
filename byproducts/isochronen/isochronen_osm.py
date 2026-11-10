@@ -296,6 +296,24 @@ def bike_rule(tags):
         fwd, bwd = bwd, fwd
     if ow_bike == "-1":
         fwd, bwd = bwd, fwd
+    # Valhalla's C++ (pbfgraphparser.cc), after graph.lua: mountain-bike tags open the way to bicycles, also
+    # over bicycle=no or oneway:bicycle; only oneway itself counts. Scales below kMaxMtbScale = 6 and
+    # kMaxMtbUphillScale = 5 (baldr/graphconstants.h); mtb:scale:imba and mtb:description only when no scale.
+    scale, uphill = (int(tags[k]) if re.fullmatch(r"\d+", tags.get(k, "")) else -1
+                     for k in ("mtb:scale", "mtb:scale:uphill"))
+    mtb = (0 <= scale < 6 or 0 <= uphill < 5
+           or ("mtb:scale" not in tags and "mtb:scale:uphill" not in tags
+               and ("mtb:scale:imba" in tags or "mtb:description" in tags)))
+    # ... but only on a way graph.lua kept: it drops a way that no transport may use (access=no, agricultural).
+    if mtb and not (fwd or bwd or foot_rule(tags) or any(motor_rule(tags, m) for m in MOTOR_TAG)
+                    or tags.get("emergency") == "yes" or tags.get("access") == "emergency"
+                    or any_in(V_BICYCLE, tags.get("moped")) or any_in(V_BICYCLE, tags.get("mofa"))):
+        mtb = False
+    if mtb:
+        if ow_raw != "-1":
+            fwd = True
+        if oneway is not True:
+            bwd = True
     # Valhalla's C++ (graphenhancer.cc, countryaccess.cc): motorroad=yes on roads of class primary and up
     # loses bicycle access unless a bicycle tag (bike_tag above) sets it.
     if tags.get("motorroad") == "yes" and hw in V_MOTORROAD_CLASS and bike_tag is None:
@@ -453,6 +471,10 @@ def rule(tags, mode, bike_kmh, walk_kmh):
     cost factor, plus DEST_ONLY_PENALTY_S on entering a destination-only way; the isochrone shows the time."""
     hw = tags.get("highway")
     if tags.get("area") == "yes":
+        return None
+    # Valhalla (pbfgraphparser.cc) drops a closed way (first node = last node) with a building, landuse,
+    # leisure or natural key, for every transport: a running track, an ice rink. The caller sets "_closed".
+    if tags.get("_closed") and any(k in tags for k in ("building", "landuse", "leisure", "natural")):
         return None
     access = tags.get("access")
     if mode == "Walking":
@@ -774,10 +796,14 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             lyr.SetSpatialFilterRect(min(c[0] for c in corners), min(c[1] for c in corners),
                                      max(c[0] for c in corners), max(c[1] for c in corners))
             for f in lyr:
-                r = rule(tags_of(f), mode, bike_kmh, walk_kmh)
+                g = f.GetGeometryRef()
+                tags = tags_of(f)
+                if g.GetPointCount() > 2 and g.GetPoint_2D(0) == g.GetPoint_2D(g.GetPointCount() - 1):
+                    tags["_closed"] = "yes"
+                r = rule(tags, mode, bike_kmh, walk_kmh)
                 if r is None:
                     continue
-                pts = np.asarray(f.GetGeometryRef().GetPoints(), dtype=float)[:, :2]
+                pts = np.asarray(g.GetPoints(), dtype=float)[:, :2]
                 if len(pts) >= 2:
                     chunks.append(pts)
                     attrs.append(r)

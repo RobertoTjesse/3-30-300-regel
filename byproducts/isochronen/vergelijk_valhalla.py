@@ -193,6 +193,11 @@ def main_stats():
     km = {p: collections.Counter() for p in names}
     ds = ogr.Open(str(cache))
     n = 0
+    import csv
+    diff_path = ROOT / "data" / "processed" / f"valhalla_vs_ons_{PBF.name.split('.')[0]}_verschillen.csv"
+    diff_fh = open(diff_path, "w", newline="", encoding="utf-8")
+    diffs = csv.writer(diff_fh)   # every way that differs (private ways left out): profile, kind, tags
+    diffs.writerow(["profiel", "verschil", "way_id", "m", "ons_heen/terug", "valhalla_heen/terug"] + list(TAGS_SHOWN))
     for f in ds.GetLayer(0):
         tags = dict(tag_re.findall(f.GetField("other_tags") or ""))
         for i in range(f.GetFieldCount()):
@@ -200,6 +205,8 @@ def main_stats():
             if name not in ("other_tags", "osm_id") and f.IsFieldSet(i):
                 tags[name] = f.GetField(i)
         g = f.GetGeometryRef()
+        if g.GetPointCount() > 2 and g.GetPoint_2D(0) == g.GetPoint_2D(g.GetPointCount() - 1):
+            tags["_closed"] = "yes"   # as in isochronen_osm.py network()
         g.Transform(to_rd)
         m = g.Length() / 1000
         a = vw.get(int(f.GetField("osm_id")))
@@ -218,9 +225,15 @@ def main_stats():
                 kind = "richting"
             stats[p][kind] += 1
             km[p][kind] += m
+            if kind not in ("gelijk", "prive"):
+                diffs.writerow([p, kind, f.GetField("osm_id"), round(m * 1000, 1),
+                                "/".join("ja" if x else "nee" for x in ours),
+                                "/".join("ja" if x else "nee" for x in theirs)]
+                               + [tags.get(t, "") for t in TAGS_SHOWN])
         n += 1
         if n % 1_000_000 == 0:
             print(f"  {n:,} OSM ways, {time.time() - t0:.0f} s", flush=True)
+    diff_fh.close()
     kinds = ("gelijk", "prive", "alleen_valhalla", "alleen_ons", "richting")
     out = ROOT / "data" / "processed" / f"valhalla_vs_ons_{PBF.name.split('.')[0]}.csv"
     with open(out, "w", encoding="utf-8") as fh:
@@ -300,6 +313,8 @@ def main():
     ds.StartTransaction()
     for way_id, (tags, geom) in ow.items():
         g = geom.Clone()
+        if g.GetPointCount() > 2 and g.GetPoint_2D(0) == g.GetPoint_2D(g.GetPointCount() - 1):
+            tags["_closed"] = "yes"
         g.Transform(to_rd)
         m = g.Length()
         r = rule(tags, RULE_MODE, 15.0, 5.0)

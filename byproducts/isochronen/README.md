@@ -40,15 +40,24 @@ Valhalla's other costs are not copied: its preference for cycle paths over busy 
 
 ## Agreement with Valhalla
 
-`vergelijk_valhalla.py` checks the network of every transport against the access bits in Valhalla's tiles, way by way (see the head of that script). It reads the tiles directly. pyvalhalla does not expose a road's access, so the script was checked against edge lengths and against Valhalla's own `locate`. Zuid-Holland, OSM of 12 October 2026, private roads left out:
+`vergelijk_valhalla.py` checks the network of every transport against the access bits in Valhalla's tiles, way by way (see the head of that script). It reads the tiles directly. pyvalhalla does not expose a road's access, so the script was checked against edge lengths and against Valhalla's own `locate`. `vergelijk_valhalla.py stats <pbf> <tile folder>` does all transports at once for a whole extract. It writes the totals and every way that differs to `data/processed/`.
 
-| Transport | Same as Valhalla | Different |
-|---|---|---|
-| Walking | 39,633 km | 9.8 km |
-| Cycling | 39,855 km | 12.8 km |
-| Car, truck, motorcycle, bus | 39,905–39,919 km | 0 km |
+The whole Netherlands, OSM of 10 November 2026 (2.83 million ways), private roads left out:
 
-What differs for walking and cycling is about 100 slip roads with `motorroad=yes`. Valhalla closes motorroads to pedestrians and cyclists, but in our build it left some slip roads open. We did not find the cause in its code. The script keeps them closed, as the road sign requires.
+| Transport | Same as Valhalla | Different | Same, share |
+|---|---|---|---|
+| Walking | 315,286 km | 125.7 km | 99.96% |
+| Cycling | 315,797 km | 123.7 km | 99.96% |
+| Car | 315,885 km | 0 km | 100% |
+| Truck | 315,922 km | 0 km | 100% |
+| Motorcycle | 315,893 km | 0 km | 100% |
+| Bus | 315,898 km | 0 km | 100% |
+
+Zuid-Holland on its own (OSM of 12 October 2026): walking 9.8 km different, cycling 12.8 km, the motor vehicles 0 km.
+
+What differs for walking and cycling is about 700 slip roads with `motorroad=yes`, nearly all of it. Valhalla closes motorroads to pedestrians and cyclists, but in our build it left these slip roads open. We did not find the cause in its code. The script keeps them closed, as the road sign requires.
+
+The Netherlands brought out two rules that Zuid-Holland hardly uses. Both are now in the script. Mountain-bike tags (`mtb:scale` and the like) open a path to bicycles, even over `bicycle=no` or `oneway:bicycle`, unless the way is closed to every transport. A closed way (a loop) with a `leisure`, `landuse`, `building` or `natural` key is left out, for example a cycle racing track or an ice rink.
 
 ## Run times
 
