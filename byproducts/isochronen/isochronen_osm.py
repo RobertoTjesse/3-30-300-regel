@@ -51,22 +51,23 @@ WHAT YOU GET
 HOW IT WORKS
   1. Reads the OSM ways once into a GeoPackage next to the .pbf (about a
      minute), then only the part within reach of your points.
-  2. Builds the network for the chosen transport:
-       walking  footways, paths, cycle paths, streets and roads; no motorways
-                or trunk roads; no ways tagged foot=no or access=private/no
-                (unless foot= allows it). Both directions.
-       cycling  as Valhalla 3.9.1 (bike_rule below, from its graph.lua):
-                which ways, in which direction (one-way streets,
-                roundabouts, oneway:bicycle, cycleway=opposite*, ...).
-                Steps at 1 km/h and avoided (cost x 8), bicycle=dismount at
-                5.1 km/h, driveways and destination-only ways reached but
-                not used as a short cut (cost + 600 s on entering, the
-                isochrone shows the travel time). One departure: private
-                ways stay closed unless bicycle= opens them.
-       car      roads from motorway to service road; no access=private/no
-                unless motor_vehicle= allows it; one-way streets and
-                roundabouts one way. Speed = the maxspeed tag, or the default
-                per road type in CAR_SPEED_KMH below.
+  2. Builds the network for the chosen transport. Which ways it may use,
+     and in which direction, follows Valhalla 3.9.1: its graph.lua and the
+     access changes in its C++ code, written out below in foot_rule(),
+     bike_rule() and motor_rule(). Checked against Valhalla's own tiles for
+     the whole Netherlands (vergelijk_valhalla.py): the same for 99.96% of
+     the km on foot and by bicycle, 100% for car, truck and motorcycle.
+       walking  5.1 km/h. Cycle paths are open to pedestrians, the one
+                change this repository makes to Valhalla (RVV 1990 art. 4).
+       cycling  15 km/h. Steps at 1 km/h and avoided (cost x 8),
+                bicycle=dismount at 5.1 km/h.
+       car, truck, motorcycle  the maxspeed tag, or the default per road
+                type in CAR_SPEED_KMH below; trucks at most 80 km/h.
+     Driveways, parking aisles and access=destination roads are reached but
+     not used as a short cut: 600 s is added to the cost of entering one;
+     the isochrone shows the travel time. Private roads (access=private)
+     stay closed, unless you tick "Enter private roads": then they work like
+     driveways, as in Valhalla.
      Ways only meet where OSM says they share a node: a road on a bridge does
      not meet the road below it. Every way is cut into pieces of at most the
      cell size.
@@ -122,7 +123,7 @@ OSM_AREAS = [
 ]
 CACHE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "isochronen_osm")
 
-MODES = ["Walking", "Cycling", "Car", "Truck", "Motorcycle", "Bus"]
+MODES = ["Walking", "Cycling", "Car", "Truck", "Motorcycle"]   # rule() also knows "Bus" (vergelijk_valhalla.py)
 MEASURES = ["Time (minutes)", "Distance (metres)"]
 
 WALK_SPEED_KMH = 5.1                 # Valhalla's default walking speed
@@ -465,10 +466,17 @@ def maxspeed(tags):
     return float(m.group(1)) if m and int(m.group(1)) > 0 else CAR_SPEED_KMH.get(tags["highway"], 30)
 
 
-def rule(tags, mode, bike_kmh, walk_kmh):
+def is_private(tags, keys, own):
+    """A private way for this transport: 'private' in one of its access keys, and not opened by its own tag."""
+    return any("private" in (tags.get(k) or "").split(";") for k in keys) and tags.get(own) not in ALLOWED
+
+
+def rule(tags, mode, bike_kmh, walk_kmh, private=False):
     """None when the way is closed to this transport, else (forward, backward, km/h, may start here,
     cost factor, destination only). The cost (what the route search minimises) is the travel time times the
-    cost factor, plus DEST_ONLY_PENALTY_S on entering a destination-only way; the isochrone shows the time."""
+    cost factor, plus DEST_ONLY_PENALTY_S on entering a destination-only way; the isochrone shows the time.
+    private=False (the default): private ways stay closed, our one departure from Valhalla.
+    private=True: as Valhalla, they are open as destination-only ways (reached, not used as a short cut)."""
     hw = tags.get("highway")
     if tags.get("area") == "yes":
         return None
@@ -476,20 +484,19 @@ def rule(tags, mode, bike_kmh, walk_kmh):
     # leisure or natural key, for every transport: a running track, an ice rink. The caller sets "_closed".
     if tags.get("_closed") and any(k in tags for k in ("building", "landuse", "leisure", "natural")):
         return None
-    access = tags.get("access")
     if mode == "Walking":
-        # As for cycling: private ways stay closed unless foot= opens them.
-        if (any_in({"private": True}, access) or tags.get("foot") == "private") and tags.get("foot") not in ALLOWED:
+        if not private and is_private(tags, ("access", "foot"), "foot"):
             return None
         r = foot_rule(tags)
         if r is None:
             return None
-        return r[0], r[1], walk_kmh, True, 1.0, False
+        # Valhalla's destination-only flag is one per edge, the same for every transport.
+        dest_only = (tags.get("service") in V_DEST_ONLY_SERVICE
+                     or any(any_in(dict.fromkeys(V_PRIVATE, True), tags.get(k))
+                            for k in ("access", "motor_vehicle", "motorcar", "vehicle")))
+        return r[0], r[1], walk_kmh, True, 1.0, dest_only
     if mode == "Cycling":
-        # Our one departure from Valhalla: private ways stay closed (Valhalla opens them as destination-only),
-        # unless a bicycle tag opens them.
-        if (any_in({"private": True}, access) or tags.get("bicycle") == "private") and \
-                tags.get("bicycle") not in ALLOWED:
+        if not private and is_private(tags, ("access", "bicycle"), "bicycle"):
             return None
         r = bike_rule(tags)
         if r is None:
@@ -498,10 +505,8 @@ def rule(tags, mode, bike_kmh, walk_kmh):
         if steps:      # not a start: Valhalla does not snap a bicycle to steps
             return fwd, bwd, STEPS_KMH, False, STEPS_COST_FACTOR, dest_only
         return fwd, bwd, DISMOUNT_KMH if dismount else bike_kmh, True, 1.0, dest_only
-    # Car, Truck, Motorcycle, Bus. Private ways stay closed unless this vehicle's own tag opens them.
-    own = tags.get(MOTOR_TAG[mode])
-    if any("private" in (tags.get(k) or "").split(";")
-           for k in ("access", "vehicle", "motor_vehicle", MOTOR_TAG[mode])) and own not in ALLOWED:
+    # Car, Truck, Motorcycle, Bus
+    if not private and is_private(tags, ("access", "vehicle", "motor_vehicle", MOTOR_TAG[mode]), MOTOR_TAG[mode]):
         return None
     r = motor_rule(tags, mode)
     if r is None:
@@ -513,7 +518,8 @@ def rule(tags, mode, bike_kmh, walk_kmh):
 class IsochronesFromPoints(QgsProcessingAlgorithm):
     POINTS, NAME_FIELD, MODE, MEASURE, VALUES, MERGE, AREAS, OSM = (
         "POINTS", "NAME_FIELD", "MODE", "MEASURE", "VALUES", "MERGE", "AREAS", "OSM")
-    SPEED, CELL, BUFFER, SNAP, OUTPUT, EXPANSION = "SPEED", "CELL", "BUFFER", "SNAP", "OUTPUT", "EXPANSION"
+    SPEED, CELL, BUFFER, SNAP, OUTPUT, EXPANSION, PRIVATE = (
+        "SPEED", "CELL", "BUFFER", "SNAP", "OUTPUT", "EXPANSION", "PRIVATE")
 
     def tr(self, text):
         return QCoreApplication.translate("IsochronesFromPoints", text)
@@ -535,10 +541,14 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-            "Isochrones around your own points, over OpenStreetMap, by walking, cycling or car, "
-            "as time (minutes) or distance (metres).\n\n"
+            "Isochrones around your own points, over OpenStreetMap, on foot, by bicycle, car, truck or "
+            "motorcycle, as time (minutes) or distance (metres). Which roads each may use, and in which "
+            "direction, follows the route planner Valhalla 3.9.1.\n\n"
             "Values: comma separated, e.g. 5, 10, 15.\n"
             "Merge points: one isochrone per value for all points together.\n"
+            "Enter private roads: off (default), private roads stay closed. On, they are open as in "
+            "Valhalla: reached as a destination, but 600 s is added to the cost of entering one, so a "
+            "route hardly ever uses one as a short cut.\n"
             "OSM download area: one or more provinces, or the whole Netherlands, downloaded once "
             f"from Geofabrik to {CACHE_DIR}.\n"
             "* = borders Zuid-Holland. For points near the border of Zuid-Holland, tick that "
@@ -559,6 +569,9 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
             self.VALUES, self.tr("Values, comma separated (minutes or metres)"), defaultValue="5, 10, 15"))
         self.addParameter(QgsProcessingParameterBoolean(
             self.MERGE, self.tr("Merge points (one isochrone per value for all points)"), defaultValue=False))
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.PRIVATE, self.tr("Enter private roads (access=private), as Valhalla: reached, but not used "
+                                  "as a short cut"), defaultValue=False))
         self.addParameter(QgsProcessingParameterEnum(
             self.AREAS, self.tr("OSM download area (* = borders Zuid-Holland: tick it too for points "
                                 "near that border)"),
@@ -598,6 +611,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         mode = MODES[self.parameterAsEnum(parameters, self.MODE, context)]
         by_time = self.parameterAsEnum(parameters, self.MEASURE, context) == 0
         merge = self.parameterAsBool(parameters, self.MERGE, context)
+        private = self.parameterAsBool(parameters, self.PRIVATE, context)
         osm_file = self.parameterAsFile(parameters, self.OSM, context)
         areas = [OSM_AREAS[i] for i in self.parameterAsEnums(parameters, self.AREAS, context)]
         speed = self.parameterAsDouble(parameters, self.SPEED, context)
@@ -616,7 +630,8 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         bike_kmh = speed if (speed and mode == "Cycling") else BIKE_SPEED_KMH
         feedback.pushInfo(f"Transport: {mode}; measure: {'time' if by_time else 'distance'}; "
                           f"values: {', '.join(f'{v:g}' for v in values)} {unit}; "
-                          f"{'merged' if merge else 'per point'}; cell {cell:g} m, buffer {buffer_m:g} m")
+                          f"{'merged' if merge else 'per point'}; cell {cell:g} m, buffer {buffer_m:g} m; "
+                          f"private roads {'open' if private else 'closed'}")
         if mode in ("Walking", "Cycling"):
             feedback.pushInfo(f"Speed: {walk_kmh if mode == 'Walking' else bike_kmh:g} km/h")
 
@@ -659,7 +674,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
         # 3. Network
         feedback.pushInfo(f"Reading the {mode.lower()} network within {margin / 1000:.1f} km of the points ...")
         x, y, u, v, m, c, start_ok, seg_a, seg_b = self.network(caches, box, mode, by_time, cell, walk_kmh,
-                                                                 bike_kmh, feedback)
+                                                                 bike_kmh, private, feedback)
         n = len(x)
         from scipy.sparse import csr_matrix
         from scipy.sparse.csgraph import dijkstra
@@ -774,7 +789,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
                              where="highway IS NOT NULL")
         return cache
 
-    def network(self, caches, box, mode, by_time, cell, walk_kmh, bike_kmh, feedback):
+    def network(self, caches, box, mode, by_time, cell, walk_kmh, bike_kmh, private, feedback):
         """Network points (x, y), directed pieces (u, v, measure, cost) and which points may be a start.
         measure = minutes or metres; cost = measure times the way's cost factor, plus the destination-only
         penalty (in the same unit) on a piece that enters a destination-only way from another way.
@@ -800,7 +815,7 @@ class IsochronesFromPoints(QgsProcessingAlgorithm):
                 tags = tags_of(f)
                 if g.GetPointCount() > 2 and g.GetPoint_2D(0) == g.GetPoint_2D(g.GetPointCount() - 1):
                     tags["_closed"] = "yes"
-                r = rule(tags, mode, bike_kmh, walk_kmh)
+                r = rule(tags, mode, bike_kmh, walk_kmh, private)
                 if r is None:
                     continue
                 pts = np.asarray(g.GetPoints(), dtype=float)[:, :2]
